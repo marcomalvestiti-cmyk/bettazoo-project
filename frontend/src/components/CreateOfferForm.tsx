@@ -28,13 +28,7 @@ export default function CreateOfferForm({ eventId, eventName, teams }: Props) {
     setStatus('suggesting')
     setErrorMsg('')
     try {
-      const result = await fetchSuggestOdds({
-        eventId,
-        eventName,
-        sport: 'football',
-        teams,
-        outcome,
-      })
+      const result = await fetchSuggestOdds({ eventId, eventName, sport: 'football', teams, outcome })
       setAiResult(result.suggestedOdds ?? result)
       if (result.suggestedOdds?.[outcome] !== undefined) {
         setOddsDecimal(String(result.suggestedOdds[outcome]))
@@ -58,7 +52,6 @@ export default function CreateOfferForm({ eventId, eventName, teams }: Props) {
     try {
       const oddsRaw = BigInt(Math.round(oddsNum * 10000))
       const liabilityRaw = parseUnits(liabilityNum.toFixed(6), 6)
-
       await writeContractAsync({
         address: USDT_ADDRESS,
         abi: ERC20_ABI,
@@ -82,8 +75,8 @@ export default function CreateOfferForm({ eventId, eventName, teams }: Props) {
   }
 
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 space-y-4">
-      <h3 className="font-semibold text-zinc-200">Crea offerta</h3>
+    <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 space-y-4">
+      <h3 className="font-semibold text-white text-sm">Crea offerta</h3>
 
       {/* Outcome selector */}
       <div className="grid grid-cols-3 gap-2">
@@ -91,10 +84,10 @@ export default function CreateOfferForm({ eventId, eventName, teams }: Props) {
           <button
             key={o}
             onClick={() => setOutcome(o)}
-            className={`py-2 text-sm rounded-lg border transition-colors ${
+            className={`py-2 text-xs font-medium rounded-lg border transition-all ${
               outcome === o
-                ? 'border-emerald-500 bg-emerald-950/30 text-emerald-300'
-                : 'border-zinc-700 text-zinc-400 hover:border-zinc-500'
+                ? 'border-green-500 bg-green-500/10 text-green-400 shadow-[0_0_8px_rgba(74,222,128,0.2)]'
+                : 'border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-300'
             }`}
           >
             {OUTCOMES[o]}
@@ -102,17 +95,17 @@ export default function CreateOfferForm({ eventId, eventName, teams }: Props) {
         ))}
       </div>
 
-      {/* Odds */}
+      {/* Odds + AI */}
       <div className="flex gap-2">
-        <div className="flex-1">
-          <label className="block text-xs text-zinc-400 mb-1">Quota (es. 2.50)</label>
+        <div className="flex-1 space-y-1">
+          <label className="block text-xs text-slate-400">Quota (es. 2.50)</label>
           <input
             type="number"
             min="1.01"
             step="0.01"
             value={oddsDecimal}
             onChange={(e) => setOddsDecimal(e.target.value)}
-            className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500"
+            className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-green-500 transition-colors"
             placeholder="2.50"
           />
         </div>
@@ -120,47 +113,55 @@ export default function CreateOfferForm({ eventId, eventName, teams }: Props) {
           <button
             onClick={handleAiSuggest}
             disabled={status === 'suggesting'}
-            className="px-3 py-2 text-xs rounded-lg bg-violet-700 hover:bg-violet-600 disabled:opacity-50 transition-colors whitespace-nowrap"
+            className="px-3 py-2 text-xs font-medium rounded-lg bg-violet-600/20 border border-violet-500/40 text-violet-300 hover:bg-violet-600/30 disabled:opacity-50 transition-colors whitespace-nowrap"
           >
-            {status === 'suggesting' ? 'AI…' : 'Chiedi all\'AI'}
+            {status === 'suggesting' ? 'AI…' : '✦ AI Suggest'}
           </button>
         </div>
       </div>
 
       {aiResult && (
-        <div className="text-xs text-zinc-400 bg-zinc-950 rounded-lg p-2">
-          AI suggerisce: {Object.entries(aiResult).map(([k, v]) =>
+        <div className="text-xs text-slate-400 bg-violet-500/8 border border-violet-500/20 rounded-lg p-2.5">
+          <span className="text-violet-400 font-medium">AI suggerisce: </span>
+          {Object.entries(aiResult).map(([k, v]) =>
             `${OUTCOMES[Number(k)] ?? k}: ${typeof v === 'number' ? v.toFixed(2) : v}`
           ).join(' · ')}
         </div>
       )}
 
       {/* Liability */}
-      <div>
-        <label className="block text-xs text-zinc-400 mb-1">Liability (USDT da bloccare)</label>
-        <input
-          type="number"
-          min="1"
-          step="0.01"
-          value={liabilityUsdt}
-          onChange={(e) => setLiabilityUsdt(e.target.value)}
-          className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500"
-          placeholder="100.00"
-        />
+      <div className="space-y-1">
+        <label className="block text-xs text-slate-400">Liability USDT (collaterale)</label>
+        <div className="relative">
+          <input
+            type="number"
+            min="1"
+            step="0.01"
+            value={liabilityUsdt}
+            onChange={(e) => setLiabilityUsdt(e.target.value)}
+            className="w-full bg-slate-900 border border-slate-600 rounded-lg pl-3 pr-14 py-2 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-green-500 transition-colors"
+            placeholder="100.00"
+          />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 font-mono">USDT</span>
+        </div>
       </div>
 
-      {errorMsg && <p className="text-xs text-red-400">{errorMsg}</p>}
+      {errorMsg && (
+        <p className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">
+          {errorMsg}
+        </p>
+      )}
 
       {status === 'done' ? (
-        <div className="text-center text-emerald-400 font-medium">Offerta creata!</div>
+        <div className="text-center text-green-400 text-sm font-semibold py-1">✓ Offerta creata!</div>
       ) : (
         <button
           onClick={handleCreate}
           disabled={status !== 'idle' && status !== 'error'}
-          className="w-full py-3 text-sm font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 transition-colors"
+          className="w-full py-3 text-sm font-bold rounded-xl bg-green-500 hover:bg-green-400 text-slate-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-[0_0_12px_rgba(74,222,128,0.25)]"
         >
-          {status === 'approving' && 'Approvazione USDT…'}
-          {status === 'creating' && 'Creazione offerta…'}
+          {status === 'approving' && '① Approvazione USDT…'}
+          {status === 'creating'  && '② Creazione offerta…'}
           {(status === 'idle' || status === 'error') && 'Crea offerta'}
         </button>
       )}

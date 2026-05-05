@@ -45,9 +45,7 @@ export default function MyOffers() {
     }
   }
 
-  useEffect(() => {
-    loadOffers()
-  }, [address])
+  useEffect(() => { loadOffers() }, [address])
 
   async function handleCancel(offerId: number) {
     setCancelling(offerId)
@@ -68,36 +66,41 @@ export default function MyOffers() {
   }
 
   if (!address) return null
-  if (loading) return <div className="text-zinc-500 text-sm py-2">Caricamento offerte…</div>
+  if (loading) return (
+    <div className="text-slate-500 text-xs py-3">Caricamento offerte…</div>
+  )
   if (offers.length === 0) return (
-    <div className="text-zinc-600 text-sm py-2">Nessuna offerta attiva</div>
+    <div className="text-slate-600 text-xs py-3">Nessuna offerta attiva</div>
   )
 
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 space-y-3">
-      <h3 className="text-sm font-semibold text-zinc-200">Le mie offerte attive</h3>
-      {error && <p className="text-xs text-red-400">{error}</p>}
+    <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 space-y-3">
+      <h3 className="text-sm font-semibold text-white">Le mie offerte attive</h3>
+      {error && (
+        <p className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">{error}</p>
+      )}
       <div className="space-y-2">
         {offers.map((o) => (
           <div
             key={o.offerId}
-            className="flex items-center justify-between rounded-lg bg-zinc-950 border border-zinc-800 px-3 py-2"
+            className="flex items-center justify-between rounded-lg bg-slate-900/60 border border-slate-700/60 px-3 py-2.5"
           >
             <div className="text-xs space-y-0.5">
-              <div className="text-zinc-300 font-mono">
+              <div className="text-slate-200 font-mono">
                 #{o.offerId} · {MOCK_EVENTS.find(e => e.eventId === o.eventId)?.name ?? o.eventId}
               </div>
-              <div className="text-zinc-500">
-                {OUTCOMES[o.outcome] ?? o.outcome} · {o.oddsDecimal.toFixed(2)}x
+              <div className="text-slate-500">
+                {OUTCOMES[o.outcome] ?? o.outcome} ·{' '}
+                <span className="text-green-400 font-medium">{o.oddsDecimal.toFixed(2)}x</span>
               </div>
-              <div className="text-zinc-400">
-                Residua: <span className="font-mono">{o.remainingLiabilityUsdt} USDT</span>
+              <div className="text-slate-500">
+                Residua: <span className="font-mono text-slate-300">{o.remainingLiabilityUsdt} USDT</span>
               </div>
             </div>
             <button
               onClick={() => handleCancel(o.offerId)}
               disabled={cancelling === o.offerId}
-              className="ml-3 px-3 py-1.5 text-xs rounded-lg border border-red-800 text-red-400 hover:bg-red-950/30 disabled:opacity-50 transition-colors"
+              className="ml-3 px-3 py-1.5 text-xs rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 disabled:opacity-50 transition-colors"
             >
               {cancelling === o.offerId ? 'Annullamento…' : 'Cancella'}
             </button>

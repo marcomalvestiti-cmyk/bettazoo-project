@@ -72,83 +72,103 @@ export default function OrderBook({ eventId, onSelectOffers }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Summary */}
+
+      {/* Outcome summary cards */}
       {data?.summary && (
         <div className="grid grid-cols-3 gap-3">
-          {Object.values(data.summary).map((s) => (
-            <button
-              key={s.outcome}
-              onClick={() => setSelectedOutcome(selectedOutcome === s.outcome ? undefined : s.outcome)}
-              className={`rounded-xl p-3 text-left border transition-colors ${
-                selectedOutcome === s.outcome
-                  ? 'border-emerald-500 bg-emerald-950/30'
-                  : 'border-zinc-800 bg-zinc-900 hover:border-zinc-600'
-              }`}
-            >
-              <div className="text-xs text-zinc-400">{OUTCOMES[s.outcome] ?? `Outcome ${s.outcome}`}</div>
-              <div className="text-lg font-bold text-emerald-400">{s.bestOdds.toFixed(2)}x</div>
-              <div className="text-xs text-zinc-500">{s.count} offerte · ${s.totalLiquidityUsdt.toFixed(2)}</div>
-            </button>
-          ))}
+          {Object.values(data.summary).map((s) => {
+            const active = selectedOutcome === s.outcome
+            return (
+              <button
+                key={s.outcome}
+                onClick={() => setSelectedOutcome(active ? undefined : s.outcome)}
+                className={`rounded-xl p-3 text-left border transition-all ${
+                  active
+                    ? 'border-green-500 bg-green-500/10 shadow-[0_0_12px_rgba(74,222,128,0.15)]'
+                    : 'border-slate-700 bg-slate-800 hover:border-slate-600'
+                }`}
+              >
+                <div className="text-xs text-slate-400 mb-1">{OUTCOMES[s.outcome] ?? `Outcome ${s.outcome}`}</div>
+                <div className="text-xl font-bold font-mono text-green-400">{s.bestOdds.toFixed(2)}x</div>
+                <div className="text-xs text-slate-500 mt-0.5">{s.count} offerte · ${s.totalLiquidityUsdt.toFixed(0)}</div>
+              </button>
+            )
+          })}
         </div>
       )}
 
-      {/* Stake input */}
+      {/* Stake input + CTA */}
       {onSelectOffers && (
         <div className="flex gap-2">
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="Importo scommessa (USDT)"
-            value={stake}
-            onChange={(e) => setStake(e.target.value)}
-            className="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500"
-          />
+          <div className="relative flex-1">
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="Importo scommessa (USDT)"
+              value={stake}
+              onChange={(e) => setStake(e.target.value)}
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-3 pr-16 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-green-500 transition-colors"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 font-mono">USDT</span>
+          </div>
           <button
             onClick={handleBet}
             disabled={matchedOffers.length === 0 || stakeNum <= 0}
-            className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 transition-colors"
+            className="px-4 py-2.5 text-sm font-bold rounded-lg bg-green-500 hover:bg-green-400 text-slate-900 disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-[0_0_12px_rgba(74,222,128,0.25)] disabled:shadow-none"
           >
-            Scommetti ({matchedOffers.length} offerte)
+            Accetta Scommessa
+            {matchedOffers.length > 0 && (
+              <span className="ml-1.5 text-xs font-normal opacity-70">({matchedOffers.length})</span>
+            )}
           </button>
         </div>
       )}
 
       {/* Orders table */}
       {loading ? (
-        <div className="text-center text-zinc-500 py-8">Caricamento order book…</div>
+        <div className="text-center text-slate-500 py-12 text-sm">Caricamento order book…</div>
       ) : !data || data.orders.length === 0 ? (
-        <div className="text-center text-zinc-500 py-8">Nessuna offerta disponibile</div>
+        <div className="text-center text-slate-500 py-12 text-sm">Nessuna offerta disponibile</div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-zinc-800">
+        <div className="overflow-x-auto rounded-xl border border-slate-700">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-800 text-zinc-400">
-                <th className="px-4 py-2 text-left">Esito</th>
-                <th className="px-4 py-2 text-right">Quota</th>
-                <th className="px-4 py-2 text-right">Max stake (USDT)</th>
-                <th className="px-4 py-2 text-right">Liquidità (USDT)</th>
-                <th className="px-4 py-2 text-left">Placer</th>
+              <tr className="bg-slate-800 border-b border-slate-700 text-xs text-slate-400 uppercase tracking-wide">
+                <th className="px-4 py-3 text-left">Esito</th>
+                <th className="px-4 py-3 text-right">Quota</th>
+                <th className="px-4 py-3 text-right">Max stake</th>
+                <th className="px-4 py-3 text-right">Liquidità</th>
+                <th className="px-4 py-3 text-left">Placer</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-700/50">
               {data.orders.map((o) => {
                 const isMatched = matchedOffers.some((m) => m.offerId === o.offerId)
                 return (
                   <tr
                     key={o.offerId}
-                    className={`border-b border-zinc-800/50 transition-colors ${
-                      isMatched ? 'bg-emerald-950/20' : 'hover:bg-zinc-900'
+                    className={`transition-colors ${
+                      isMatched
+                        ? 'bg-green-500/8 border-l-2 border-l-green-500'
+                        : 'hover:bg-slate-800/60'
                     }`}
                   >
-                    <td className="px-4 py-2 text-zinc-300">{OUTCOMES[o.outcome] ?? o.outcome}</td>
-                    <td className="px-4 py-2 text-right font-mono text-emerald-400">
+                    <td className="px-4 py-3">
+                      <span className="text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-300">
+                        {OUTCOMES[o.outcome] ?? o.outcome}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono font-bold text-green-400">
                       {o.oddsDecimal.toFixed(2)}x
                     </td>
-                    <td className="px-4 py-2 text-right font-mono">{o.maxBettorStakeUsdt}</td>
-                    <td className="px-4 py-2 text-right font-mono text-zinc-400">{o.remainingLiabilityUsdt}</td>
-                    <td className="px-4 py-2 font-mono text-xs text-zinc-500">
+                    <td className="px-4 py-3 text-right font-mono text-slate-200">
+                      ${o.maxBettorStakeUsdt}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-slate-400">
+                      ${o.remainingLiabilityUsdt}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs text-slate-500">
                       {o.placer.slice(0, 6)}…{o.placer.slice(-4)}
                     </td>
                   </tr>

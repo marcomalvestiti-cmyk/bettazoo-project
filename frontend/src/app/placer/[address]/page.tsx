@@ -14,16 +14,23 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
   const shortAddr = `${address.slice(0, 6)}…${address.slice(-4)}`
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-10 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
+
       {/* Header */}
-      <div>
-        <div className="text-xs text-emerald-400 uppercase tracking-widest mb-1">Placer</div>
-        <h1 className="text-2xl font-bold text-zinc-100 font-mono">{shortAddr}</h1>
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center text-slate-900 font-black text-sm">
+          {address.slice(2, 4).toUpperCase()}
+        </div>
+        <div>
+          <p className="text-xs text-green-400 uppercase tracking-widest font-medium">Placer · Live</p>
+          <h1 className="text-xl font-bold text-white font-mono">{shortAddr}</h1>
+        </div>
       </div>
 
       {/* Main grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left column: stream + chat */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+        {/* Left: stream + chat */}
         <div className="lg:col-span-2 space-y-4">
           <StreamPlayer
             teamA={selectedEvent.teams[0] ?? 'Home'}
@@ -32,19 +39,21 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
           <LiveChat room={`placer-${address}`} />
         </div>
 
-        {/* Right column: event selector + order book filtrato per placer */}
+        {/* Right: event selector + unmatched orders */}
         <div className="space-y-4">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 space-y-2">
-            <p className="text-xs text-zinc-400">Quote esclusive di questo placer</p>
+
+          {/* Event selector */}
+          <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 space-y-2">
+            <p className="text-xs text-slate-400 font-medium">Quote di questo placer</p>
             <div className="space-y-1">
               {MOCK_EVENTS.map((e) => (
                 <button
                   key={e.eventId}
                   onClick={() => setSelectedEvent(e)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all ${
                     selectedEvent.eventId === e.eventId
-                      ? 'bg-emerald-900/40 text-emerald-300 border border-emerald-800'
-                      : 'text-zinc-400 hover:bg-zinc-800'
+                      ? 'bg-green-500/10 text-green-400 border border-green-500/40'
+                      : 'text-slate-400 hover:bg-slate-700/60 hover:text-slate-200'
                   }`}
                 >
                   {e.name}
@@ -53,10 +62,11 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
             </div>
           </div>
 
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
+          {/* Unmatched orders */}
+          <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
             <div className="flex items-center gap-2 mb-3">
-              <h3 className="text-sm font-semibold text-zinc-200">Offerte aperte</h3>
-              <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-900/40 text-amber-400 border border-amber-800">
+              <h3 className="text-sm font-semibold text-white">Offerte aperte</h3>
+              <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-yellow-400/10 text-yellow-400 border border-yellow-400/30 font-semibold">
                 Unmatched
               </span>
             </div>

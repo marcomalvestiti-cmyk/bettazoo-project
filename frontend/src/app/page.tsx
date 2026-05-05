@@ -3,44 +3,56 @@ import { MOCK_EVENTS } from '@/lib/abis'
 
 export default function Home() {
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10 space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-zinc-100">Exchange</h1>
-        <p className="text-zinc-400 mt-1 text-sm">
-          Scommetti peer-to-peer — nessun bookmaker, solo stablecoin.
+    <div className="max-w-5xl mx-auto px-4 py-10 space-y-8">
+
+      {/* Header */}
+      <div className="space-y-1">
+        <p className="text-xs font-medium text-green-400 uppercase tracking-widest">Markets</p>
+        <h1 className="text-3xl font-bold text-white">Exchange</h1>
+        <p className="text-slate-400 text-sm">
+          Scommetti peer-to-peer — nessun bookmaker, solo stablecoin USDT.
         </p>
       </div>
 
-      <div className="grid gap-4">
+      {/* Event list */}
+      <div className="space-y-3">
         {MOCK_EVENTS.map((event) => {
           const start = new Date(event.startTime)
           return (
             <Link
               key={event.eventId}
               href={`/event/${event.eventId}`}
-              className="block bg-zinc-900 border border-zinc-800 rounded-2xl p-5 hover:border-zinc-600 transition-colors group"
+              className="group flex items-center justify-between bg-slate-800 border border-slate-700 hover:border-green-500/50 hover:bg-slate-800/80 rounded-xl px-5 py-4 transition-all"
             >
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="text-xs text-emerald-400 mb-1 uppercase tracking-wide">{event.sport}</div>
-                  <h2 className="text-lg font-semibold text-zinc-100 group-hover:text-white">
+              <div className="flex items-center gap-4">
+                {/* Sport badge */}
+                <span className="hidden sm:flex w-9 h-9 rounded-lg bg-slate-700 items-center justify-center text-lg select-none">
+                  ⚽
+                </span>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-green-400 bg-green-400/10 px-2 py-0.5 rounded">
+                      {event.sport}
+                    </span>
+                    <span className="text-[10px] text-slate-500">
+                      {start.toLocaleDateString('it-IT')} · {start.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <h2 className="text-base font-semibold text-slate-100 group-hover:text-white transition-colors">
                     {event.name}
                   </h2>
-                  <div className="flex gap-2 mt-2">
+                  <div className="flex gap-1.5">
                     {event.teams.map((t) => (
-                      <span key={t} className="text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded">
+                      <span key={t} className="text-xs bg-slate-700 text-slate-400 px-2 py-0.5 rounded-md">
                         {t}
                       </span>
                     ))}
                   </div>
                 </div>
-                <div className="text-right text-xs text-zinc-500">
-                  <div>{start.toLocaleDateString('it-IT')}</div>
-                  <div>{start.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</div>
-                </div>
               </div>
-              <div className="mt-3 text-xs text-zinc-500 flex items-center gap-1">
-                Vedi order book →
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="text-xs text-slate-500 hidden sm:block">Order book</span>
+                <span className="text-slate-400 group-hover:text-green-400 transition-colors text-lg">→</span>
               </div>
             </Link>
           )
