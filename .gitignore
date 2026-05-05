@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# next.js
+frontend/.next/
+frontend/out/
+
+# env files
+.env
+.env.local
+.env*.local
+
+# hardhat
+web3/artifacts/
+web3/cache/
+web3/ignition/deployments/
+
+# misc
+.DS_Store
+*.pem
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# claude
+.claude/
