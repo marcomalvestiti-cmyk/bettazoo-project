@@ -4,49 +4,49 @@ import { useState } from 'react'
 import { use } from 'react'
 import { useAccount } from 'wagmi'
 import OrderBook, { type Offer } from '@/components/OrderBook'
-import BetForm from '@/components/BetForm'
+import BetSlip from '@/components/BetSlip'
 import { MOCK_EVENTS } from '@/lib/abis'
 import Link from 'next/link'
 
+type BetSlipState = { outcome: number; offers: Offer[] }
+
 export default function EventPage({ params }: { params: Promise<{ eventId: string }> }) {
-  const { eventId } = use(params)
+  const { eventId }   = use(params)
   const { isConnected } = useAccount()
-  const [selectedOffers, setSelectedOffers] = useState<Offer[] | null>(null)
-  const [pendingStake, setPendingStake] = useState(0)
+  const [betSlip, setBetSlip] = useState<BetSlipState | null>(null)
 
   const event = MOCK_EVENTS.find((e) => e.eventId === eventId)
 
-  function handleSelectOffers(offers: Offer[], stake: number) {
-    setSelectedOffers(offers)
-    setPendingStake(stake)
+  function handleBet(outcome: number, offers: Offer[]) {
+    setBetSlip({ outcome, offers })
   }
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
 
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-slate-500">
-        <Link href="/" className="hover:text-slate-300 transition-colors">Exchange</Link>
-        <span className="text-slate-700">/</span>
-        <span className="text-slate-300">{event?.name ?? eventId}</span>
+      <div className="flex items-center gap-2 text-sm text-zinc-500">
+        <Link href="/" className="hover:text-zinc-300 transition-colors font-bold">Exchange</Link>
+        <span className="text-zinc-700">/</span>
+        <span className="text-zinc-300 font-bold">{event?.name ?? eventId}</span>
       </div>
 
       {/* Event header */}
-      <div className="bg-slate-800 border border-slate-700 rounded-xl px-5 py-4 flex items-center justify-between">
+      <div className="bg-[#313338] border border-zinc-700 rounded-2xl px-5 py-4 flex items-center justify-between">
         <div className="space-y-1.5">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-green-400 bg-green-400/10 px-2 py-0.5 rounded">
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded-lg">
             {event?.sport ?? 'sport'}
           </span>
-          <h1 className="text-xl font-bold text-white">{event?.name ?? eventId}</h1>
+          <h1 className="text-xl font-extrabold text-white">{event?.name ?? eventId}</h1>
           {event && (
             <div className="flex gap-1.5">
               {event.teams.map((t) => (
-                <span key={t} className="text-xs bg-slate-700 text-slate-400 px-2 py-0.5 rounded-md">{t}</span>
+                <span key={t} className="text-xs font-bold bg-[#2b2d31] text-zinc-400 px-2 py-0.5 rounded-lg">{t}</span>
               ))}
             </div>
           )}
         </div>
-        <div className="hidden sm:flex flex-col items-end text-xs text-slate-500">
+        <div className="hidden sm:flex flex-col items-end text-xs text-zinc-500 font-bold">
           {event && (
             <>
               <span>{new Date(event.startTime).toLocaleDateString('it-IT')}</span>
@@ -57,22 +57,23 @@ export default function EventPage({ params }: { params: Promise<{ eventId: strin
       </div>
 
       {!isConnected && (
-        <div className="flex items-center gap-2 rounded-lg bg-slate-800/60 border border-slate-700 px-4 py-3 text-sm text-slate-400">
+        <div className="flex items-center gap-2 rounded-2xl bg-[#313338] border border-zinc-700 px-4 py-3 text-sm text-zinc-400">
           <span className="text-yellow-400">⚠</span>
-          Connetti il wallet per scommettere.
+          Connetti il wallet per scommettere — clicca su una quota per aprire la schedina.
         </div>
       )}
 
       <OrderBook
         eventId={eventId}
-        onSelectOffers={isConnected ? handleSelectOffers : undefined}
+        onBet={isConnected ? handleBet : undefined}
       />
 
-      {selectedOffers && (
-        <BetForm
-          offers={selectedOffers}
-          stakeUsdt={pendingStake}
-          onClose={() => setSelectedOffers(null)}
+      {betSlip && (
+        <BetSlip
+          outcome={betSlip.outcome}
+          offers={betSlip.offers}
+          eventName={event?.name ?? eventId}
+          onClose={() => setBetSlip(null)}
         />
       )}
     </div>
