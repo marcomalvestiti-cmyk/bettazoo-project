@@ -12,7 +12,6 @@ type Message = {
   ts: number
 }
 
-// Deterministic color per sender address
 const CHAT_COLORS = [
   'text-[#e05555]',
   'text-fuchsia-400',
@@ -40,7 +39,7 @@ type Props = {
 export default function LiveChat({ room, viewers = 1247 }: Props) {
   const { address } = useAccount()
   const [messages, setMessages] = useState<Message[]>([
-    { id: '0', sender: '0xSystem', text: 'Benvenuto nella chat live! 🎮', ts: Date.now() },
+    { id: '0', sender: '0xSystem', text: 'Welcome to the live chat! 🎮', ts: Date.now() },
   ])
   const [input, setInput] = useState('')
   const socketRef = useRef<Socket | null>(null)
@@ -64,7 +63,7 @@ export default function LiveChat({ room, viewers = 1247 }: Props) {
     if (!input.trim() || !socketRef.current) return
     const msg: Message = {
       id: String(Date.now()),
-      sender: address ? `${address.slice(0, 6)}…${address.slice(-4)}` : 'Ospite',
+      sender: address ? `${address.slice(0, 6)}…${address.slice(-4)}` : 'Guest',
       text: input.trim(),
       ts: Date.now(),
     }
@@ -74,16 +73,16 @@ export default function LiveChat({ room, viewers = 1247 }: Props) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#0f0f16]">
+    <div className="flex flex-col h-full bg-slate-950">
 
       {/* Header */}
-      <div className="px-4 py-3 border-b border-zinc-800 flex items-center gap-2 shrink-0">
+      <div className="px-4 py-3 border-b border-slate-800 flex items-center gap-2 shrink-0">
         <span className="w-2 h-2 rounded-full bg-[#B31A1A] animate-pulse" />
-        <span className="text-lg font-extrabold text-white">Chat</span>
-        <div className="ml-auto flex items-center gap-1 text-[11px] text-zinc-500">
+        <span className="text-base font-semibold text-white">Chat</span>
+        <div className="ml-auto flex items-center gap-1 text-[11px] text-slate-500">
           <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-          <span className="font-bold text-zinc-400">{viewers.toLocaleString('it-IT')}</span>
-          <span>spettatori</span>
+          <span className="font-semibold text-slate-400">{viewers.toLocaleString('en-US')}</span>
+          <span>viewers</span>
         </div>
       </div>
 
@@ -91,23 +90,23 @@ export default function LiveChat({ room, viewers = 1247 }: Props) {
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
         {messages.map((m) => {
           const isSystem = m.sender === '0xSystem'
-          const color    = isSystem ? 'text-zinc-500' : getSenderColor(m.sender)
+          const color    = isSystem ? 'text-slate-500' : getSenderColor(m.sender)
           return (
             <div key={m.id} className="space-y-1">
               <div className="flex items-baseline gap-1.5 px-1">
-                <span className={`text-xs font-extrabold leading-none ${color}`}>
+                <span className={`text-xs font-semibold leading-none ${color}`}>
                   {m.sender}
                 </span>
-                <span className="text-[10px] text-zinc-700 leading-none">
-                  {new Date(m.ts).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                <span className="text-[10px] text-slate-700 leading-none">
+                  {new Date(m.ts).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
               <div className={`
                 inline-block max-w-[92%] px-3 py-2 text-sm leading-relaxed
-                rounded-2xl rounded-tl-sm
+                rounded-lg rounded-tl-sm
                 ${isSystem
-                  ? 'bg-zinc-800/40 text-zinc-500 italic border border-zinc-800'
-                  : 'bg-[#1c1c24] text-zinc-200'
+                  ? 'bg-slate-800/40 text-slate-500 italic border border-slate-800'
+                  : 'bg-slate-900 text-slate-200'
                 }
               `}>
                 {m.text}
@@ -119,33 +118,26 @@ export default function LiveChat({ room, viewers = 1247 }: Props) {
       </div>
 
       {/* Input */}
-      <div className="px-3 py-3 border-t border-zinc-800 shrink-0 space-y-1.5">
+      <div className="px-3 py-3 border-t border-slate-800 shrink-0 space-y-1.5">
         <div className="flex gap-2">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-            placeholder={address ? 'Invia un messaggio…' : 'Connetti wallet per chattare'}
-            className="flex-1 bg-[#141419] border border-zinc-800 rounded-2xl px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-[#B31A1A] transition-colors"
+            placeholder={address ? 'Send a message…' : 'Connect wallet to chat'}
+            className="flex-1 bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-[#B31A1A] transition-colors"
           />
           <button
             onClick={sendMessage}
             disabled={!input.trim()}
-            className="
-              px-4 py-2 text-sm font-extrabold rounded-2xl
-              bg-[#B31A1A] hover:bg-[#cc2020] text-white
-              border-b-2 border-b-[#6b0d0d]
-              active:border-b-0 active:translate-y-0.5
-              disabled:opacity-40 disabled:border-b-0
-              transition-all duration-75
-            "
+            className="px-4 py-2 text-sm font-semibold rounded-md bg-[#B31A1A] hover:bg-red-600 text-white disabled:opacity-40 transition-colors"
           >
-            Chat
+            Send
           </button>
         </div>
-        <p className="text-[10px] text-zinc-700 text-center">
-          Trattate gli altri utenti con rispetto ✌️
+        <p className="text-[10px] text-slate-700 text-center">
+          Treat other users with respect ✌️
         </p>
       </div>
     </div>

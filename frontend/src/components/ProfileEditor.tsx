@@ -30,42 +30,42 @@ export default function ProfileEditor({ address }: { address: string }) {
       setStatus('saved')
       setTimeout(() => setStatus('idle'), 2500)
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Errore sconosciuto')
+      setErrorMsg(err instanceof Error ? err.message : 'Unknown error')
       setStatus('error')
     }
   }
 
   return (
-    <div className="bg-[#141419] border border-zinc-800 rounded-2xl p-4 space-y-3">
-      <p className="text-xs font-extrabold text-[#e05555] uppercase tracking-widest">Profilo</p>
+    <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 space-y-3">
+      <p className="text-xs font-semibold text-red-500 uppercase tracking-widest">Profile</p>
 
       <div className="space-y-1">
         <div className="flex justify-between items-center">
-          <label className="text-xs text-zinc-400 font-bold">Nickname</label>
-          <span className="text-xs text-zinc-600">{nickname.length}/{NICKNAME_MAX}</span>
+          <label className="text-xs text-slate-400 font-medium">Nickname</label>
+          <span className="text-xs text-slate-600">{nickname.length}/{NICKNAME_MAX}</span>
         </div>
         <input
           type="text"
           value={nickname}
           maxLength={NICKNAME_MAX}
           onChange={(e) => { setNickname(e.target.value); setStatus('idle') }}
-          placeholder="Il tuo nome da Placer..."
-          className="w-full bg-[#0f0f16] border border-zinc-700 rounded-xl px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-[#B31A1A] transition-colors"
+          placeholder="Your Placer name..."
+          className="w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-[#B31A1A] transition-colors"
         />
       </div>
 
       <div className="space-y-1">
         <div className="flex justify-between items-center">
-          <label className="text-xs text-zinc-400 font-bold">Bio</label>
-          <span className="text-xs text-zinc-600">{bio.length}/{BIO_MAX}</span>
+          <label className="text-xs text-slate-400 font-medium">Bio</label>
+          <span className="text-xs text-slate-600">{bio.length}/{BIO_MAX}</span>
         </div>
         <textarea
           value={bio}
           maxLength={BIO_MAX}
           rows={3}
           onChange={(e) => { setBio(e.target.value); setStatus('idle') }}
-          placeholder="Presentati agli altri utenti..."
-          className="w-full bg-[#0f0f16] border border-zinc-700 rounded-xl px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-[#B31A1A] transition-colors resize-none"
+          placeholder="Introduce yourself to other users..."
+          className="w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-[#B31A1A] transition-colors resize-none"
         />
       </div>
 
@@ -74,16 +74,16 @@ export default function ProfileEditor({ address }: { address: string }) {
           <p className="text-xs text-red-400">{errorMsg}</p>
         )}
         {status === 'saved' && (
-          <p className="text-xs text-emerald-400">Salvato!</p>
+          <p className="text-xs text-emerald-400">Saved!</p>
         )}
         {status !== 'error' && status !== 'saved' && <span />}
 
         <button
           onClick={handleSave}
           disabled={status === 'saving' || status === 'loading'}
-          className="px-4 py-2 rounded-xl text-xs font-extrabold bg-[#B31A1A] hover:bg-[#cc2020] border-b-2 border-b-[#6b0d0d] active:border-b-0 active:translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-all duration-75 shrink-0"
+          className="px-4 py-2 rounded-md text-xs font-semibold bg-[#B31A1A] hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors shrink-0"
         >
-          {status === 'saving' ? 'Salvataggio...' : 'Salva profilo'}
+          {status === 'saving' ? 'Saving...' : 'Save profile'}
         </button>
       </div>
     </div>

@@ -86,7 +86,7 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
       setStatus('done')
     } catch (err: unknown) {
       setStatus('error')
-      setErrorMsg(err instanceof Error ? err.message : 'Transazione fallita')
+      setErrorMsg(err instanceof Error ? err.message : 'Transaction failed')
     }
   }
 
@@ -94,32 +94,30 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
 
   return (
     <>
-      {/* Backdrop */}
       <div
         onClick={handleClose}
-        className={`fixed inset-0 bg-[#0D0D11]/80 backdrop-blur-sm z-40 transition-opacity duration-300 ${
+        className={`fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40 transition-opacity duration-300 ${
           visible ? 'opacity-100' : 'opacity-0'
         }`}
       />
 
-      {/* Sidebar panel */}
       <aside
-        className={`fixed inset-y-0 right-0 z-50 w-[400px] max-w-full flex flex-col bg-[#0f0f16] border-l border-zinc-800 shadow-2xl transition-transform duration-300 ease-out ${
+        className={`fixed inset-y-0 right-0 z-50 w-[400px] max-w-full flex flex-col bg-slate-950 border-l border-slate-800 shadow-2xl transition-transform duration-300 ease-out ${
           visible ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800 shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-2.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#B31A1A] shadow-[0_0_8px_rgba(179,26,26,0.8)]" />
-            <h2 className="font-extrabold text-white text-xl tracking-tight">Bet Slip</h2>
-            <span className="text-xs text-zinc-500 bg-[#141419] border border-zinc-800 px-2 py-0.5 rounded-xl font-mono">
-              {offers.length} offerte
+            <span className="w-2 h-2 rounded-full bg-[#B31A1A]" />
+            <h2 className="font-bold text-white text-lg tracking-tight">Bet Slip</h2>
+            <span className="text-xs text-slate-500 bg-slate-900 border border-slate-700 px-2 py-0.5 rounded font-mono">
+              {offers.length} offers
             </span>
           </div>
           <button
             onClick={handleClose}
-            className="w-10 h-10 flex items-center justify-center rounded-2xl text-zinc-500 hover:text-white hover:bg-[#141419] transition-colors text-xl leading-none"
+            className="w-9 h-9 flex items-center justify-center rounded-md text-slate-500 hover:text-white hover:bg-slate-800 transition-colors text-xl leading-none"
           >
             ×
           </button>
@@ -129,32 +127,32 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
 
           {/* Event + Outcome */}
-          <div className="bg-[#141419] border border-zinc-800 rounded-2xl p-4">
-            <p className="text-xs text-zinc-500 mb-2 truncate">{eventName}</p>
+          <div className="bg-slate-900 border border-slate-800 rounded-lg p-4">
+            <p className="text-xs text-slate-500 mb-2 truncate">{eventName}</p>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <span className={`w-3 h-3 rounded-full shrink-0 ${color.dot}`} />
-                <span className={`text-base font-bold ${color.text}`}>
+                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${color.dot}`} />
+                <span className={`text-base font-semibold ${color.text}`}>
                   {OUTCOMES[outcome] ?? `Outcome ${outcome}`}
                 </span>
               </div>
               <div className="text-right">
-                <div className="text-3xl font-extrabold font-mono tabular-nums text-[#e05555] leading-none">
+                <div className="text-2xl font-semibold font-mono tabular-nums text-red-500 leading-none">
                   {bestOdds.toFixed(2)}
-                  <span className="text-sm font-normal text-zinc-500 ml-0.5">x</span>
+                  <span className="text-sm font-normal text-slate-500 ml-0.5">x</span>
                 </div>
-                <div className="text-[10px] text-zinc-600 mt-0.5 uppercase tracking-wide">best price</div>
+                <div className="text-[10px] text-slate-600 mt-0.5 uppercase tracking-wide">best price</div>
               </div>
             </div>
           </div>
 
           {/* Stake input */}
           <div className="space-y-3">
-            <label className="block text-sm font-bold text-zinc-400 uppercase tracking-wider">
-              Importo scommessa
+            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              Bet Amount
             </label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 font-mono text-lg select-none pointer-events-none">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-mono text-lg select-none pointer-events-none">
                 $
               </span>
               <input
@@ -164,10 +162,10 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
                 value={stake}
                 onChange={(e) => setStake(e.target.value)}
                 placeholder="0.00"
-                className="w-full bg-[#141419] border border-zinc-800 rounded-2xl pl-9 pr-16 py-4 text-3xl font-extrabold font-mono tabular-nums text-white placeholder:text-zinc-700 focus:outline-none focus:border-[#B31A1A] focus:ring-1 focus:ring-[#B31A1A]/20 transition-all"
+                className="w-full bg-slate-900 border border-slate-700 rounded-md pl-9 pr-16 py-3.5 text-2xl font-semibold font-mono tabular-nums text-white placeholder:text-slate-700 focus:outline-none focus:border-[#B31A1A] focus:ring-1 focus:ring-[#B31A1A]/20 transition-all"
                 autoFocus
               />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-zinc-500 font-mono select-none pointer-events-none">
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-500 font-mono select-none pointer-events-none">
                 USDT
               </span>
             </div>
@@ -178,14 +176,7 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
                 <button
                   key={v}
                   onClick={() => setStake(String(v))}
-                  className="
-                    py-3 min-h-[44px] text-sm font-bold font-mono rounded-2xl
-                    bg-[#141419] border border-zinc-800 text-zinc-400
-                    border-b-4 border-b-zinc-900
-                    hover:border-[#B31A1A]/50 hover:text-[#e05555] hover:bg-[#B31A1A]/5
-                    active:border-b-0 active:translate-y-1
-                    transition-all duration-75
-                  "
+                  className="py-2 min-h-[40px] text-sm font-medium font-mono rounded-md bg-slate-900 border border-slate-700 text-slate-400 hover:border-[#B31A1A]/50 hover:text-red-500 hover:bg-[#B31A1A]/5 transition-colors"
                 >
                   +${v}
                 </button>
@@ -195,11 +186,11 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
             {/* Liquidity bar */}
             {totalAvailable > 0 && (
               <div className="space-y-1.5">
-                <div className="flex justify-between text-[10px] font-mono text-zinc-600">
-                  <span>Liquidità disponibile</span>
-                  <span className="font-extrabold">${totalAvailable.toFixed(2)} USDT</span>
+                <div className="flex justify-between text-[10px] font-mono text-slate-600">
+                  <span>Available liquidity</span>
+                  <span className="font-semibold">${totalAvailable.toFixed(2)} USDT</span>
                 </div>
-                <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-[#B31A1A] rounded-full transition-all duration-300"
                     style={{ width: `${fillPct}%` }}
@@ -210,22 +201,22 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
           </div>
 
           {/* Payout summary */}
-          <div className="rounded-2xl border border-zinc-800 overflow-hidden text-sm">
-            <div className="flex justify-between items-center px-4 py-3 border-b border-zinc-800">
-              <span className="text-zinc-500">Stake</span>
-              <span className={`font-extrabold font-mono tabular-nums ${stakeNum > 0 ? 'text-white' : 'text-zinc-700'}`}>
+          <div className="rounded-lg border border-slate-800 overflow-hidden text-sm">
+            <div className="flex justify-between items-center px-4 py-3 border-b border-slate-800">
+              <span className="text-slate-500">Stake</span>
+              <span className={`font-semibold font-mono tabular-nums ${stakeNum > 0 ? 'text-white' : 'text-slate-700'}`}>
                 {stakeNum > 0 ? `$${stakeNum.toFixed(2)}` : '—'}
               </span>
             </div>
-            <div className="flex justify-between items-center px-4 py-3 border-b border-zinc-800">
-              <span className="text-zinc-500">Quota</span>
-              <span className="font-extrabold font-mono tabular-nums text-[#e05555]">
+            <div className="flex justify-between items-center px-4 py-3 border-b border-slate-800">
+              <span className="text-slate-500">Odds</span>
+              <span className="font-semibold font-mono tabular-nums text-red-500">
                 {avgOdds > 0 ? `${avgOdds.toFixed(2)}x` : '—'}
               </span>
             </div>
-            <div className="flex justify-between items-center px-4 py-4 bg-[#141419]/50">
-              <span className="font-bold text-white">Vincita potenziale</span>
-              <span className={`font-extrabold font-mono tabular-nums text-2xl ${potentialWin > 0 ? 'text-[#e05555]' : 'text-zinc-700'}`}>
+            <div className="flex justify-between items-center px-4 py-4 bg-slate-900/50">
+              <span className="font-semibold text-white">Potential Payout</span>
+              <span className={`font-semibold font-mono tabular-nums text-xl ${potentialWin > 0 ? 'text-red-500' : 'text-slate-700'}`}>
                 {potentialWin > 0 ? `$${potentialWin.toFixed(2)}` : '—'}
               </span>
             </div>
@@ -234,22 +225,22 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
           {/* Matched offers */}
           {matchedOffers.length > 0 && stakeNum > 0 && (
             <details className="group">
-              <summary className="flex items-center justify-between cursor-pointer list-none select-none text-xs text-zinc-500 hover:text-zinc-300 transition-colors py-1">
-                <span className="uppercase tracking-wide font-bold">
-                  {matchedOffers.length} offert{matchedOffers.length === 1 ? 'a' : 'e'} abbinate
+              <summary className="flex items-center justify-between cursor-pointer list-none select-none text-xs text-slate-500 hover:text-slate-300 transition-colors py-1">
+                <span className="uppercase tracking-wide font-semibold">
+                  {matchedOffers.length} offer{matchedOffers.length === 1 ? '' : 's'} matched
                 </span>
-                <span className="group-open:rotate-180 transition-transform duration-200 text-zinc-600">▾</span>
+                <span className="group-open:rotate-180 transition-transform duration-200 text-slate-600">▾</span>
               </summary>
               <div className="mt-2 space-y-1">
                 {matchedOffers.map((o) => (
                   <div
                     key={o.offerId}
-                    className="flex items-center justify-between rounded-2xl bg-[#141419]/50 border border-zinc-800 px-3 py-2.5"
+                    className="flex items-center justify-between rounded-md bg-slate-900/50 border border-slate-800 px-3 py-2.5"
                   >
-                    <span className="text-xs font-mono text-zinc-500">
+                    <span className="text-xs font-mono text-slate-500">
                       #{o.offerId} · {o.placer.slice(0, 6)}…{o.placer.slice(-4)}
                     </span>
-                    <span className="text-xs font-extrabold font-mono text-[#e05555] tabular-nums">
+                    <span className="text-xs font-semibold font-mono text-red-500 tabular-nums">
                       {o.oddsDecimal.toFixed(2)}x
                     </span>
                   </div>
@@ -260,32 +251,32 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
 
           {/* Error */}
           {status === 'error' && errorMsg && (
-            <div className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-2xl px-4 py-3">
+            <div className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-md px-4 py-3">
               {errorMsg}
             </div>
           )}
 
           {/* Transaction steps */}
           {(status === 'approving' || status === 'betting') && (
-            <div className="rounded-2xl border border-zinc-800 overflow-hidden">
+            <div className="rounded-lg border border-slate-800 overflow-hidden">
               {(['approving', 'betting'] as const).map((step, i) => {
-                const label    = i === 0 ? 'Approvazione USDT' : 'Conferma scommessa'
+                const label    = i === 0 ? 'Approve USDT' : 'Confirm Bet'
                 const isDone   = step === 'approving' && status === 'betting'
                 const isActive = step === status
                 return (
                   <div
                     key={step}
-                    className={`flex items-center gap-3 px-4 py-3 ${i < 1 ? 'border-b border-zinc-800' : ''}`}
+                    className={`flex items-center gap-3 px-4 py-3 ${i < 1 ? 'border-b border-slate-800' : ''}`}
                   >
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all ${
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 transition-all ${
                       isDone   ? 'bg-[#B31A1A] text-white'
-                      : isActive ? 'border-2 border-[#B31A1A] text-[#e05555]'
-                      : 'border border-zinc-700 text-zinc-600'
+                      : isActive ? 'border-2 border-[#B31A1A] text-red-500'
+                      : 'border border-slate-700 text-slate-600'
                     }`}>
                       {isDone ? '✓' : i + 1}
                     </div>
                     <span className={`text-sm transition-colors ${
-                      isActive ? 'text-white' : isDone ? 'text-[#e05555]' : 'text-zinc-600'
+                      isActive ? 'text-white' : isDone ? 'text-red-500' : 'text-slate-600'
                     }`}>
                       {label}
                     </span>
@@ -303,42 +294,34 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
         </div>
 
         {/* Footer CTA */}
-        <div className="shrink-0 p-5 border-t border-zinc-800 bg-[#0f0f16]/90 backdrop-blur-sm">
+        <div className="shrink-0 p-5 border-t border-slate-800 bg-slate-950/90 backdrop-blur-sm">
           {status === 'done' ? (
             <div className="space-y-3 text-center">
-              <div className="flex items-center justify-center gap-2 text-[#e05555] font-bold">
+              <div className="flex items-center justify-center gap-2 text-red-500 font-semibold">
                 <span className="w-6 h-6 rounded-full bg-[#B31A1A]/20 border border-[#B31A1A]/40 flex items-center justify-center text-xs">
                   ✓
                 </span>
-                Scommessa confermata!
+                Bet confirmed!
               </div>
               <button
                 onClick={handleClose}
-                className="w-full py-3 rounded-2xl bg-[#141419] hover:bg-[#1c1c24] text-white font-bold transition-colors"
+                className="w-full py-3 rounded-md bg-slate-800 hover:bg-slate-700 text-white font-semibold transition-colors"
               >
-                Chiudi
+                Close
               </button>
             </div>
           ) : (
             <button
               onClick={handleConfirm}
               disabled={!canBet}
-              className="
-                w-full py-4 text-xl font-extrabold rounded-2xl
-                bg-[#B31A1A] hover:bg-[#cc2020] text-white
-                border-b-4 border-b-[#6b0d0d]
-                active:border-b-0 active:translate-y-1
-                disabled:opacity-30 disabled:cursor-not-allowed disabled:border-b-0 disabled:translate-y-0
-                shadow-[0_0_24px_rgba(179,26,26,0.3)] disabled:shadow-none
-                transition-all duration-75
-              "
+              className="w-full py-3.5 text-base font-semibold rounded-md bg-[#B31A1A] hover:bg-red-600 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
-              {status === 'approving' && 'Approvazione USDT…'}
-              {status === 'betting'   && 'Invio scommessa on-chain…'}
+              {status === 'approving' && 'Approving USDT…'}
+              {status === 'betting'   && 'Submitting bet on-chain…'}
               {(status === 'idle' || status === 'error') && (
                 stakeNum > 0 && matchedOffers.length > 0
-                  ? `Conferma · $${stakeNum.toFixed(2)} USDT`
-                  : 'Inserisci importo'
+                  ? `Confirm · $${stakeNum.toFixed(2)} USDT`
+                  : 'Enter amount'
               )}
             </button>
           )}

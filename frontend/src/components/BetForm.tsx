@@ -46,7 +46,7 @@ export default function BetForm({ offers, stakeUsdt, onClose }: Props) {
       setStatus('done')
     } catch (err: unknown) {
       setStatus('error')
-      setErrorMsg(err instanceof Error ? err.message : 'Transazione fallita')
+      setErrorMsg(err instanceof Error ? err.message : 'Transaction failed')
     }
   }
 
@@ -56,14 +56,14 @@ export default function BetForm({ offers, stakeUsdt, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-md space-y-5 shadow-2xl">
+      <div className="bg-slate-900 border border-slate-700 rounded-lg p-6 w-full max-w-md space-y-5 shadow-2xl">
 
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold text-white">Conferma scommessa</h2>
+          <h2 className="text-base font-semibold text-white">Confirm Bet</h2>
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors text-xl leading-none"
+            className="w-8 h-8 flex items-center justify-center rounded-md text-slate-400 hover:text-white hover:bg-slate-700 transition-colors text-xl leading-none"
           >
             &times;
           </button>
@@ -71,57 +71,57 @@ export default function BetForm({ offers, stakeUsdt, onClose }: Props) {
 
         {/* Summary row */}
         <div className="grid grid-cols-3 gap-3 text-center">
-          <div className="bg-slate-700/50 rounded-lg p-3">
-            <div className="text-xs text-slate-400 mb-1">Esito</div>
+          <div className="bg-slate-800 rounded-md p-3">
+            <div className="text-xs text-slate-400 mb-1">Outcome</div>
             <div className="text-sm font-semibold text-white">{outcomeLabel}</div>
           </div>
-          <div className="bg-slate-700/50 rounded-lg p-3">
+          <div className="bg-slate-800 rounded-md p-3">
             <div className="text-xs text-slate-400 mb-1">Stake</div>
-            <div className="text-sm font-bold font-mono text-white">${stakeUsdt.toFixed(2)}</div>
+            <div className="text-sm font-semibold font-mono text-white">${stakeUsdt.toFixed(2)}</div>
           </div>
-          <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
-            <div className="text-xs text-slate-400 mb-1">Vincita pot.</div>
-            <div className="text-sm font-bold font-mono text-green-400">${potentialWin.toFixed(2)}</div>
+          <div className="bg-green-500/10 border border-green-500/30 rounded-md p-3">
+            <div className="text-xs text-slate-400 mb-1">Pot. payout</div>
+            <div className="text-sm font-semibold font-mono text-green-400">${potentialWin.toFixed(2)}</div>
           </div>
         </div>
 
         {/* Offers breakdown */}
-        <div className="rounded-xl bg-slate-900/60 border border-slate-700 divide-y divide-slate-700/60">
+        <div className="rounded-md bg-slate-950/60 border border-slate-700 divide-y divide-slate-700/60">
           {offers.map((o) => (
             <div key={o.offerId} className="px-4 py-2.5 flex justify-between items-center">
               <span className="text-xs text-slate-400 font-mono">
                 #{o.offerId} · {o.placer.slice(0, 6)}…{o.placer.slice(-4)}
               </span>
-              <span className="font-mono text-sm font-bold text-green-400">{o.oddsDecimal.toFixed(2)}x</span>
+              <span className="font-mono text-sm font-semibold text-green-400">{o.oddsDecimal.toFixed(2)}x</span>
             </div>
           ))}
         </div>
 
         {status === 'error' && (
-          <p className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">
+          <p className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-md px-3 py-2">
             {errorMsg}
           </p>
         )}
 
         {status === 'done' ? (
           <div className="text-center space-y-3">
-            <div className="text-green-400 font-semibold">✓ Scommessa confermata!</div>
+            <div className="text-green-400 font-semibold">✓ Bet confirmed!</div>
             <button
               onClick={onClose}
-              className="px-5 py-2 text-sm rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition-colors"
+              className="px-5 py-2 text-sm rounded-md bg-slate-700 hover:bg-slate-600 text-white transition-colors"
             >
-              Chiudi
+              Close
             </button>
           </div>
         ) : (
           <button
             onClick={handleBet}
             disabled={status !== 'idle' && status !== 'error'}
-            className="w-full py-3.5 text-sm font-bold rounded-xl bg-green-500 hover:bg-green-400 text-slate-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-[0_0_16px_rgba(74,222,128,0.3)]"
+            className="w-full py-3.5 text-sm font-semibold rounded-md bg-green-600 hover:bg-green-500 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {status === 'approving' && '① Approvazione USDT in corso…'}
-            {status === 'betting'   && '② Invio scommessa on-chain…'}
-            {(status === 'idle' || status === 'error') && `Accetta Scommessa · $${stakeUsdt.toFixed(2)} USDT`}
+            {status === 'approving' && '① Approving USDT…'}
+            {status === 'betting'   && '② Submitting bet on-chain…'}
+            {(status === 'idle' || status === 'error') && `Accept Bet · $${stakeUsdt.toFixed(2)} USDT`}
           </button>
         )}
       </div>

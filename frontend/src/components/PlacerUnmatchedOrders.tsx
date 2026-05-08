@@ -40,10 +40,10 @@ export default function PlacerUnmatchedOrders({ address }: { address: string }) 
   }, [address])
 
   if (loading) {
-    return <div className="text-slate-500 text-xs py-4 text-center">Caricamento…</div>
+    return <div className="text-slate-500 text-xs py-4 text-center">Loading…</div>
   }
   if (offers.length === 0) {
-    return <div className="text-slate-600 text-xs py-4 text-center">Nessuna offerta aperta</div>
+    return <div className="text-slate-600 text-xs py-4 text-center">No open offers</div>
   }
 
   return (
@@ -52,10 +52,10 @@ export default function PlacerUnmatchedOrders({ address }: { address: string }) 
         <thead>
           <tr className="text-slate-500 border-b border-slate-700">
             <th className="pb-2 text-left font-medium">#</th>
-            <th className="pb-2 text-left font-medium">Evento</th>
-            <th className="pb-2 text-left font-medium">Esito</th>
-            <th className="pb-2 text-right font-medium">Quota</th>
-            <th className="pb-2 text-right font-medium">Residua</th>
+            <th className="pb-2 text-left font-medium">Event</th>
+            <th className="pb-2 text-left font-medium">Outcome</th>
+            <th className="pb-2 text-right font-medium">Odds</th>
+            <th className="pb-2 text-right font-medium">Remaining</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-700/40">
@@ -70,7 +70,7 @@ export default function PlacerUnmatchedOrders({ address }: { address: string }) 
                   {OUTCOMES[o.outcome] ?? o.outcome}
                 </span>
               </td>
-              <td className="py-2 text-right font-mono font-bold text-green-400">
+              <td className="py-2 text-right font-mono font-semibold text-red-500">
                 {o.oddsDecimal.toFixed(2)}x
               </td>
               <td className="py-2 text-right font-mono text-slate-300">

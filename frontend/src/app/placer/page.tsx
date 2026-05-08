@@ -19,11 +19,11 @@ export default function PlacerDashboard() {
   if (!isConnected || !address) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-24 text-center space-y-4">
-        <div className="w-12 h-12 rounded-2xl bg-[#B31A1A]/10 border border-[#B31A1A]/30 flex items-center justify-center mx-auto text-2xl">
+        <div className="w-12 h-12 rounded-lg bg-[#B31A1A]/10 border border-[#B31A1A]/30 flex items-center justify-center mx-auto text-2xl">
           🔒
         </div>
-        <h1 className="text-2xl font-extrabold text-white">Placer Dashboard</h1>
-        <p className="text-zinc-400">Connetti il wallet per accedere alla dashboard.</p>
+        <h1 className="text-2xl font-bold text-white">Placer Dashboard</h1>
+        <p className="text-slate-400">Connect your wallet to access the dashboard.</p>
       </div>
     )
   }
@@ -34,16 +34,16 @@ export default function PlacerDashboard() {
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1 min-w-0">
-          <p className="text-sm font-extrabold text-[#e05555] uppercase tracking-widest">Placer</p>
-          <h1 className="text-4xl font-extrabold text-white">Dashboard</h1>
-          <p className="text-xs text-zinc-500 font-mono truncate max-w-[200px] sm:max-w-none">{address}</p>
+          <p className="text-sm font-semibold text-red-500 uppercase tracking-widest">Placer</p>
+          <h1 className="text-3xl font-bold text-white">Dashboard</h1>
+          <p className="text-xs text-slate-500 font-mono truncate max-w-[200px] sm:max-w-none">{address}</p>
         </div>
         <Link
           href={`/placer/${address}`}
-          className="flex items-center gap-1.5 text-sm font-bold text-zinc-400 hover:text-[#e05555] border border-zinc-700 hover:border-[#B31A1A]/50 px-3 py-2.5 rounded-2xl transition-all shrink-0 whitespace-nowrap"
+          className="flex items-center gap-1.5 text-sm font-medium text-slate-400 hover:text-red-500 border border-slate-700 hover:border-[#B31A1A]/50 px-3 py-2 rounded-md transition-colors shrink-0 whitespace-nowrap"
         >
           <span className="w-2 h-2 rounded-full bg-[#B31A1A] animate-pulse" />
-          <span className="hidden sm:inline">Streaming live</span>
+          <span className="hidden sm:inline">Live Stream</span>
           <span>→</span>
         </Link>
       </div>
@@ -56,17 +56,17 @@ export default function PlacerDashboard() {
           <ProfileEditor address={address} />
 
           {/* Event selector */}
-          <div className="bg-[#141419] border border-zinc-800 rounded-2xl p-4 space-y-2">
-            <label className="text-xs text-zinc-400 font-extrabold uppercase tracking-wide">Seleziona evento</label>
+          <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 space-y-2">
+            <label className="text-xs text-slate-400 font-semibold uppercase tracking-wide">Select Event</label>
             <div className="space-y-1">
               {MOCK_EVENTS.map((e) => (
                 <button
                   key={e.eventId}
                   onClick={() => setSelectedEvent(e.eventId)}
-                  className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                  className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
                     selectedEvent === e.eventId
-                      ? 'bg-[#B31A1A]/10 text-[#e05555] border border-[#B31A1A]/40'
-                      : 'text-zinc-400 hover:bg-[#1c1c24] hover:text-zinc-200'
+                      ? 'bg-[#B31A1A]/10 text-red-500 border border-[#B31A1A]/40'
+                      : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
                   }`}
                 >
                   {e.name}
@@ -88,8 +88,8 @@ export default function PlacerDashboard() {
         {/* Right: order book */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center gap-2">
-            <h2 className="text-sm font-extrabold text-white">Order Book</h2>
-            <span className="text-xs font-bold text-zinc-400 bg-[#141419] border border-zinc-800 px-2 py-0.5 rounded-lg">
+            <h2 className="text-sm font-semibold text-white">Order Book</h2>
+            <span className="text-xs font-medium text-slate-400 bg-slate-900 border border-slate-700 px-2 py-0.5 rounded">
               {event.name}
             </span>
           </div>

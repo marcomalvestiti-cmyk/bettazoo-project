@@ -10,15 +10,15 @@ export default function ConnectWallet() {
   if (isConnected && address) {
     return (
       <div className="flex items-center gap-2">
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-[#B31A1A]/10 border border-[#B31A1A]/30 backdrop-blur-md">
-          <span className="w-2 h-2 rounded-full bg-[#e05555] shadow-[0_0_6px_rgba(179,26,26,0.8)] shrink-0" />
-          <span className="text-xs text-zinc-300 font-mono">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-[#B31A1A]/10 border border-[#B31A1A]/30">
+          <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+          <span className="text-xs text-slate-300 font-mono">
             {address.slice(0, 6)}…{address.slice(-4)}
           </span>
         </div>
         <button
           onClick={() => disconnect()}
-          className="px-3 py-1.5 text-xs rounded-2xl border border-zinc-800 bg-[#141419] text-zinc-400 hover:border-[#B31A1A]/50 hover:text-[#e05555] hover:bg-[#B31A1A]/5 transition-all"
+          className="px-3 py-1.5 text-xs rounded-md border border-slate-700 bg-slate-900 text-slate-400 hover:border-[#B31A1A]/50 hover:text-red-500 hover:bg-[#B31A1A]/5 transition-colors"
         >
           Disconnect
         </button>
@@ -30,17 +30,7 @@ export default function ConnectWallet() {
     <button
       onClick={() => connect({ connector: connectors[0] })}
       disabled={isPending}
-      className="
-        relative px-5 py-2 text-sm font-bold rounded-2xl overflow-hidden
-        bg-[#B31A1A] hover:bg-[#cc2020]
-        border-b-4 border-b-[#6b0d0d]
-        text-white
-        shadow-[0_0_20px_rgba(179,26,26,0.3)]
-        hover:shadow-[0_0_28px_rgba(179,26,26,0.5)]
-        active:border-b-0 active:translate-y-1
-        disabled:opacity-50 disabled:border-b-0 disabled:translate-y-0
-        transition-all duration-75
-      "
+      className="px-5 py-2 text-sm font-semibold rounded-md bg-[#B31A1A] hover:bg-red-600 text-white disabled:opacity-50 transition-colors"
     >
       {isPending ? 'Connecting…' : 'Connect Wallet'}
     </button>

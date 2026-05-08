@@ -25,41 +25,41 @@ export default function EventPage({ params }: { params: Promise<{ eventId: strin
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
 
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-zinc-500">
-        <Link href="/" className="hover:text-zinc-300 transition-colors font-bold">Exchange</Link>
-        <span className="text-zinc-700">/</span>
-        <span className="text-zinc-300 font-bold">{event?.name ?? eventId}</span>
+      <div className="flex items-center gap-2 text-sm text-slate-500">
+        <Link href="/" className="hover:text-slate-300 transition-colors font-medium">Exchange</Link>
+        <span className="text-slate-700">/</span>
+        <span className="text-slate-300 font-medium">{event?.name ?? eventId}</span>
       </div>
 
       {/* Event header */}
-      <div className="bg-[#141419] border border-zinc-800 rounded-2xl px-5 py-4 flex items-center justify-between">
+      <div className="bg-slate-900 border border-slate-800 rounded-lg px-5 py-4 flex items-center justify-between">
         <div className="space-y-1.5">
-          <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#e05555] bg-[#B31A1A]/10 px-2 py-0.5 rounded-lg">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-red-500 bg-[#B31A1A]/10 px-2 py-0.5 rounded">
             {event?.sport ?? 'sport'}
           </span>
-          <h1 className="text-3xl font-extrabold text-white">{event?.name ?? eventId}</h1>
+          <h1 className="text-2xl font-bold text-white">{event?.name ?? eventId}</h1>
           {event && (
             <div className="flex gap-1.5">
               {event.teams.map((t) => (
-                <span key={t} className="text-xs font-bold bg-[#0f0f16] text-zinc-400 px-2 py-0.5 rounded-lg">{t}</span>
+                <span key={t} className="text-xs font-medium bg-slate-800 text-slate-400 px-2 py-0.5 rounded">{t}</span>
               ))}
             </div>
           )}
         </div>
-        <div className="hidden sm:flex flex-col items-end text-xs text-zinc-500 font-bold">
+        <div className="hidden sm:flex flex-col items-end text-xs text-slate-500 font-medium">
           {event && (
             <>
-              <span>{new Date(event.startTime).toLocaleDateString('it-IT')}</span>
-              <span>{new Date(event.startTime).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</span>
+              <span>{new Date(event.startTime).toLocaleDateString('en-GB')}</span>
+              <span>{new Date(event.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
             </>
           )}
         </div>
       </div>
 
       {!isConnected && (
-        <div className="flex items-center gap-2 rounded-2xl bg-[#141419] border border-zinc-800 px-4 py-3 text-sm text-zinc-400">
+        <div className="flex items-center gap-2 rounded-lg bg-slate-900 border border-slate-800 px-4 py-3 text-sm text-slate-400">
           <span className="text-yellow-400">⚠</span>
-          Connetti il wallet per scommettere — clicca su una quota per aprire la schedina.
+          Connect your wallet to bet — click any odds to open the bet slip.
         </div>
       )}
 
