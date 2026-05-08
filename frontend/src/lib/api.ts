@@ -44,4 +44,23 @@ export async function postOracleResolve(body: {
   return res.json()
 }
 
+export async function fetchProfile(address: string) {
+  const res = await fetch(`${BASE}/api/profile/${address}`)
+  if (!res.ok) throw new Error('profile fetch failed')
+  return res.json() as Promise<{ address: string; nickname: string; bio: string }>
+}
+
+export async function updateProfile(address: string, nickname: string, bio: string) {
+  const res = await fetch(`${BASE}/api/profile/${address}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nickname, bio }),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error((data as { error?: string }).error ?? 'profile update failed')
+  }
+  return res.json() as Promise<{ address: string; nickname: string; bio: string }>
+}
+
 export const SOCKET_URL = BASE

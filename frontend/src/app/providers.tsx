@@ -2,11 +2,16 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { WagmiProvider } from 'wagmi'
+import { reconnect } from 'wagmi/actions'
 import { wagmiConfig } from '@/lib/wagmiConfig'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient())
+
+  useEffect(() => {
+    reconnect(wagmiConfig)
+  }, [])
 
   return (
     <WagmiProvider config={wagmiConfig}>

@@ -45,12 +45,12 @@ export default function RiskWidget({ address }: { address: string }) {
   }, [address])
 
   if (loading) return (
-    <div className="rounded-2xl border border-zinc-700 bg-[#313338] p-4 text-xs text-zinc-500">
+    <div className="rounded-2xl border border-zinc-700 bg-[#141419] p-4 text-xs text-zinc-500">
       Caricamento rischio…
     </div>
   )
   if (!data) return (
-    <div className="rounded-2xl border border-red-500/30 bg-[#313338] p-4 text-xs text-red-400">
+    <div className="rounded-2xl border border-red-500/30 bg-[#141419] p-4 text-xs text-red-400">
       Risk Manager non disponibile
     </div>
   )
@@ -58,7 +58,7 @@ export default function RiskWidget({ address }: { address: string }) {
   const style = LEVEL_STYLE[data.level] ?? LEVEL_STYLE.LOW
 
   return (
-    <div className={`rounded-2xl border ${style.border} bg-[#313338] p-4 space-y-3`}>
+    <div className={`rounded-2xl border ${style.border} bg-[#141419] p-4 space-y-3`}>
       <div className="flex items-center justify-between">
         <span className="text-sm font-extrabold text-white">Risk Manager</span>
         <span className={`flex items-center gap-1.5 text-xs font-extrabold px-2.5 py-1 rounded-full border ${style.badge}`}>
@@ -77,7 +77,7 @@ export default function RiskWidget({ address }: { address: string }) {
       {data.exposures?.length > 0 && (
         <div className="space-y-1.5 max-h-36 overflow-y-auto">
           {data.exposures.map((e, i) => (
-            <div key={i} className="flex justify-between text-xs bg-[#2b2d31]/60 rounded-xl px-2.5 py-1.5">
+            <div key={i} className="flex justify-between text-xs bg-[#0f0f16]/60 rounded-xl px-2.5 py-1.5">
               <span className="font-mono text-zinc-400">{e.eventId} / out.{e.outcome}</span>
               <span className="font-extrabold font-mono text-zinc-300">${e.exposureUsdt.toFixed(2)}</span>
             </div>

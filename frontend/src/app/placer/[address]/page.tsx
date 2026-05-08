@@ -12,11 +12,11 @@ import type { Offer } from '@/components/OrderBook'
 // ── Helpers ────────────────────────────────────────────────────
 
 const AVATAR_GRADIENTS = [
-  'from-purple-500 to-fuchsia-600',
+  'from-red-500 to-rose-600',
   'from-sky-500 to-blue-600',
   'from-emerald-500 to-teal-500',
   'from-amber-500 to-orange-500',
-  'from-rose-500 to-pink-600',
+  'from-red-600 to-red-800',
 ]
 
 function getGradient(addr: string): string {
@@ -73,7 +73,6 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
   const initials  = address.slice(2, 4).toUpperCase()
   const gradient  = getGradient(address)
 
-  // ── Fetch placer's own offers across all events
   useEffect(() => {
     let cancelled = false
     async function load() {
@@ -100,17 +99,15 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
     : null
 
   return (
-    <div className="min-h-screen bg-[#1e1f22]">
+    <div className="min-h-screen">
 
       {/* ── Twitch two-column layout ── */}
       <div className="flex flex-col lg:flex-row lg:items-start max-w-[1600px] mx-auto">
 
-        {/* ════════════════════════════════
-            LEFT — main content
-            ════════════════════════════════ */}
+        {/* LEFT — main content */}
         <div className="flex-1 min-w-0">
 
-          {/* ── Video player ── */}
+          {/* Video player */}
           <div className="lg:rounded-none">
             <StreamPlayer
               teamA={selectedEvent.teams[0] ?? 'Home'}
@@ -118,37 +115,36 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
             />
           </div>
 
-          {/* ── Stream title bar ── */}
+          {/* Stream title bar */}
           <div className="px-4 sm:px-6 pt-4 pb-3 flex items-start justify-between gap-4">
             <div className="min-w-0">
               <h1 className="text-lg font-extrabold text-white leading-tight truncate">
                 {selectedEvent.name} — Live Betting
               </h1>
               <p className="text-sm text-zinc-400 mt-0.5 flex items-center gap-2 flex-wrap">
-                <span className="text-purple-400 font-extrabold">Sports Betting</span>
+                <span className="text-[#e05555] font-extrabold">Sports Betting</span>
                 <span className="text-zinc-700">·</span>
                 <span className="font-mono text-xs text-zinc-500">{shortAddr}</span>
               </p>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
-              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-[#B31A1A] animate-pulse" />
               <span className="font-extrabold text-white text-sm">1,247</span>
               <span className="text-zinc-500 text-xs hidden sm:block">spettatori</span>
             </div>
           </div>
 
-          {/* ── Channel info row ── */}
+          {/* Channel info row */}
           <div className="px-4 sm:px-6 py-4 border-t border-zinc-800 flex items-start gap-4">
 
-            {/* Avatar with live gradient ring */}
+            {/* Avatar */}
             <div className="relative shrink-0">
-              <div className={`w-[72px] h-[72px] rounded-full bg-gradient-to-br ${gradient} p-[3px] shadow-[0_0_20px_rgba(168,85,247,0.45)]`}>
-                <div className="w-full h-full rounded-full bg-[#2b2d31] flex items-center justify-center font-extrabold text-white text-2xl select-none">
+              <div className={`w-[72px] h-[72px] rounded-full bg-gradient-to-br ${gradient} p-[3px] shadow-[0_0_20px_rgba(179,26,26,0.4)]`}>
+                <div className="w-full h-full rounded-full bg-[#0f0f16] flex items-center justify-center font-extrabold text-white text-2xl select-none">
                   {initials}
                 </div>
               </div>
-              {/* LIVE pill */}
-              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-red-600 rounded-full px-1.5 py-px text-[9px] font-extrabold text-white border-2 border-[#1e1f22] leading-none whitespace-nowrap tracking-wide">
+              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-[#B31A1A] rounded-full px-1.5 py-px text-[9px] font-extrabold text-white border-2 border-[#0D0D11] leading-none whitespace-nowrap tracking-wide">
                 LIVE
               </span>
             </div>
@@ -159,10 +155,10 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
                 <span className="text-base font-extrabold text-white font-mono">{shortAddr}</span>
                 <button className="
                   px-4 py-1.5 text-xs font-extrabold rounded-2xl
-                  bg-purple-600 hover:bg-purple-500 text-white
-                  border-b-4 border-b-purple-900
+                  bg-[#B31A1A] hover:bg-[#cc2020] text-white
+                  border-b-4 border-b-[#6b0d0d]
                   active:border-b-0 active:translate-y-1
-                  shadow-[0_0_12px_rgba(168,85,247,0.3)]
+                  shadow-[0_0_12px_rgba(179,26,26,0.3)]
                   transition-all duration-75
                 ">
                   + Segui
@@ -171,26 +167,26 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
 
               {/* Stats chips */}
               <div className="flex flex-wrap gap-2 text-[11px]">
-                <span className="bg-[#313338] border border-zinc-700 rounded-xl px-2.5 py-1 text-zinc-400 font-bold">
+                <span className="bg-[#141419] border border-zinc-800 rounded-xl px-2.5 py-1 text-zinc-400 font-bold">
                   {offers.length} offerte attive
                 </span>
                 {avgOdds && (
-                  <span className="bg-purple-500/10 border border-purple-500/30 rounded-xl px-2.5 py-1 text-purple-400 font-extrabold">
+                  <span className="bg-[#B31A1A]/10 border border-[#B31A1A]/30 rounded-xl px-2.5 py-1 text-[#e05555] font-extrabold">
                     Media {avgOdds.toFixed(2)}x
                   </span>
                 )}
-                <span className="bg-[#313338] border border-zinc-700 rounded-xl px-2.5 py-1 text-zinc-400 font-bold">
+                <span className="bg-[#141419] border border-zinc-800 rounded-xl px-2.5 py-1 text-zinc-400 font-bold">
                   {MOCK_EVENTS.length} eventi
                 </span>
               </div>
 
               <p className="text-xs text-zinc-500 italic leading-relaxed">
-                "Le migliori quote sul mercato, garantite. Scommetti con fiducia."
+                &quot;Le migliori quote sul mercato, garantite. Scommetti con fiducia.&quot;
               </p>
             </div>
           </div>
 
-          {/* ── Event tab switcher ── */}
+          {/* Event tab switcher */}
           <div className="px-4 sm:px-6 py-3 border-t border-zinc-800">
             <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
               {MOCK_EVENTS.map((e) => (
@@ -199,8 +195,8 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
                   onClick={() => setSelectedEvent(e)}
                   className={`shrink-0 px-4 py-2 rounded-2xl text-xs font-extrabold transition-all ${
                     selectedEvent.eventId === e.eventId
-                      ? 'bg-purple-600 text-white shadow-[0_0_10px_rgba(168,85,247,0.4)]'
-                      : 'bg-[#313338] text-zinc-400 hover:text-zinc-200 hover:bg-[#383a40]'
+                      ? 'bg-[#B31A1A] text-white shadow-[0_0_10px_rgba(179,26,26,0.4)]'
+                      : 'bg-[#141419] text-zinc-400 hover:text-zinc-200 hover:bg-[#1c1c24]'
                   }`}
                 >
                   {e.name}
@@ -209,11 +205,11 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
             </div>
           </div>
 
-          {/* ── Quote Esclusive ── */}
+          {/* Quote Esclusive */}
           <div className="px-4 sm:px-6 py-6 space-y-5 border-t border-zinc-800">
             <div className="flex items-center gap-3">
               <h2 className="text-base font-extrabold text-white">Quote Esclusive</h2>
-              <span className="text-[10px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-lg bg-purple-500/15 text-purple-400 border border-purple-500/30">
+              <span className="text-[10px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-lg bg-[#B31A1A]/15 text-[#e05555] border border-[#B31A1A]/30">
                 {eventOffers.length} disponibili
               </span>
             </div>
@@ -262,9 +258,9 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
                         </span>
                       </div>
 
-                      {/* Odds — massive number */}
+                      {/* Odds */}
                       <div className="flex items-baseline gap-1.5">
-                        <span className="text-6xl font-extrabold font-mono tabular-nums text-white leading-none group-hover:text-purple-100 transition-colors">
+                        <span className="text-6xl font-extrabold font-mono tabular-nums text-white leading-none group-hover:text-red-100 transition-colors">
                           {o.oddsDecimal.toFixed(2)}
                         </span>
                         <span className="text-2xl text-zinc-500 font-bold">x</span>
@@ -280,10 +276,9 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
                           <span className="text-zinc-500">Liquidità</span>
                           <span className="font-extrabold font-mono text-zinc-300">${liquidity.toFixed(2)}</span>
                         </div>
-                        {/* Mini liquidity bar */}
                         <div className="h-1 bg-zinc-800 rounded-full overflow-hidden mt-1">
                           <div
-                            className="h-full bg-purple-500 rounded-full"
+                            className="h-full bg-[#B31A1A] rounded-full"
                             style={{ width: `${Math.min((maxStake / Math.max(liquidity, 1)) * 100, 100)}%` }}
                           />
                         </div>
@@ -298,10 +293,10 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
                           }}
                           className={`
                             w-full py-3 text-sm font-extrabold rounded-2xl text-white
-                            bg-purple-600 hover:bg-purple-500
+                            bg-[#B31A1A] hover:bg-[#cc2020]
                             border-b-4 ${c.btnBorder}
                             active:border-b-0 active:translate-y-1
-                            shadow-[0_0_14px_rgba(168,85,247,0.3)]
+                            shadow-[0_0_14px_rgba(179,26,26,0.3)]
                             transition-all duration-75
                           `}
                         >
@@ -319,13 +314,10 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
             )}
           </div>
 
-          {/* Bottom padding on mobile (chat below) */}
           <div className="h-6 lg:hidden" />
         </div>
 
-        {/* ════════════════════════════════
-            RIGHT — sticky chat sidebar
-            ════════════════════════════════ */}
+        {/* RIGHT — sticky chat sidebar */}
         <div className="
           lg:w-[340px] lg:min-w-[340px]
           lg:h-[calc(100vh-64px)] lg:sticky lg:top-16
@@ -336,7 +328,7 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
         </div>
       </div>
 
-      {/* ── BetSlip ── */}
+      {/* BetSlip */}
       {betSlip && (
         <BetSlip
           outcome={betSlip.outcome}

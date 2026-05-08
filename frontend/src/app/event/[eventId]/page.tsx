@@ -32,16 +32,16 @@ export default function EventPage({ params }: { params: Promise<{ eventId: strin
       </div>
 
       {/* Event header */}
-      <div className="bg-[#313338] border border-zinc-700 rounded-2xl px-5 py-4 flex items-center justify-between">
+      <div className="bg-[#141419] border border-zinc-800 rounded-2xl px-5 py-4 flex items-center justify-between">
         <div className="space-y-1.5">
-          <span className="text-[10px] font-extrabold uppercase tracking-wider text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded-lg">
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#e05555] bg-[#B31A1A]/10 px-2 py-0.5 rounded-lg">
             {event?.sport ?? 'sport'}
           </span>
-          <h1 className="text-xl font-extrabold text-white">{event?.name ?? eventId}</h1>
+          <h1 className="text-3xl font-extrabold text-white">{event?.name ?? eventId}</h1>
           {event && (
             <div className="flex gap-1.5">
               {event.teams.map((t) => (
-                <span key={t} className="text-xs font-bold bg-[#2b2d31] text-zinc-400 px-2 py-0.5 rounded-lg">{t}</span>
+                <span key={t} className="text-xs font-bold bg-[#0f0f16] text-zinc-400 px-2 py-0.5 rounded-lg">{t}</span>
               ))}
             </div>
           )}
@@ -57,7 +57,7 @@ export default function EventPage({ params }: { params: Promise<{ eventId: strin
       </div>
 
       {!isConnected && (
-        <div className="flex items-center gap-2 rounded-2xl bg-[#313338] border border-zinc-700 px-4 py-3 text-sm text-zinc-400">
+        <div className="flex items-center gap-2 rounded-2xl bg-[#141419] border border-zinc-800 px-4 py-3 text-sm text-zinc-400">
           <span className="text-yellow-400">⚠</span>
           Connetti il wallet per scommettere — clicca su una quota per aprire la schedina.
         </div>

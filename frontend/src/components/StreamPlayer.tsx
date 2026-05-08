@@ -22,10 +22,9 @@ export default function StreamPlayer({ teamA, teamB }: { teamA: string; teamB: s
   const score = MOCK_SCORES[scoreIdx]
 
   return (
-    <div className="rounded-2xl overflow-hidden border border-zinc-800 bg-[#2b2d31]">
+    <div className="rounded-2xl overflow-hidden border border-zinc-800 bg-[#0f0f16]">
       {/* Video area */}
-      <div className="relative bg-[#1e1f22] aspect-video flex items-center justify-center overflow-hidden">
-        {/* HTML5 video placeholder */}
+      <div className="relative bg-[#0D0D11] aspect-video flex items-center justify-center overflow-hidden">
         <video
           autoPlay
           muted
@@ -41,18 +40,18 @@ export default function StreamPlayer({ teamA, teamB }: { teamA: string; teamB: s
           <div className="absolute top-1/4 bottom-1/4 left-1/4 right-1/4 border border-white rounded-full" />
         </div>
 
-        {/* Scoreboard overlay */}
+        {/* Scoreboard */}
         <div className="relative z-10 text-center">
           <div className="flex items-center gap-4 bg-black/60 backdrop-blur rounded-xl px-6 py-3">
             <span className="text-sm font-medium text-zinc-200 w-24 text-right truncate">{teamA}</span>
             <div className="text-2xl font-bold font-mono text-white">{score}</div>
             <span className="text-sm font-medium text-zinc-200 w-24 text-left truncate">{teamB}</span>
           </div>
-          <div className="mt-2 text-xs text-zinc-400">{minute}'</div>
+          <div className="mt-2 text-xs text-zinc-400">{minute}&apos;</div>
         </div>
 
         {/* LIVE badge */}
-        <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-fuchsia-600 rounded-lg px-2.5 py-1 shadow-[0_0_12px_rgba(217,70,239,0.5)]">
+        <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-[#B31A1A] rounded-lg px-2.5 py-1 shadow-[0_0_12px_rgba(179,26,26,0.6)]">
           <span className="inline-block w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
           <span className="text-xs font-bold text-white tracking-wide">LIVE</span>
         </div>

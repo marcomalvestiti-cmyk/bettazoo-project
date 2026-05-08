@@ -14,7 +14,7 @@ type Message = {
 
 // Deterministic color per sender address
 const CHAT_COLORS = [
-  'text-purple-400',
+  'text-[#e05555]',
   'text-fuchsia-400',
   'text-sky-400',
   'text-emerald-400',
@@ -34,7 +34,6 @@ function getSenderColor(sender: string): string {
 
 type Props = {
   room: string
-  /** Pass viewers count to show in header */
   viewers?: number
 }
 
@@ -75,12 +74,12 @@ export default function LiveChat({ room, viewers = 1247 }: Props) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#2b2d31]">
+    <div className="flex flex-col h-full bg-[#0f0f16]">
 
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="px-4 py-3 border-b border-zinc-800 flex items-center gap-2 shrink-0">
-        <span className="w-2 h-2 rounded-full bg-fuchsia-500 animate-pulse" />
-        <span className="text-sm font-extrabold text-white">Chat</span>
+        <span className="w-2 h-2 rounded-full bg-[#B31A1A] animate-pulse" />
+        <span className="text-lg font-extrabold text-white">Chat</span>
         <div className="ml-auto flex items-center gap-1 text-[11px] text-zinc-500">
           <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
           <span className="font-bold text-zinc-400">{viewers.toLocaleString('it-IT')}</span>
@@ -88,29 +87,27 @@ export default function LiveChat({ room, viewers = 1247 }: Props) {
         </div>
       </div>
 
-      {/* ── Message bubbles ── */}
+      {/* Messages */}
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
         {messages.map((m) => {
           const isSystem = m.sender === '0xSystem'
           const color    = isSystem ? 'text-zinc-500' : getSenderColor(m.sender)
           return (
             <div key={m.id} className="space-y-1">
-              {/* Sender + timestamp */}
               <div className="flex items-baseline gap-1.5 px-1">
-                <span className={`text-[11px] font-extrabold leading-none ${color}`}>
+                <span className={`text-xs font-extrabold leading-none ${color}`}>
                   {m.sender}
                 </span>
                 <span className="text-[10px] text-zinc-700 leading-none">
                   {new Date(m.ts).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
-              {/* Bubble */}
               <div className={`
-                inline-block max-w-[92%] px-3 py-2 text-xs leading-relaxed
+                inline-block max-w-[92%] px-3 py-2 text-sm leading-relaxed
                 rounded-2xl rounded-tl-sm
                 ${isSystem
                   ? 'bg-zinc-800/40 text-zinc-500 italic border border-zinc-800'
-                  : 'bg-[#383a40] text-zinc-200'
+                  : 'bg-[#1c1c24] text-zinc-200'
                 }
               `}>
                 {m.text}
@@ -121,7 +118,7 @@ export default function LiveChat({ room, viewers = 1247 }: Props) {
         <div ref={bottomRef} />
       </div>
 
-      {/* ── Input ── */}
+      {/* Input */}
       <div className="px-3 py-3 border-t border-zinc-800 shrink-0 space-y-1.5">
         <div className="flex gap-2">
           <input
@@ -130,15 +127,15 @@ export default function LiveChat({ room, viewers = 1247 }: Props) {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
             placeholder={address ? 'Invia un messaggio…' : 'Connetti wallet per chattare'}
-            className="flex-1 bg-[#313338] border border-zinc-700 rounded-2xl px-3 py-2 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-purple-500 transition-colors"
+            className="flex-1 bg-[#141419] border border-zinc-800 rounded-2xl px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-[#B31A1A] transition-colors"
           />
           <button
             onClick={sendMessage}
             disabled={!input.trim()}
             className="
-              px-4 py-2 text-xs font-extrabold rounded-2xl
-              bg-purple-600 hover:bg-purple-500 text-white
-              border-b-2 border-b-purple-900
+              px-4 py-2 text-sm font-extrabold rounded-2xl
+              bg-[#B31A1A] hover:bg-[#cc2020] text-white
+              border-b-2 border-b-[#6b0d0d]
               active:border-b-0 active:translate-y-0.5
               disabled:opacity-40 disabled:border-b-0
               transition-all duration-75

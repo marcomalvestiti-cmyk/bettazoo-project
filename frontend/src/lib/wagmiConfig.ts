@@ -1,4 +1,4 @@
-import { createConfig, http, injected } from 'wagmi'
+import { createConfig, createStorage, http, injected } from 'wagmi'
 import { hardhat } from 'wagmi/chains'
 
 export const wagmiConfig = createConfig({
@@ -7,4 +7,8 @@ export const wagmiConfig = createConfig({
   transports: {
     [hardhat.id]: http(),
   },
+  // Persiste la connessione in localStorage tra una sessione e l'altra
+  storage: createStorage({
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+  }),
 })

@@ -1,8 +1,9 @@
 @import "tailwindcss";
 
 :root {
-  --background: #1e1f22;
-  --foreground: #f2f3f5;
+  --background: #0D0D11;
+  --foreground: #F4F4F9;
+  --accent:     #B31A1A;
 }
 
 @theme inline {
@@ -12,14 +13,21 @@
   --font-mono: var(--font-geist-mono);
 }
 
+html {
+  /* Scales all rem-based Tailwind classes up ~12.5% (text-sm 14→15.75px, text-base 16→18px, etc.) */
+  font-size: 112.5%;
+}
+
 body {
-  background: var(--background);
+  background-color: #0D0D11;
+  background-image: radial-gradient(ellipse at 15% 50%, rgba(110,12,12,0.45) 0%, #0D0D11 62%);
+  background-attachment: fixed;
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
 ::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: #2b2d31; }
-::-webkit-scrollbar-thumb { background: #7c3aed; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #a855f7; }
+::-webkit-scrollbar-track { background: #141419; }
+::-webkit-scrollbar-thumb { background: #B31A1A; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #e05555; }

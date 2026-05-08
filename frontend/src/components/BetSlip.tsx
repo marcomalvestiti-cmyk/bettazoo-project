@@ -97,39 +97,39 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
       {/* Backdrop */}
       <div
         onClick={handleClose}
-        className={`fixed inset-0 bg-[#1e1f22]/80 backdrop-blur-sm z-40 transition-opacity duration-300 ${
+        className={`fixed inset-0 bg-[#0D0D11]/80 backdrop-blur-sm z-40 transition-opacity duration-300 ${
           visible ? 'opacity-100' : 'opacity-0'
         }`}
       />
 
       {/* Sidebar panel */}
       <aside
-        className={`fixed inset-y-0 right-0 z-50 w-[400px] max-w-full flex flex-col bg-[#2b2d31] border-l border-zinc-800 shadow-2xl transition-transform duration-300 ease-out ${
+        className={`fixed inset-y-0 right-0 z-50 w-[400px] max-w-full flex flex-col bg-[#0f0f16] border-l border-zinc-800 shadow-2xl transition-transform duration-300 ease-out ${
           visible ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
-        {/* ── Header ── */}
+        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800 shrink-0">
           <div className="flex items-center gap-2.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-purple-400 shadow-[0_0_8px_#c084fc]" />
-            <h2 className="font-extrabold text-white text-base tracking-tight">Bet Slip</h2>
-            <span className="text-xs text-zinc-500 bg-[#313338] border border-zinc-700 px-2 py-0.5 rounded-xl font-mono">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#B31A1A] shadow-[0_0_8px_rgba(179,26,26,0.8)]" />
+            <h2 className="font-extrabold text-white text-xl tracking-tight">Bet Slip</h2>
+            <span className="text-xs text-zinc-500 bg-[#141419] border border-zinc-800 px-2 py-0.5 rounded-xl font-mono">
               {offers.length} offerte
             </span>
           </div>
           <button
             onClick={handleClose}
-            className="w-10 h-10 flex items-center justify-center rounded-2xl text-zinc-500 hover:text-white hover:bg-[#313338] transition-colors text-xl leading-none"
+            className="w-10 h-10 flex items-center justify-center rounded-2xl text-zinc-500 hover:text-white hover:bg-[#141419] transition-colors text-xl leading-none"
           >
             ×
           </button>
         </div>
 
-        {/* ── Scrollable body ── */}
+        {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
 
           {/* Event + Outcome */}
-          <div className="bg-[#313338] border border-zinc-700/60 rounded-2xl p-4">
+          <div className="bg-[#141419] border border-zinc-800 rounded-2xl p-4">
             <p className="text-xs text-zinc-500 mb-2 truncate">{eventName}</p>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -139,7 +139,7 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
                 </span>
               </div>
               <div className="text-right">
-                <div className="text-2xl font-extrabold font-mono tabular-nums text-purple-400 leading-none">
+                <div className="text-3xl font-extrabold font-mono tabular-nums text-[#e05555] leading-none">
                   {bestOdds.toFixed(2)}
                   <span className="text-sm font-normal text-zinc-500 ml-0.5">x</span>
                 </div>
@@ -150,7 +150,7 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
 
           {/* Stake input */}
           <div className="space-y-3">
-            <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider">
+            <label className="block text-sm font-bold text-zinc-400 uppercase tracking-wider">
               Importo scommessa
             </label>
             <div className="relative">
@@ -164,7 +164,7 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
                 value={stake}
                 onChange={(e) => setStake(e.target.value)}
                 placeholder="0.00"
-                className="w-full bg-[#313338] border border-zinc-700 rounded-2xl pl-9 pr-16 py-4 text-2xl font-extrabold font-mono tabular-nums text-white placeholder:text-zinc-700 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/20 transition-all"
+                className="w-full bg-[#141419] border border-zinc-800 rounded-2xl pl-9 pr-16 py-4 text-3xl font-extrabold font-mono tabular-nums text-white placeholder:text-zinc-700 focus:outline-none focus:border-[#B31A1A] focus:ring-1 focus:ring-[#B31A1A]/20 transition-all"
                 autoFocus
               />
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-zinc-500 font-mono select-none pointer-events-none">
@@ -172,17 +172,17 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
               </span>
             </div>
 
-            {/* Quick-pick stake buttons */}
+            {/* Quick-pick */}
             <div className="grid grid-cols-4 gap-2">
               {[10, 25, 50, 100].map((v) => (
                 <button
                   key={v}
                   onClick={() => setStake(String(v))}
                   className="
-                    py-3 min-h-[44px] text-xs font-bold font-mono rounded-2xl
-                    bg-[#313338] border border-zinc-700 text-zinc-400
+                    py-3 min-h-[44px] text-sm font-bold font-mono rounded-2xl
+                    bg-[#141419] border border-zinc-800 text-zinc-400
                     border-b-4 border-b-zinc-900
-                    hover:border-purple-500/50 hover:text-purple-400 hover:bg-purple-500/5
+                    hover:border-[#B31A1A]/50 hover:text-[#e05555] hover:bg-[#B31A1A]/5
                     active:border-b-0 active:translate-y-1
                     transition-all duration-75
                   "
@@ -192,7 +192,7 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
               ))}
             </div>
 
-            {/* Liquidity fill bar */}
+            {/* Liquidity bar */}
             {totalAvailable > 0 && (
               <div className="space-y-1.5">
                 <div className="flex justify-between text-[10px] font-mono text-zinc-600">
@@ -201,7 +201,7 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
                 </div>
                 <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-purple-500 rounded-full transition-all duration-300"
+                    className="h-full bg-[#B31A1A] rounded-full transition-all duration-300"
                     style={{ width: `${fillPct}%` }}
                   />
                 </div>
@@ -219,19 +219,19 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
             </div>
             <div className="flex justify-between items-center px-4 py-3 border-b border-zinc-800">
               <span className="text-zinc-500">Quota</span>
-              <span className="font-extrabold font-mono tabular-nums text-purple-400">
+              <span className="font-extrabold font-mono tabular-nums text-[#e05555]">
                 {avgOdds > 0 ? `${avgOdds.toFixed(2)}x` : '—'}
               </span>
             </div>
-            <div className="flex justify-between items-center px-4 py-4 bg-[#313338]/50">
+            <div className="flex justify-between items-center px-4 py-4 bg-[#141419]/50">
               <span className="font-bold text-white">Vincita potenziale</span>
-              <span className={`font-extrabold font-mono tabular-nums text-xl ${potentialWin > 0 ? 'text-purple-400' : 'text-zinc-700'}`}>
+              <span className={`font-extrabold font-mono tabular-nums text-2xl ${potentialWin > 0 ? 'text-[#e05555]' : 'text-zinc-700'}`}>
                 {potentialWin > 0 ? `$${potentialWin.toFixed(2)}` : '—'}
               </span>
             </div>
           </div>
 
-          {/* Matched offers (collapsible) */}
+          {/* Matched offers */}
           {matchedOffers.length > 0 && stakeNum > 0 && (
             <details className="group">
               <summary className="flex items-center justify-between cursor-pointer list-none select-none text-xs text-zinc-500 hover:text-zinc-300 transition-colors py-1">
@@ -244,12 +244,12 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
                 {matchedOffers.map((o) => (
                   <div
                     key={o.offerId}
-                    className="flex items-center justify-between rounded-2xl bg-[#313338]/50 border border-zinc-800 px-3 py-2.5"
+                    className="flex items-center justify-between rounded-2xl bg-[#141419]/50 border border-zinc-800 px-3 py-2.5"
                   >
                     <span className="text-xs font-mono text-zinc-500">
                       #{o.offerId} · {o.placer.slice(0, 6)}…{o.placer.slice(-4)}
                     </span>
-                    <span className="text-xs font-extrabold font-mono text-purple-400 tabular-nums">
+                    <span className="text-xs font-extrabold font-mono text-[#e05555] tabular-nums">
                       {o.oddsDecimal.toFixed(2)}x
                     </span>
                   </div>
@@ -265,7 +265,7 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
             </div>
           )}
 
-          {/* Transaction step progress */}
+          {/* Transaction steps */}
           {(status === 'approving' || status === 'betting') && (
             <div className="rounded-2xl border border-zinc-800 overflow-hidden">
               {(['approving', 'betting'] as const).map((step, i) => {
@@ -278,19 +278,19 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
                     className={`flex items-center gap-3 px-4 py-3 ${i < 1 ? 'border-b border-zinc-800' : ''}`}
                   >
                     <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all ${
-                      isDone   ? 'bg-purple-500 text-white'
-                      : isActive ? 'border-2 border-purple-500 text-purple-400'
+                      isDone   ? 'bg-[#B31A1A] text-white'
+                      : isActive ? 'border-2 border-[#B31A1A] text-[#e05555]'
                       : 'border border-zinc-700 text-zinc-600'
                     }`}>
                       {isDone ? '✓' : i + 1}
                     </div>
                     <span className={`text-sm transition-colors ${
-                      isActive ? 'text-white' : isDone ? 'text-purple-400' : 'text-zinc-600'
+                      isActive ? 'text-white' : isDone ? 'text-[#e05555]' : 'text-zinc-600'
                     }`}>
                       {label}
                     </span>
                     {isActive && (
-                      <svg className="w-4 h-4 animate-spin ml-auto text-purple-400 shrink-0" viewBox="0 0 24 24" fill="none">
+                      <svg className="w-4 h-4 animate-spin ml-auto text-[#B31A1A] shrink-0" viewBox="0 0 24 24" fill="none">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                       </svg>
@@ -302,19 +302,19 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
           )}
         </div>
 
-        {/* ── Footer CTA ── */}
-        <div className="shrink-0 p-5 border-t border-zinc-800 bg-[#2b2d31]/80 backdrop-blur-sm">
+        {/* Footer CTA */}
+        <div className="shrink-0 p-5 border-t border-zinc-800 bg-[#0f0f16]/90 backdrop-blur-sm">
           {status === 'done' ? (
             <div className="space-y-3 text-center">
-              <div className="flex items-center justify-center gap-2 text-purple-400 font-bold">
-                <span className="w-6 h-6 rounded-full bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-xs">
+              <div className="flex items-center justify-center gap-2 text-[#e05555] font-bold">
+                <span className="w-6 h-6 rounded-full bg-[#B31A1A]/20 border border-[#B31A1A]/40 flex items-center justify-center text-xs">
                   ✓
                 </span>
                 Scommessa confermata!
               </div>
               <button
                 onClick={handleClose}
-                className="w-full py-3 rounded-2xl bg-[#313338] hover:bg-zinc-700 text-white font-bold transition-colors"
+                className="w-full py-3 rounded-2xl bg-[#141419] hover:bg-[#1c1c24] text-white font-bold transition-colors"
               >
                 Chiudi
               </button>
@@ -324,12 +324,12 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
               onClick={handleConfirm}
               disabled={!canBet}
               className="
-                w-full py-4 text-base font-extrabold rounded-2xl
-                bg-purple-600 hover:bg-purple-500 text-white
-                border-b-4 border-b-purple-900
+                w-full py-4 text-xl font-extrabold rounded-2xl
+                bg-[#B31A1A] hover:bg-[#cc2020] text-white
+                border-b-4 border-b-[#6b0d0d]
                 active:border-b-0 active:translate-y-1
                 disabled:opacity-30 disabled:cursor-not-allowed disabled:border-b-0 disabled:translate-y-0
-                shadow-[0_0_24px_rgba(168,85,247,0.3)] disabled:shadow-none
+                shadow-[0_0_24px_rgba(179,26,26,0.3)] disabled:shadow-none
                 transition-all duration-75
               "
             >

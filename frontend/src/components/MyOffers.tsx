@@ -74,7 +74,7 @@ export default function MyOffers() {
   )
 
   return (
-    <div className="bg-[#313338] border border-zinc-700 rounded-2xl p-4 space-y-3">
+    <div className="bg-[#141419] border border-zinc-800 rounded-2xl p-4 space-y-3">
       <h3 className="text-sm font-extrabold text-white">Le mie offerte attive</h3>
       {error && (
         <p className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-xl px-3 py-2">{error}</p>
@@ -83,7 +83,7 @@ export default function MyOffers() {
         {offers.map((o) => (
           <div
             key={o.offerId}
-            className="flex items-center justify-between rounded-2xl bg-[#2b2d31]/60 border border-zinc-700/60 px-3 py-2.5"
+            className="flex items-center justify-between rounded-2xl bg-[#0f0f16]/60 border border-zinc-800 px-3 py-2.5"
           >
             <div className="text-xs space-y-0.5">
               <div className="text-zinc-200 font-mono font-bold">
@@ -91,7 +91,7 @@ export default function MyOffers() {
               </div>
               <div className="text-zinc-500">
                 {OUTCOMES[o.outcome] ?? o.outcome} ·{' '}
-                <span className="text-purple-400 font-extrabold">{o.oddsDecimal.toFixed(2)}x</span>
+                <span className="text-[#e05555] font-extrabold">{o.oddsDecimal.toFixed(2)}x</span>
               </div>
               <div className="text-zinc-500">
                 Residua: <span className="font-extrabold font-mono text-zinc-300">{o.remainingLiabilityUsdt} USDT</span>
