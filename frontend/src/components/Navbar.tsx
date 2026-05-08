@@ -7,7 +7,7 @@ import { useState } from 'react'
 import ConnectWallet from './ConnectWallet'
 
 const links = [
-  { href: '/', label: 'Exchange' },
+  { href: '/bet', label: 'Bet' },
   { href: '/placer', label: 'Placer' },
 ]
 

@@ -2,10 +2,14 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { MOCK_EVENTS } from '@/lib/abis'
 
+const FEATURED_IDS = ['evt-001', 'evt-002', 'evt-003', 'evt-010', 'evt-012']
+const FEATURED = MOCK_EVENTS.filter(e => FEATURED_IDS.includes(e.eventId))
+
 const EVENT_BADGES: Record<string, { label: string; emoji: string; className: string }> = {
   'evt-001': { label: 'Hot',      emoji: '🔥', className: 'bg-orange-500/15 text-orange-400 border-orange-500/30' },
   'evt-002': { label: 'Featured', emoji: '⭐', className: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30' },
   'evt-003': { label: 'New',      emoji: '✨', className: 'bg-sky-500/15    text-sky-400    border-sky-500/30'    },
+  'evt-010': { label: 'Live',     emoji: '🔴', className: 'bg-red-500/15    text-red-400    border-red-500/30'    },
 }
 
 export default function Home() {
@@ -28,14 +32,22 @@ export default function Home() {
       </div>
 
       {/* Section header */}
-      <div className="space-y-1">
-        <p className="text-sm font-semibold text-red-500 uppercase tracking-widest">Markets</p>
-        <h2 className="text-3xl font-bold text-white">Exchange</h2>
+      <div className="flex items-end justify-between">
+        <div className="space-y-1">
+          <p className="text-sm font-semibold text-red-500 uppercase tracking-widest">Markets</p>
+          <h2 className="text-3xl font-bold text-white">Featured Bets</h2>
+        </div>
+        <Link
+          href="/bet"
+          className="text-sm font-semibold text-slate-400 hover:text-red-500 transition-colors"
+        >
+          View all markets →
+        </Link>
       </div>
 
       {/* Event list */}
       <div className="space-y-2">
-        {MOCK_EVENTS.map((event) => {
+        {FEATURED.map((event) => {
           const start = new Date(event.startTime)
           const badge = EVENT_BADGES[event.eventId]
           return (
@@ -46,12 +58,12 @@ export default function Home() {
             >
               <div className="flex items-center gap-4">
                 <span className="hidden sm:flex w-10 h-10 rounded-lg bg-slate-800 items-center justify-center text-xl select-none">
-                  ⚽
+                  {event.icon}
                 </span>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-semibold uppercase tracking-wider text-red-500 bg-[#B31A1A]/10 px-2 py-0.5 rounded">
-                      {event.sport}
+                      {event.sportLabel}
                     </span>
                     {badge && (
                       <span className={`inline-flex items-center gap-0.5 text-xs font-semibold px-2 py-0.5 rounded border leading-none select-none ${badge.className}`}>
@@ -66,9 +78,9 @@ export default function Home() {
                     {event.name}
                   </h3>
                   <div className="flex gap-1.5 flex-wrap">
-                    {event.teams.map((t) => (
-                      <span key={t} className="text-xs font-medium bg-slate-800 text-slate-400 px-2 py-0.5 rounded">
-                        {t}
+                    {event.teams.map((team) => (
+                      <span key={team} className="text-xs font-medium bg-slate-800 text-slate-400 px-2 py-0.5 rounded">
+                        {team}
                       </span>
                     ))}
                   </div>

@@ -8,7 +8,7 @@ const inter = Inter({ variable: '--font-inter', subsets: ['latin'] })
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Bettazoo — P2P Betting Exchange',
+  title: 'Bettazoo — P2P Sports Betting',
   description: 'Bet peer-to-peer with no bookmaker. USDT stablecoin on Web3.',
 }
 

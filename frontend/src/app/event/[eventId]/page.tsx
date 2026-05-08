@@ -11,7 +11,7 @@ import Link from 'next/link'
 type BetSlipState = { outcome: number; offers: Offer[] }
 
 export default function EventPage({ params }: { params: Promise<{ eventId: string }> }) {
-  const { eventId }   = use(params)
+  const { eventId }     = use(params)
   const { isConnected } = useAccount()
   const [betSlip, setBetSlip] = useState<BetSlipState | null>(null)
 
@@ -25,23 +25,59 @@ export default function EventPage({ params }: { params: Promise<{ eventId: strin
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
 
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-slate-500">
-        <Link href="/" className="hover:text-slate-300 transition-colors font-medium">Exchange</Link>
-        <span className="text-slate-700">/</span>
+      <div className="flex items-center gap-1.5 text-sm text-slate-500 flex-wrap">
+        <Link href="/bet" className="hover:text-slate-300 transition-colors font-medium">
+          Bet
+        </Link>
+        {event && (
+          <>
+            <span className="text-slate-700">/</span>
+            <Link
+              href={`/bet/${event.category}`}
+              className="hover:text-slate-300 transition-colors"
+            >
+              {event.category === 'sports' ? 'Sports' : 'E-Sports'}
+            </Link>
+            <span className="text-slate-700">/</span>
+            <Link
+              href={`/bet/${event.category}/${event.sport}`}
+              className="hover:text-slate-300 transition-colors"
+            >
+              {event.sportLabel}
+            </Link>
+            <span className="text-slate-700">/</span>
+            <Link
+              href={`/bet/${event.category}/${event.sport}/${event.league}`}
+              className="hover:text-slate-300 transition-colors"
+            >
+              {event.leagueLabel}
+            </Link>
+            <span className="text-slate-700">/</span>
+          </>
+        )}
         <span className="text-slate-300 font-medium">{event?.name ?? eventId}</span>
       </div>
 
       {/* Event header */}
       <div className="bg-slate-900 border border-slate-800 rounded-lg px-5 py-4 flex items-center justify-between">
         <div className="space-y-1.5">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-red-500 bg-[#B31A1A]/10 px-2 py-0.5 rounded">
-            {event?.sport ?? 'sport'}
-          </span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-red-500 bg-[#B31A1A]/10 px-2 py-0.5 rounded">
+              {event?.sportLabel ?? 'sport'}
+            </span>
+            {event && (
+              <span className="text-[10px] font-semibold text-slate-500 bg-slate-800 px-2 py-0.5 rounded">
+                {event.leagueLabel}
+              </span>
+            )}
+          </div>
           <h1 className="text-2xl font-bold text-white">{event?.name ?? eventId}</h1>
           {event && (
             <div className="flex gap-1.5">
-              {event.teams.map((t) => (
-                <span key={t} className="text-xs font-medium bg-slate-800 text-slate-400 px-2 py-0.5 rounded">{t}</span>
+              {event.teams.map((team) => (
+                <span key={team} className="text-xs font-medium bg-slate-800 text-slate-400 px-2 py-0.5 rounded">
+                  {team}
+                </span>
               ))}
             </div>
           )}
