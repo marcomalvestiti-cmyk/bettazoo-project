@@ -8,6 +8,7 @@ import ConnectWallet from './ConnectWallet'
 
 const NAV_LINKS = [
   { href: '/bet',         label: 'Bet' },
+  { href: '/faucet',      label: '🚰 Faucet' },
   { href: '/how-to-play', label: 'How to Play' },
   { href: '/rules',       label: 'Rules' },
 ]
