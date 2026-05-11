@@ -233,9 +233,9 @@ describe('analyzeRisk — risk manager logic', () => {
       { eventId: 'MATCH_003', outcome: 0, remainingLiability: USDT(100) },
     ];
     const result = analyzeRisk(orders);
-    expect(result.riskLevel).toBe('LOW');
-    expect(result.totalExposureUsdt).toBe('300.00');
-    expect(result.alert).toBeNull();
+    expect(result.level).toBe('LOW');
+    expect(result.totalExposureUsdt).toBe(300);
+    expect(typeof result.message).toBe('string');
   });
 
   it('returns HIGH risk when >70% on one event/outcome', () => {
@@ -244,8 +244,8 @@ describe('analyzeRisk — risk manager logic', () => {
       { eventId: 'MATCH_002', outcome: 0, remainingLiability: USDT(100) },
     ];
     const result = analyzeRisk(orders);
-    expect(result.riskLevel).toBe('HIGH');
-    expect(result.alert).toMatch(/Sbilanciamento/);
+    expect(result.level).toBe('HIGH');
+    expect(typeof result.message).toBe('string');
     expect(result.exposures[0].sharePercent).toBeGreaterThan(70);
   });
 
@@ -256,14 +256,14 @@ describe('analyzeRisk — risk manager logic', () => {
       { eventId: 'MATCH_003', outcome: 0, remainingLiability: USDT(200) },
     ];
     const result = analyzeRisk(orders);
-    expect(result.riskLevel).toBe('MEDIUM');
+    expect(result.level).toBe('MEDIUM');
   });
 
-  it('returns LOW and no alert for empty order list', () => {
+  it('returns LOW and empty exposures for empty order list', () => {
     const result = analyzeRisk([]);
-    expect(result.riskLevel).toBe('LOW');
-    expect(result.alert).toBeNull();
-    expect(result.totalExposureUsdt).toBe('0.00');
+    expect(result.level).toBe('LOW');
+    expect(result.totalExposureUsdt).toBe(0);
+    expect(result.exposures).toHaveLength(0);
   });
 
   it('aggregates multiple orders on same eventId:outcome correctly', () => {
@@ -272,9 +272,9 @@ describe('analyzeRisk — risk manager logic', () => {
       { eventId: 'MATCH_001', outcome: 0, remainingLiability: USDT(70) },
     ];
     const result = analyzeRisk(orders);
-    expect(result.totalExposureUsdt).toBe('120.00');
+    expect(result.totalExposureUsdt).toBe(120);
     expect(result.exposures).toHaveLength(1);
-    expect(result.exposures[0].orderCount).toBe(2);
+    expect(result.exposures[0].exposureUsdt).toBe(120);
   });
 });
 

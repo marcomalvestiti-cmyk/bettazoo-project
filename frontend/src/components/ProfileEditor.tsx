@@ -1,15 +1,28 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { fetchProfile, updateProfile } from '@/lib/api'
+import { fetchProfile, updateProfile, type Specialization } from '@/lib/api'
+import { SPORTS_TREE, type SportNode } from '@/lib/sportsData'
 
 const NICKNAME_MAX = 30
 const BIO_MAX = 200
 
+function getChildren(tree: SportNode[], id: string): SportNode[] {
+  for (const node of tree) {
+    if (node.id === id) return node.children ?? []
+    if (node.children) {
+      const found = getChildren(node.children, id)
+      if (found.length) return found
+    }
+  }
+  return []
+}
+
 export default function ProfileEditor({ address }: { address: string }) {
   const [nickname, setNickname] = useState('')
-  const [bio, setBio] = useState('')
-  const [status, setStatus] = useState<'idle' | 'loading' | 'saving' | 'saved' | 'error'>('loading')
+  const [bio, setBio]           = useState('')
+  const [spec, setSpec]         = useState<Specialization>({ category: '', sport: '', league: '' })
+  const [status, setStatus]     = useState<'idle' | 'loading' | 'saving' | 'saved' | 'error'>('loading')
   const [errorMsg, setErrorMsg] = useState('')
 
   useEffect(() => {
@@ -17,28 +30,52 @@ export default function ProfileEditor({ address }: { address: string }) {
       .then((p) => {
         setNickname(p.nickname)
         setBio(p.bio)
+        setSpec(p.specialization)
         setStatus('idle')
       })
       .catch(() => setStatus('idle'))
   }, [address])
 
+  function setCategory(cat: string) {
+    setSpec({ category: cat, sport: '', league: '' })
+    setStatus('idle')
+  }
+  function setSport(sport: string) {
+    setSpec(s => ({ ...s, sport, league: '' }))
+    setStatus('idle')
+  }
+  function setLeague(league: string) {
+    setSpec(s => ({ ...s, league }))
+    setStatus('idle')
+  }
+
+  const categories  = SPORTS_TREE
+  const sports      = spec.category ? getChildren(SPORTS_TREE, spec.category) : []
+  const leagues     = spec.sport    ? getChildren(SPORTS_TREE, spec.sport)    : []
+
   async function handleSave() {
     setStatus('saving')
     setErrorMsg('')
     try {
-      await updateProfile(address, nickname, bio)
+      await updateProfile(address, nickname, bio, spec)
       setStatus('saved')
       setTimeout(() => setStatus('idle'), 2500)
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Unknown error')
+      const msg = err instanceof Error ? err.message : 'Unknown error'
+      console.error('[ProfileEditor] Save failed:', msg)
+      setErrorMsg(msg)
       setStatus('error')
     }
   }
 
-  return (
-    <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 space-y-3">
-      <p className="text-xs font-semibold text-red-500 uppercase tracking-widest">Profile</p>
+  const inputCls = 'w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-[#FFB01F] transition-colors'
+  const selectCls = `${inputCls} cursor-pointer disabled:text-slate-600 disabled:cursor-default`
 
+  return (
+    <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 space-y-4">
+      <p className="text-xs font-bold text-[#FFB01F] uppercase tracking-widest">Profile</p>
+
+      {/* Nickname */}
       <div className="space-y-1">
         <div className="flex justify-between items-center">
           <label className="text-xs text-slate-400 font-medium">Nickname</label>
@@ -50,10 +87,11 @@ export default function ProfileEditor({ address }: { address: string }) {
           maxLength={NICKNAME_MAX}
           onChange={(e) => { setNickname(e.target.value); setStatus('idle') }}
           placeholder="Your Placer name..."
-          className="w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-[#B31A1A] transition-colors"
+          className={inputCls}
         />
       </div>
 
+      {/* Bio */}
       <div className="space-y-1">
         <div className="flex justify-between items-center">
           <label className="text-xs text-slate-400 font-medium">Bio</label>
@@ -62,26 +100,68 @@ export default function ProfileEditor({ address }: { address: string }) {
         <textarea
           value={bio}
           maxLength={BIO_MAX}
-          rows={3}
+          rows={2}
           onChange={(e) => { setBio(e.target.value); setStatus('idle') }}
-          placeholder="Introduce yourself to other users..."
-          className="w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-[#B31A1A] transition-colors resize-none"
+          placeholder="Introduce yourself..."
+          className={`${inputCls} resize-none`}
         />
       </div>
 
-      <div className="flex items-center justify-between gap-3">
-        {status === 'error' && (
-          <p className="text-xs text-red-400">{errorMsg}</p>
-        )}
-        {status === 'saved' && (
-          <p className="text-xs text-emerald-400">Saved!</p>
-        )}
-        {status !== 'error' && status !== 'saved' && <span />}
+      {/* Specialization */}
+      <div className="space-y-2 border-t border-slate-800 pt-3">
+        <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Specialization</p>
 
+        <select
+          value={spec.category}
+          onChange={(e) => setCategory(e.target.value)}
+          className={selectCls}
+        >
+          <option value="">— Category —</option>
+          {categories.map(c => (
+            <option key={c.id} value={c.id}>{c.label}</option>
+          ))}
+        </select>
+
+        <select
+          value={spec.sport}
+          onChange={(e) => setSport(e.target.value)}
+          disabled={!spec.category}
+          className={selectCls}
+        >
+          <option value="">— Sport —</option>
+          {sports.map(s => (
+            <option key={s.id} value={s.id}>{s.label}</option>
+          ))}
+        </select>
+
+        <select
+          value={spec.league}
+          onChange={(e) => setLeague(e.target.value)}
+          disabled={!spec.sport}
+          className={selectCls}
+        >
+          <option value="">— League —</option>
+          {leagues.map(l => (
+            <option key={l.id} value={l.id}>{l.label}</option>
+          ))}
+        </select>
+
+        {spec.league && (
+          <p className="text-[10px] text-slate-500 font-mono">
+            Dashboard will pre-load this league on next login.
+          </p>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between gap-3 pt-1">
+        <span className="text-xs">
+          {status === 'error' && <span className="text-red-400">{errorMsg}</span>}
+          {status === 'saved' && <span className="text-emerald-400">✓ Saved</span>}
+        </span>
         <button
           onClick={handleSave}
           disabled={status === 'saving' || status === 'loading'}
-          className="px-4 py-2 rounded-md text-xs font-semibold bg-[#B31A1A] hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors shrink-0"
+          className="px-4 py-2 rounded-md text-xs font-bold bg-[#FFB01F] hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 transition-colors shrink-0"
         >
           {status === 'saving' ? 'Saving...' : 'Save profile'}
         </button>

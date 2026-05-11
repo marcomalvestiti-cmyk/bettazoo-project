@@ -4,26 +4,26 @@ import { useEffect, useState } from 'react'
 import { fetchRiskManager } from '@/lib/api'
 
 type Exposure = {
-  eventId: string
-  outcome: number
+  eventId:     string
+  outcome:     number
   exposureUsdt: number
 }
 
 type RiskData = {
-  level: 'LOW' | 'MEDIUM' | 'HIGH'
+  level:            'LOW' | 'MEDIUM' | 'HIGH'
   totalExposureUsdt: number
-  exposures: Exposure[]
-  message: string
+  exposures:        Exposure[]
+  message:          string
 }
 
 const LEVEL_STYLE: Record<string, { badge: string; border: string; dot: string }> = {
-  LOW:    { badge: 'text-emerald-400 bg-emerald-400/10 border-emerald-500/30', border: 'border-slate-700', dot: 'bg-emerald-400' },
-  MEDIUM: { badge: 'text-yellow-400 bg-yellow-400/10 border-yellow-500/30',   border: 'border-slate-700', dot: 'bg-yellow-400' },
-  HIGH:   { badge: 'text-red-400 bg-red-400/10 border-red-500/30',             border: 'border-red-500/40', dot: 'bg-red-400 animate-pulse' },
+  LOW:    { badge: 'text-emerald-400 bg-emerald-400/10 border-emerald-500/30', border: 'border-slate-700',    dot: 'bg-emerald-400' },
+  MEDIUM: { badge: 'text-amber-400  bg-amber-400/10  border-amber-500/30',    border: 'border-slate-700',    dot: 'bg-amber-400' },
+  HIGH:   { badge: 'text-red-400    bg-red-400/10    border-red-500/30',      border: 'border-red-500/40',   dot: 'bg-red-400 animate-pulse' },
 }
 
 export default function RiskWidget({ address }: { address: string }) {
-  const [data, setData] = useState<RiskData | null>(null)
+  const [data,    setData]    = useState<RiskData | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -32,7 +32,7 @@ export default function RiskWidget({ address }: { address: string }) {
       setLoading(true)
       try {
         const result = await fetchRiskManager(address)
-        if (!cancelled) setData(result)
+        if (!cancelled) setData(result as RiskData)
       } catch {
         if (!cancelled) setData(null)
       } finally {
@@ -56,12 +56,15 @@ export default function RiskWidget({ address }: { address: string }) {
   )
 
   const style = LEVEL_STYLE[data.level] ?? LEVEL_STYLE.LOW
+  const total = typeof data.totalExposureUsdt === 'number'
+    ? data.totalExposureUsdt.toFixed(2)
+    : String(data.totalExposureUsdt)
 
   return (
     <div className={`rounded-lg border ${style.border} bg-slate-900 p-4 space-y-3`}>
       <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold text-white">Risk Manager</span>
-        <span className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded border ${style.badge}`}>
+        <span className="text-sm font-bold text-white">Risk Manager</span>
+        <span className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded border ${style.badge}`}>
           <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
           {data.level}
         </span>
@@ -69,17 +72,19 @@ export default function RiskWidget({ address }: { address: string }) {
 
       <p className="text-xs text-slate-400">{data.message}</p>
 
-      <div className="flex items-center justify-between text-xs">
+      <div className="flex items-center justify-between text-xs border-t border-slate-800 pt-2">
         <span className="text-slate-500">Total exposure</span>
-        <span className="font-semibold font-mono text-white">${data.totalExposureUsdt?.toFixed(2)} USDT</span>
+        <span className="font-bold font-mono text-white">${total} USDT</span>
       </div>
 
       {data.exposures?.length > 0 && (
         <div className="space-y-1.5 max-h-36 overflow-y-auto">
           {data.exposures.map((e, i) => (
             <div key={i} className="flex justify-between text-xs bg-slate-950/60 rounded-md px-2.5 py-1.5">
-              <span className="font-mono text-slate-400">{e.eventId} / out.{e.outcome}</span>
-              <span className="font-semibold font-mono text-slate-300">${e.exposureUsdt.toFixed(2)}</span>
+              <span className="font-mono text-slate-400 truncate mr-2">{e.eventId} / out.{e.outcome}</span>
+              <span className="font-bold font-mono text-slate-300 shrink-0">
+                ${typeof e.exposureUsdt === 'number' ? e.exposureUsdt.toFixed(2) : e.exposureUsdt}
+              </span>
             </div>
           ))}
         </div>

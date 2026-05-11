@@ -1,39 +1,62 @@
 const ODDS_PRECISION = 10000;
 
+function normalizeMarketOdds(raw) {
+  if (!raw) return null;
+  if (Array.isArray(raw)) {
+    return { home: raw[0] || 2.0, draw: raw[1] || 3.40, away: raw[2] || 3.80 };
+  }
+  return raw;
+}
+
+const BOOKIE_MARGIN = 0.08; // simulated traditional bookie overround
+
 function buildMockResponse(body) {
-  const { teams = ['Home', 'Away'], sport = 'football', outcome, currentMarketOdds } = body;
+  const {
+    teams = ['Home', 'Away'],
+    sport = 'football',
+    outcome,
+    currentMarketOdds,
+    margin: requestedMargin = 0.03,
+  } = body;
 
-  const base = currentMarketOdds || { home: 2.0, draw: 3.40, away: 3.80 };
-  const margin = 0.057; // 5.7% margin
+  // trueBase = reference "fair" odds (live orderbook data or defaults)
+  const trueBase = normalizeMarketOdds(currentMarketOdds) || { home: 2.0, draw: 3.40, away: 3.80 };
 
-  const fair = {
-    home: 1 / (1 / base.home * (1 + margin)),
-    draw: 1 / (1 / base.draw * (1 + margin)),
-    away: 1 / (1 / base.away * (1 + margin)),
+  // Traditional bookie crushes the odds with ~8% overround
+  const bookieOdds = {
+    home: +(trueBase.home / (1 + BOOKIE_MARGIN)).toFixed(2),
+    draw: +(trueBase.draw / (1 + BOOKIE_MARGIN)).toFixed(2),
+    away: +(trueBase.away / (1 + BOOKIE_MARGIN)).toFixed(2),
+  };
+
+  // Bettazoo Placer applies the selected margin (always < bookie's)
+  const suggestedOdds = {
+    home: +(trueBase.home / (1 + requestedMargin)).toFixed(2),
+    draw: +(trueBase.draw / (1 + requestedMargin)).toFixed(2),
+    away: +(trueBase.away / (1 + requestedMargin)).toFixed(2),
   };
 
   const implied = {
-    home:  +(100 / fair.home).toFixed(1),
-    draw:  +(100 / fair.draw).toFixed(1),
-    away:  +(100 / fair.away).toFixed(1),
+    home:  +(100 / suggestedOdds.home).toFixed(1),
+    draw:  +(100 / suggestedOdds.draw).toFixed(1),
+    away:  +(100 / suggestedOdds.away).toFixed(1),
   };
-  const totalImplied = implied.home + implied.draw + implied.away;
-  const marginPercent = +(totalImplied - 100).toFixed(2);
+  const marginPercent = +(implied.home + implied.draw + implied.away - 100).toFixed(2);
 
   const riskLevel = (outcome !== undefined && body.placerExposureUsdt > 500) ? 'HIGH' : 'MEDIUM';
 
   return {
-    suggestedOdds: {
-      home: +fair.home.toFixed(2),
-      draw: +fair.draw.toFixed(2),
-      away: +fair.away.toFixed(2),
-    },
+    trueBase,
+    bookieOdds,
+    suggestedOdds,
+    appliedMargin: requestedMargin,
     impliedProbabilities: { ...implied, marginPercent },
     riskLevel,
     maxSafeExposureUsdt: riskLevel === 'HIGH' ? 300 : 1000,
-    recommendation: `Quote ${teams[0]} vs ${teams[1] || 'Away'} con margine del ${marginPercent}%. ` +
-      `Spread equilibrato per ${sport}.`,
-    analysis: `[MOCK] Suggerimento generato localmente. Fornire OPENAI_API_KEY per analisi AI reale.`,
+    recommendation: `${teams[0]} vs ${teams[1] || 'Away'} — ${(requestedMargin * 100).toFixed(1)}% margin vs. ${(BOOKIE_MARGIN * 100).toFixed(0)}% traditional market.`,
+    analysis: currentMarketOdds
+      ? `Live orderbook data used as reference. ${(requestedMargin * 100).toFixed(1)}% Placer margin applied.`
+      : `[MOCK] Default reference odds. Add OPENAI_API_KEY for real market analysis.`,
     source: 'mock',
   };
 }
@@ -49,12 +72,12 @@ async function suggestOdds(body) {
   const openai = new OpenAI({ apiKey });
 
   const prompt = `You are a professional sports betting analyst for a P2P betting exchange.
-Given the following event data, suggest optimal European decimal odds for the placer (layer) with a safe mathematical margin.
+Given the following event data, suggest optimal European decimal odds for the placer (layer) with a safe 5% mathematical margin.
 
 Event: ${body.eventName || body.eventId}
 Sport: ${body.sport || 'football'}
 Teams: ${(body.teams || []).join(' vs ')}
-Current market odds: ${JSON.stringify(body.currentMarketOdds || {})}
+Current market odds: ${JSON.stringify(normalizeMarketOdds(body.currentMarketOdds) || {})}
 Placer current exposure: ${body.placerExposureUsdt || 0} USDT
 
 Respond ONLY with valid JSON matching this schema:
@@ -84,9 +107,9 @@ Respond ONLY with valid JSON matching this schema:
 function analyzeRisk(orders) {
   if (orders.length === 0) {
     return {
-      totalExposureUsdt: '0.00',
-      riskLevel: 'LOW',
-      alert: null,
+      level: 'LOW',
+      totalExposureUsdt: 0,
+      message: 'No active offers. Create your first offer to start building your portfolio.',
       exposures: [],
       recommendations: [],
     };
@@ -110,24 +133,29 @@ function analyzeRisk(orders) {
     return {
       eventId: e.eventId,
       outcome: e.outcome,
-      totalLiabilityUsdt: liabilityUsdt.toFixed(2),
-      orderCount: e.orderCount,
+      exposureUsdt: +liabilityUsdt.toFixed(2),
       sharePercent: totalUsdt > 0 ? +((liabilityUsdt / totalUsdt) * 100).toFixed(1) : 0,
     };
   }).sort((a, b) => b.sharePercent - a.sharePercent);
 
   const maxShare = exposures[0]?.sharePercent || 0;
-  const riskLevel = maxShare > 70 ? 'HIGH' : maxShare > 40 ? 'MEDIUM' : 'LOW';
+  const level = maxShare > 70 ? 'HIGH' : maxShare > 40 ? 'MEDIUM' : 'LOW';
+
+  const message = level === 'HIGH'
+    ? 'Excessive imbalance on a single outcome — consider cancelling some offers.'
+    : level === 'MEDIUM'
+    ? 'Moderate exposure. Consider diversifying across more outcomes.'
+    : 'Exposure is well balanced across your portfolio.';
 
   const recommendations = [];
-  if (riskLevel === 'HIGH') recommendations.push(`Riduci la liability su outcome ${exposures[0].outcome} di ${exposures[0].eventId}`);
-  if (exposures.length === 1) recommendations.push('Diversifica le offerte su più eventi o esiti');
-  if (totalUsdt > 2000) recommendations.push('Esposizione totale elevata: considera di cancellare alcune offerte');
+  if (level === 'HIGH') recommendations.push(`Reduce liability on outcome ${exposures[0].outcome} of ${exposures[0].eventId}`);
+  if (exposures.length === 1) recommendations.push('Diversify across multiple events or outcomes');
+  if (totalUsdt > 2000) recommendations.push('High total exposure: consider cancelling some offers');
 
   return {
-    totalExposureUsdt: totalUsdt.toFixed(2),
-    riskLevel,
-    alert: riskLevel === 'HIGH' ? 'Sbilanciamento eccessivo su un singolo esito!' : null,
+    level,
+    totalExposureUsdt: +totalUsdt.toFixed(2),
+    message,
     exposures,
     recommendations,
   };

@@ -1,47 +1,107 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useWriteContract } from 'wagmi'
 import { parseUnits } from 'viem'
 import { ESCROW_ABI, ERC20_ABI, OUTCOMES } from '@/lib/abis'
-import { fetchSuggestOdds } from '@/lib/api'
+import { fetchSuggestOdds, fetchOrderBook } from '@/lib/api'
 
 type Props = {
-  eventId: string
+  eventId:    string
   eventName?: string
-  teams?: string[]
+  sport?:     string
+  teams?:     string[]
 }
 
 const ESCROW_ADDRESS = (process.env.NEXT_PUBLIC_ESCROW_ADDRESS ?? '0x0') as `0x${string}`
-const USDT_ADDRESS = (process.env.NEXT_PUBLIC_USDT_ADDRESS ?? '0x0') as `0x${string}`
+const USDT_ADDRESS   = (process.env.NEXT_PUBLIC_USDT_ADDRESS   ?? '0x0') as `0x${string}`
 
-export default function CreateOfferForm({ eventId, eventName, teams }: Props) {
+const OUTCOME_KEYS = ['home', 'draw', 'away'] as const
+
+// ── Task 1: Strategy definitions ──────────────────────────────────────────────
+const STRATEGIES = [
+  { id: 'volume',   label: 'Volume Dominator', sub: '1.5% Margin', margin: 0.015 },
+  { id: 'balanced', label: 'Balanced',         sub: '3.0% Margin', margin: 0.030 },
+  { id: 'safe',     label: 'Safe Bank',        sub: '5.0% Margin', margin: 0.050 },
+] as const
+type StrategyId = typeof STRATEGIES[number]['id']
+
+const BOOKIE_MARGIN = 0.08 // mirrored from backend for local recalc
+
+export default function CreateOfferForm({ eventId, eventName, sport, teams }: Props) {
   const { writeContractAsync } = useWriteContract()
-  const [outcome, setOutcome] = useState(0)
-  const [oddsDecimal, setOddsDecimal] = useState('')
+
+  const [outcome,       setOutcome]       = useState(0)
+  const [oddsDecimal,   setOddsDecimal]   = useState('')
   const [liabilityUsdt, setLiabilityUsdt] = useState('')
   const [status, setStatus] = useState<'idle' | 'suggesting' | 'approving' | 'creating' | 'done' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
-  const [aiResult, setAiResult] = useState<Record<string, number> | null>(null)
+
+  // AI state
+  const [strategy,   setStrategy]   = useState<StrategyId>('balanced')
+  const [trueBase,   setTrueBase]   = useState<Record<string, number> | null>(null)
+  const [bookieOdds, setBookieOdds] = useState<Record<string, number> | null>(null)
+  const [aiResult,   setAiResult]   = useState<Record<string, number> | null>(null)
+  const [aiSource,   setAiSource]   = useState<string>('')
+
+  // ── Task 2: Real-time recalculation on strategy / outcome change ──────────
+  useEffect(() => {
+    if (!trueBase) return
+    const margin = STRATEGIES.find(s => s.id === strategy)!.margin
+    const recalc: Record<string, number> = {}
+    for (const key of OUTCOME_KEYS) {
+      recalc[key] = +(trueBase[key] / (1 + margin)).toFixed(2)
+    }
+    setAiResult(recalc)
+    const key = OUTCOME_KEYS[outcome]
+    if (recalc[key] !== undefined) setOddsDecimal(String(recalc[key]))
+  }, [strategy, trueBase, outcome])
 
   async function handleAiSuggest() {
     setStatus('suggesting')
     setErrorMsg('')
+    setAiResult(null)
+    setTrueBase(null)
+    setBookieOdds(null)
     try {
-      const result = await fetchSuggestOdds({ eventId, eventName, sport: 'football', teams, outcome })
-      setAiResult(result.suggestedOdds ?? result)
-      if (result.suggestedOdds?.[outcome] !== undefined) {
-        setOddsDecimal(String(result.suggestedOdds[outcome]))
+      // 1. Fetch live market odds from orderbook
+      let currentMarketOdds: number[] | undefined
+      try {
+        const ob = await fetchOrderBook(eventId)
+        const orders: Array<{ outcome: number; oddsDecimal: number }> = ob.orders ?? []
+        const byOutcome = ([0, 1, 2] as const).map(o => {
+          const matching = orders.filter(r => r.outcome === o)
+          return matching.length > 0 ? Math.max(...matching.map(r => r.oddsDecimal)) : 0
+        })
+        if (byOutcome.some(v => v > 0)) currentMarketOdds = byOutcome
+      } catch { /* backend uses defaults */ }
+
+      // 2. Call AI endpoint with selected margin
+      const selectedMargin = STRATEGIES.find(s => s.id === strategy)!.margin
+      const result = await fetchSuggestOdds({
+        eventId, eventName, sport, teams, outcome, currentMarketOdds,
+        margin: selectedMargin,
+      })
+
+      // 3. Store reference data for local recalc on strategy switch
+      setTrueBase(result.trueBase ?? result.suggestedOdds)
+      setBookieOdds(result.bookieOdds ?? null)
+      setAiResult(result.suggestedOdds ?? {})
+      setAiSource(result.source ?? '')
+
+      const key = OUTCOME_KEYS[outcome]
+      if (result.suggestedOdds?.[key] !== undefined) {
+        setOddsDecimal(String(result.suggestedOdds[key]))
       }
       setStatus('idle')
     } catch {
-      setErrorMsg('AI unavailable')
+      setErrorMsg('AI service unavailable')
       setStatus('idle')
     }
   }
 
   async function handleCreate() {
-    const oddsNum = parseFloat(oddsDecimal)
+    const oddsNum      = parseFloat(oddsDecimal)
     const liabilityNum = parseFloat(liabilityUsdt)
     if (!oddsNum || !liabilityNum || oddsNum <= 1) {
       setErrorMsg('Odds must be > 1.00')
@@ -50,88 +110,218 @@ export default function CreateOfferForm({ eventId, eventName, teams }: Props) {
     setStatus('approving')
     setErrorMsg('')
     try {
-      const oddsRaw = BigInt(Math.round(oddsNum * 10000))
+      const oddsRaw      = BigInt(Math.round(oddsNum * 10000))
       const liabilityRaw = parseUnits(liabilityNum.toFixed(6), 6)
       await writeContractAsync({
-        address: USDT_ADDRESS,
-        abi: ERC20_ABI,
-        functionName: 'approve',
-        args: [ESCROW_ADDRESS, liabilityRaw],
+        address: USDT_ADDRESS, abi: ERC20_ABI,
+        functionName: 'approve', args: [ESCROW_ADDRESS, liabilityRaw],
       })
       setStatus('creating')
       await writeContractAsync({
-        address: ESCROW_ADDRESS,
-        abi: ESCROW_ABI,
-        functionName: 'createOffer',
-        args: [eventId, outcome, oddsRaw, liabilityRaw],
+        address: ESCROW_ADDRESS, abi: ESCROW_ABI,
+        functionName: 'createOffer', args: [eventId, outcome, oddsRaw, liabilityRaw],
       })
       setStatus('done')
       setOddsDecimal('')
       setLiabilityUsdt('')
+      setAiResult(null)
+      setTrueBase(null)
+      setBookieOdds(null)
     } catch (err: unknown) {
       setStatus('error')
       setErrorMsg(err instanceof Error ? err.message : 'Transaction error')
     }
   }
 
+  const inputCls = 'w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-sm font-semibold text-white placeholder:text-slate-600 focus:outline-none focus:border-[#FFB01F] transition-colors'
+
+  // ── Task 3: Market Edge data for the selected outcome ──────────────────────
+  const activeKey     = OUTCOME_KEYS[outcome]
+  const bettazooOdd   = aiResult?.[activeKey]
+  const bookieOdd     = bookieOdds?.[activeKey]
+  const showEdge      = bettazooOdd !== undefined && bookieOdd !== undefined
+  const edgePct       = showEdge
+    ? +((bettazooOdd - bookieOdd) / bookieOdd * 100).toFixed(1)
+    : 0
+  const currentStrategy = STRATEGIES.find(s => s.id === strategy)!
+
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-lg p-5 space-y-4">
-      <h3 className="font-semibold text-white text-sm">Create Offer</h3>
+      <h3 className="font-bold text-white text-sm tracking-wide">Create Offer</h3>
 
-      {/* Outcome selector */}
-      <div className="grid grid-cols-3 gap-2">
-        {[0, 1, 2].map((o) => (
-          <button
-            key={o}
-            onClick={() => setOutcome(o)}
-            className={`py-2.5 min-h-[40px] text-xs font-medium rounded-md border transition-colors ${
-              outcome === o
-                ? 'border-[#B31A1A] bg-[#B31A1A]/10 text-red-500'
-                : 'border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-300'
-            }`}
-          >
-            {OUTCOMES[o]}
-          </button>
-        ))}
+      {/* ── Outcome selector ── */}
+      <div className="space-y-1.5">
+        <label className="text-xs text-slate-500 font-medium uppercase tracking-wide">Outcome</label>
+        <div className="grid grid-cols-3 gap-2">
+          {([0, 1, 2] as const).map((o) => (
+            <button
+              key={o}
+              onClick={() => setOutcome(o)}
+              className={`py-2.5 min-h-[40px] text-xs font-semibold rounded-md border transition-colors ${
+                outcome === o
+                  ? 'border-[#FFB01F] bg-[#FFB01F]/10 text-[#FFB01F]'
+                  : 'border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-300'
+              }`}
+            >
+              {OUTCOMES[o]}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Odds + AI */}
-      <div className="flex gap-2">
-        <div className="flex-1 space-y-1">
-          <label className="block text-xs text-slate-400 font-medium">Odds (e.g. 2.50)</label>
+      {/* ── Task 1: Strategy selector ── */}
+      <div className="space-y-1.5">
+        <label className="text-xs text-slate-500 font-medium uppercase tracking-wide">Strategy</label>
+        <div className="grid grid-cols-3 gap-1.5">
+          {STRATEGIES.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => setStrategy(s.id)}
+              className={`flex flex-col items-center py-2.5 px-1 rounded-md border text-center transition-colors ${
+                strategy === s.id
+                  ? 'border-[#FFB01F]/60 bg-[#FFB01F]/8 text-[#FFB01F]'
+                  : 'border-slate-800 text-slate-500 hover:border-slate-700 hover:text-slate-400'
+              }`}
+            >
+              <span className={`text-[10px] font-bold leading-none ${strategy === s.id ? 'text-[#FFB01F]' : ''}`}>
+                {s.label}
+              </span>
+              <span className={`text-[9px] mt-0.5 font-mono ${strategy === s.id ? 'text-[#FFB01F]/70' : 'text-slate-600'}`}>
+                {s.sub}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Odds input + AI Suggest ── */}
+      <div className="space-y-1.5">
+        <label className="text-xs text-slate-500 font-medium uppercase tracking-wide">Odds</label>
+        <div className="flex gap-2">
           <input
             type="number"
             min="1.01"
             step="0.01"
             value={oddsDecimal}
             onChange={(e) => setOddsDecimal(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-sm font-semibold text-white placeholder:text-slate-600 focus:outline-none focus:border-[#B31A1A] transition-colors"
+            className={inputCls}
             placeholder="2.50"
           />
-        </div>
-        <div className="flex items-end">
           <button
             onClick={handleAiSuggest}
             disabled={status === 'suggesting'}
-            className="px-3 py-2 text-xs font-medium rounded-md bg-[#B31A1A]/10 border border-[#B31A1A]/40 text-red-500 hover:bg-[#B31A1A]/20 disabled:opacity-50 transition-colors whitespace-nowrap"
+            className="shrink-0 px-3 py-2 text-xs font-bold rounded-md bg-[#FFB01F]/10 border border-[#FFB01F]/40 text-[#FFB01F] hover:bg-[#FFB01F]/20 disabled:opacity-50 transition-colors whitespace-nowrap"
           >
-            {status === 'suggesting' ? 'AI…' : '✦ AI Suggest'}
+            {status === 'suggesting' ? (
+              <span className="flex items-center gap-1.5">
+                <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                </svg>
+                AI…
+              </span>
+            ) : '✦ AI Suggest'}
           </button>
         </div>
       </div>
 
-      {aiResult && (
-        <div className="text-xs text-slate-400 bg-[#B31A1A]/5 border border-[#B31A1A]/20 rounded-md p-2.5">
-          <span className="text-red-500 font-semibold">AI suggests: </span>
-          {Object.entries(aiResult).map(([k, v]) =>
-            `${OUTCOMES[Number(k)] ?? k}: ${typeof v === 'number' ? v.toFixed(2) : v}`
-          ).join(' · ')}
+      {/* ── Task 3: Market Edge panel ── */}
+      {showEdge && (
+        <div className="rounded-lg border border-slate-700/60 bg-slate-950/70 p-3.5 space-y-2.5">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+              Market Edge — {OUTCOMES[outcome]}
+            </span>
+            <span className="text-[9px] font-mono text-slate-600 uppercase">{aiSource}</span>
+          </div>
+
+          {/* Comparison rows */}
+          <div className="space-y-1.5">
+            {/* Traditional bookie */}
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-600 line-through">
+                Traditional Market
+              </span>
+              <span className="text-xs font-mono font-semibold text-slate-600 line-through">
+                {bookieOdd?.toFixed(2)}x
+              </span>
+            </div>
+
+            {/* Bettazoo optimal */}
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-[#FFB01F]">
+                Your Optimal Odd
+              </span>
+              <span className="text-sm font-bold font-mono text-[#FFB01F]">
+                {bettazooOdd?.toFixed(2)}x
+              </span>
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-slate-800" />
+
+            {/* Edge vs market */}
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-emerald-400 font-semibold">
+                Your Mathematical Edge
+              </span>
+              <span className="text-xs font-bold font-mono text-emerald-400">
+                +{edgePct}%
+              </span>
+            </div>
+
+            {/* Guaranteed margin footnote */}
+            <div className="flex items-center justify-between pt-0.5">
+              <span className="text-[10px] text-slate-600">
+                Guaranteed Margin ({currentStrategy.sub})
+              </span>
+              <span className="text-[10px] font-mono text-slate-600">
+                {(currentStrategy.margin * 100).toFixed(1)}% built-in
+              </span>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Liability */}
-      <div className="space-y-1">
-        <label className="block text-xs text-slate-400 font-medium">Liability USDT (collateral)</label>
+      {/* ── All-outcome odds grid (when AI has run) ── */}
+      {aiResult && (
+        <div className="space-y-1.5">
+          <label className="text-xs text-slate-500 font-medium uppercase tracking-wide">
+            Optimal Odds — All Outcomes
+          </label>
+          <div className="grid grid-cols-3 gap-2">
+            {OUTCOME_KEYS.map((key, i) => (
+              <button
+                key={key}
+                onClick={() => { setOutcome(i); setOddsDecimal(String(aiResult[key] ?? '')) }}
+                className={`text-center py-2 rounded-md border transition-colors ${
+                  i === outcome
+                    ? 'border-[#FFB01F]/50 bg-[#FFB01F]/8'
+                    : 'border-slate-800 hover:border-slate-700'
+                }`}
+              >
+                <div className="text-[9px] text-slate-600 uppercase tracking-wide">{OUTCOMES[i]}</div>
+                <div className="font-bold font-mono text-sm text-slate-200 mt-0.5">
+                  {(aiResult[key] ?? 0).toFixed(2)}
+                  <span className="text-slate-500 text-xs">x</span>
+                </div>
+                {bookieOdds && (
+                  <div className="text-[9px] text-slate-700 line-through font-mono mt-0.5">
+                    {(bookieOdds[key] ?? 0).toFixed(2)}x
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Liability ── */}
+      <div className="space-y-1.5">
+        <label className="block text-xs text-slate-500 font-medium uppercase tracking-wide">
+          Liability (collateral)
+        </label>
         <div className="relative">
           <input
             type="number"
@@ -139,7 +329,7 @@ export default function CreateOfferForm({ eventId, eventName, teams }: Props) {
             step="0.01"
             value={liabilityUsdt}
             onChange={(e) => setLiabilityUsdt(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-700 rounded-md pl-3 pr-14 py-2 text-sm font-semibold text-white placeholder:text-slate-600 focus:outline-none focus:border-[#B31A1A] transition-colors"
+            className={`${inputCls} pr-14`}
             placeholder="100.00"
           />
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 font-mono">USDT</span>
@@ -153,12 +343,12 @@ export default function CreateOfferForm({ eventId, eventName, teams }: Props) {
       )}
 
       {status === 'done' ? (
-        <div className="text-center text-red-500 text-sm font-semibold py-1">✓ Offer created!</div>
+        <div className="text-center text-emerald-400 text-sm font-bold py-1">✓ Offer created!</div>
       ) : (
         <button
           onClick={handleCreate}
           disabled={status !== 'idle' && status !== 'error'}
-          className="w-full py-3 text-sm font-semibold rounded-md bg-[#B31A1A] hover:bg-red-600 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="w-full py-3 text-sm font-bold rounded-md bg-[#FFB01F] hover:bg-amber-400 text-slate-950 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {status === 'approving' && '① Approving USDT…'}
           {status === 'creating'  && '② Creating offer…'}

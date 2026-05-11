@@ -8,7 +8,14 @@ const { startListener } = require('./services/web3Listener');
 const PORT = process.env.PORT || 3001;
 
 async function main() {
-  await connectDB();
+  // ── MongoDB: try to connect but NEVER crash the server if it fails ──────────
+  try {
+    await connectDB();
+  } catch (err) {
+    console.warn('\n⚠️  MongoDB unavailable:', err.message);
+    console.warn('⚠️  Server starting in OFFLINE mode.');
+    console.warn('⚠️  DB-dependent routes will return mock/empty data.\n');
+  }
 
   const server = http.createServer(app);
   const io = new Server(server, { cors: { origin: '*' } });
@@ -21,17 +28,28 @@ async function main() {
   });
 
   if (process.env.RPC_URL && process.env.CONTRACT_ADDRESS) {
-    const { ethers } = require('ethers');
-    const provider = new ethers.WebSocketProvider(process.env.RPC_URL);
-    startListener(provider, process.env.CONTRACT_ADDRESS, io).catch(console.error);
+    try {
+      const { ethers } = require('ethers');
+      const provider = new ethers.WebSocketProvider(process.env.RPC_URL);
+      provider.websocket.on('error', (err) =>
+        console.warn('Web3 WebSocket error (Hardhat not running?):', err.message)
+      );
+      startListener(provider, process.env.CONTRACT_ADDRESS, io).catch((err) =>
+        console.warn('Web3 listener error:', err.message)
+      );
+    } catch (err) {
+      console.warn('Web3 listener failed to start:', err.message);
+    }
   } else {
     console.warn('RPC_URL or CONTRACT_ADDRESS not set — Web3 listener disabled');
   }
 
-  server.listen(PORT, () => console.log(`Bettazoo backend listening on :${PORT}`));
+  server.listen(PORT, () =>
+    console.log(`\n🚀 Bettazoo backend listening on http://localhost:${PORT}\n`)
+  );
 }
 
 main().catch((err) => {
-  console.error('Startup error:', err);
+  console.error('Unrecoverable startup error:', err);
   process.exit(1);
 });

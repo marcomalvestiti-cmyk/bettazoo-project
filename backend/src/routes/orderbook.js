@@ -22,7 +22,9 @@ function buildSummary(orders) {
   }
   for (const key of Object.keys(summary)) {
     summary[key].totalLiquidityUsdt = +summary[key].totalLiquidityUsdt.toFixed(6);
-    summary[key].bestOdds = Math.max(...orders.filter(o => String(o.outcome) === key).map(o => o.oddsDecimal));
+    summary[key].bestOdds = Math.max(
+      ...orders.filter(o => String(o.outcome) === key).map(o => o.oddsDecimal)
+    );
   }
   return summary;
 }
@@ -34,18 +36,24 @@ router.get('/:eventId', async (req, res, next) => {
     const filter = { eventId, active: true };
     if (req.query.outcome !== undefined) filter.outcome = Number(req.query.outcome);
 
-    const raw = await Order.find(filter).sort({ odds: -1 }).lean();
+    let raw = [];
+    try {
+      raw = await Order.find(filter).sort({ odds: -1 }).lean();
+    } catch (dbErr) {
+      console.warn('[orderbook] DB unavailable, returning empty orderbook:', dbErr.message);
+      return res.json({ eventId, orders: [], summary: {}, _offline: true });
+    }
 
     const orders = raw.map(o => ({
-      offerId:              o.offerId,
-      placer:               o.placer,
-      eventId:              o.eventId,
-      outcome:              o.outcome,
-      odds:                 o.odds,
-      oddsDecimal:          o.oddsDecimal,
+      offerId:               o.offerId,
+      placer:                o.placer,
+      eventId:               o.eventId,
+      outcome:               o.outcome,
+      odds:                  o.odds,
+      oddsDecimal:           o.oddsDecimal,
       remainingLiabilityUsdt: (Number(o.remainingLiability) / 1_000_000).toFixed(6),
-      maxBettorStakeUsdt:   computeMaxBettorStake(o.remainingLiability, o.odds),
-      txHash:               o.txHash,
+      maxBettorStakeUsdt:    computeMaxBettorStake(o.remainingLiability, o.odds),
+      txHash:                o.txHash,
     }));
 
     res.json({ eventId, orders, summary: buildSummary(raw) });
