@@ -8,7 +8,6 @@ import ConnectWallet from './ConnectWallet'
 
 const NAV_LINKS = [
   { href: '/bet',         label: 'Bet' },
-  { href: '/faucet',      label: '🚰 Faucet' },
   { href: '/how-to-play', label: 'How to Play' },
   { href: '/rules',       label: 'Rules' },
 ]
@@ -63,7 +62,7 @@ export default function Navbar() {
           })}
         </nav>
 
-        {/* Right — Placer Area + Connect Wallet */}
+        {/* Right — Placer Area + Get Test Tokens + Connect Wallet */}
         <div className="hidden md:flex items-center gap-2 shrink-0">
           <Link
             href="/placer"
@@ -74,6 +73,16 @@ export default function Navbar() {
             }`}
           >
             ✦ Placer Area
+          </Link>
+          <Link
+            href="/faucet"
+            className={`px-3 py-1.5 text-sm font-semibold rounded-md border transition-colors whitespace-nowrap ${
+              pathname === '/faucet'
+                ? 'border-emerald-400 text-emerald-300 bg-emerald-500/15'
+                : 'border-emerald-500/50 text-emerald-400 hover:border-emerald-400 hover:bg-emerald-500/10'
+            }`}
+          >
+            💧 Get Test Tokens
           </Link>
           <ConnectWallet />
         </div>
@@ -114,6 +123,17 @@ export default function Navbar() {
               </Link>
             )
           })}
+          <Link
+            href="/faucet"
+            onClick={() => setOpen(false)}
+            className={`flex items-center px-3 py-3 rounded-md text-sm font-semibold border transition-colors ${
+              pathname === '/faucet'
+                ? 'border-emerald-400 text-emerald-300 bg-emerald-500/15'
+                : 'border-emerald-500/40 text-emerald-400 hover:border-emerald-400 hover:bg-emerald-500/10'
+            }`}
+          >
+            💧 Get Test Tokens
+          </Link>
           <Link
             href="/placer"
             onClick={() => setOpen(false)}
