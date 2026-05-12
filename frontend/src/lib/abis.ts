@@ -28,6 +28,16 @@ export const ESCROW_ABI = [
     stateMutability: 'nonpayable',
     type: 'function',
   },
+  {
+    inputs: [
+      { internalType: 'string', name: 'eventId',        type: 'string' },
+      { internalType: 'uint8',  name: 'winningOutcome', type: 'uint8'  },
+    ],
+    name: 'resolveEvent',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
 ] as const
 
 export const ERC20_ABI = [

@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { MOCK_EVENTS, OUTCOMES } from '@/lib/abis'
-import { fetchOracleEvents, postOracleResolve, type OracleEvent } from '@/lib/api'
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { ESCROW_ABI, MOCK_EVENTS } from '@/lib/abis'
+import ConnectWallet from '@/components/ConnectWallet'
 
-type ResolvingState = { eventId: string; outcome: number } | null
+const ESCROW_ADDRESS = (process.env.NEXT_PUBLIC_ESCROW_ADDRESS ?? '') as `0x${string}`
 
 const OUTCOME_LABELS: Record<number, string> = {
   0: 'Home Win',
@@ -13,9 +14,9 @@ const OUTCOME_LABELS: Record<number, string> = {
 }
 
 const OUTCOME_COLORS: Record<number, string> = {
-  0: 'bg-blue-600 hover:bg-blue-500',
-  1: 'bg-amber-500 hover:bg-amber-400 text-slate-950',
-  2: 'bg-rose-600 hover:bg-rose-500',
+  0: 'bg-blue-600 hover:bg-blue-500 disabled:bg-blue-900',
+  1: 'bg-amber-500 hover:bg-amber-400 text-slate-950 disabled:bg-amber-900',
+  2: 'bg-rose-600 hover:bg-rose-500 disabled:bg-rose-900',
 }
 
 const OUTCOME_BADGE: Record<number, string> = {
@@ -26,62 +27,130 @@ const OUTCOME_BADGE: Record<number, string> = {
 
 function formatTime(iso: string) {
   const d = new Date(iso)
-  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) +
-    ' ' + d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+  return (
+    d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) +
+    ' ' +
+    d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+  )
+}
+
+function shortError(msg: string): string {
+  // Surface the revert reason if present, otherwise first line
+  const revert = msg.match(/reverted with reason string '(.+?)'/)?.[1]
+  if (revert) return revert
+  return msg.split('\n')[0].slice(0, 120)
 }
 
 export default function AdminResolverPage() {
-  const [resolvedMap, setResolvedMap]   = useState<Record<string, number>>({})
-  const [resolving,   setResolving]     = useState<ResolvingState>(null)
-  const [feedback,    setFeedback]      = useState<Record<string, { ok: boolean; msg: string }>>({})
-  const [loading,     setLoading]       = useState(true)
+  const { address, isConnected } = useAccount()
 
+  const {
+    writeContract,
+    data: txHash,
+    isPending: isSigningTx,
+    error: writeError,
+    reset: resetWrite,
+  } = useWriteContract()
+
+  const { isLoading: isConfirming, isSuccess: isConfirmed } =
+    useWaitForTransactionReceipt({ hash: txHash })
+
+  const [resolvedMap, setResolvedMap] = useState<Record<string, number>>({})
+  const [pendingEvent, setPendingEvent] = useState<{ eventId: string; outcome: number } | null>(null)
+
+  // Mark resolved once the tx is confirmed on-chain
   useEffect(() => {
-    fetchOracleEvents()
-      .then((events: OracleEvent[]) => {
-        const map: Record<string, number> = {}
-        events.forEach(e => {
-          if (e.resolved && e.winningOutcome !== undefined) map[e.eventId] = e.winningOutcome
-        })
-        setResolvedMap(map)
-      })
-      .finally(() => setLoading(false))
-  }, [])
-
-  async function resolve(eventId: string, outcome: number) {
-    setResolving({ eventId, outcome })
-    setFeedback(f => { const n = { ...f }; delete n[eventId]; return n })
-    try {
-      await postOracleResolve({ eventId, winningOutcome: outcome })
-      setResolvedMap(m => ({ ...m, [eventId]: outcome }))
-      setFeedback(f => ({ ...f, [eventId]: { ok: true, msg: OUTCOME_LABELS[outcome] } }))
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unknown error'
-      setFeedback(f => ({ ...f, [eventId]: { ok: false, msg } }))
-    } finally {
-      setResolving(null)
+    if (isConfirmed && pendingEvent) {
+      setResolvedMap(m => ({ ...m, [pendingEvent.eventId]: pendingEvent.outcome }))
+      setPendingEvent(null)
     }
+  }, [isConfirmed]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Clear pending event if the wallet write errored (user rejected, revert, etc.)
+  useEffect(() => {
+    if (writeError) setPendingEvent(null)
+  }, [writeError])
+
+  function resolve(eventId: string, outcome: number) {
+    resetWrite()
+    setPendingEvent({ eventId, outcome })
+    writeContract({
+      address: ESCROW_ADDRESS,
+      abi: ESCROW_ABI,
+      functionName: 'resolveEvent',
+      args: [eventId, outcome],
+    })
   }
 
   const pending  = MOCK_EVENTS.filter(e => !(e.eventId in resolvedMap))
-  const resolved = MOCK_EVENTS.filter(e => e.eventId in resolvedMap)
+  const resolved = MOCK_EVENTS.filter(e =>   e.eventId in resolvedMap)
+  const isBusy   = isSigningTx || isConfirming
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
+    <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
 
       {/* Header */}
       <div className="space-y-1">
         <p className="text-xs font-bold text-[#FFB01F] uppercase tracking-widest">Admin Panel</p>
         <h1 className="text-3xl font-bold text-white">Oracle Resolver</h1>
-        <p className="text-sm text-slate-400">Manually settle events for the Alpha Test. Resolution is stored in MongoDB; on-chain settlement triggers automatically when a contract is deployed.</p>
+        <p className="text-sm text-slate-400">
+          Calls{' '}
+          <code className="text-emerald-400 bg-slate-800 px-1.5 py-0.5 rounded text-xs font-mono">
+            resolveEvent()
+          </code>{' '}
+          directly on-chain from your connected wallet.
+          Your wallet must be the <span className="text-white font-medium">Oracle address</span> set in the contract.
+        </p>
       </div>
+
+      {/* Wallet status card */}
+      <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Connected Wallet</p>
+          {isConnected
+            ? <p className="text-sm font-mono text-emerald-400 truncate">{address}</p>
+            : <p className="text-sm text-slate-400">Connect your oracle wallet to resolve events.</p>
+          }
+        </div>
+        <div className="shrink-0">
+          <ConnectWallet />
+        </div>
+      </div>
+
+      {/* TX status banner */}
+      {txHash && (
+        <div className={`rounded-lg border px-4 py-3 text-sm flex items-center justify-between gap-4 ${
+          isConfirming
+            ? 'border-amber-800 bg-amber-900/20 text-amber-300'
+            : 'border-emerald-800 bg-emerald-900/20 text-emerald-300'
+        }`}>
+          <span>
+            {isConfirming ? '⏳ Waiting for on-chain confirmation…' : '✓ Transaction confirmed!'}
+          </span>
+          <a
+            href={`https://sepolia.arbiscan.io/tx/${txHash}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs underline opacity-75 hover:opacity-100 shrink-0"
+          >
+            View on Arbiscan ↗
+          </a>
+        </div>
+      )}
+
+      {/* Write error banner */}
+      {writeError && (
+        <div className="rounded-lg border border-red-800 bg-red-900/20 text-red-300 px-4 py-3 text-sm">
+          ✗ {shortError(writeError.message)}
+        </div>
+      )}
 
       {/* Summary bar */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'Total Events',    value: MOCK_EVENTS.length,  color: 'text-white' },
-          { label: 'Pending',         value: pending.length,      color: 'text-amber-400' },
-          { label: 'Resolved',        value: resolved.length,     color: 'text-emerald-400' },
+          { label: 'Total Events', value: MOCK_EVENTS.length, color: 'text-white'       },
+          { label: 'Pending',      value: pending.length,     color: 'text-amber-400'   },
+          { label: 'Resolved',     value: resolved.length,    color: 'text-emerald-400' },
         ].map(s => (
           <div key={s.label} className="bg-slate-900 border border-slate-800 rounded-lg p-3 text-center">
             <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
@@ -96,21 +165,24 @@ export default function AdminResolverPage() {
           Pending — awaiting resolution
         </h2>
 
-        {loading && (
-          <p className="text-sm text-slate-500 py-4">Loading resolution status…</p>
-        )}
-
-        {!loading && pending.length === 0 && (
+        {pending.length === 0 && (
           <p className="text-sm text-emerald-400 py-4">All events have been resolved.</p>
         )}
 
         <div className="space-y-2">
           {pending.map(ev => {
-            const isResolving = resolving?.eventId === ev.eventId
-            const fb = feedback[ev.eventId]
+            const isThisResolving =
+              pendingEvent?.eventId === ev.eventId && isBusy
+            const isOtherResolving =
+              pendingEvent?.eventId !== ev.eventId && isBusy
 
             return (
-              <div key={ev.eventId} className="bg-slate-900 border border-slate-800 rounded-lg p-4">
+              <div
+                key={ev.eventId}
+                className={`bg-slate-900 border rounded-lg p-4 transition-opacity ${
+                  isOtherResolving ? 'border-slate-800 opacity-40' : 'border-slate-800'
+                }`}
+              >
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3">
 
                   {/* Event info */}
@@ -126,36 +198,42 @@ export default function AdminResolverPage() {
                     </div>
                   </div>
 
-                  {/* Teams + resolve buttons */}
+                  {/* Resolve buttons */}
                   <div className="flex flex-wrap items-center gap-2 shrink-0">
                     {ev.teams.map((team, idx) => {
                       const outcome = idx === 0 ? 0 : 2
+                      const isThisBtn = isThisResolving && pendingEvent?.outcome === outcome
                       return (
                         <button
                           key={team}
-                          disabled={isResolving}
+                          disabled={!isConnected || isBusy}
                           onClick={() => resolve(ev.eventId, outcome)}
                           className={`px-3 py-1.5 rounded text-xs font-bold text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${OUTCOME_COLORS[outcome]}`}
                         >
-                          {isResolving && resolving?.outcome === outcome ? '…' : `Win ${team}`}
+                          {isThisBtn
+                            ? (isSigningTx ? 'Sign in wallet…' : '⏳ Confirming…')
+                            : `Win: ${team}`}
                         </button>
                       )
                     })}
-                    <button
-                      disabled={isResolving}
-                      onClick={() => resolve(ev.eventId, 1)}
-                      className={`px-3 py-1.5 rounded text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${OUTCOME_COLORS[1]}`}
-                    >
-                      {isResolving && resolving?.outcome === 1 ? '…' : 'Draw'}
-                    </button>
+                    {/* Draw only for sports with 3 outcomes (not tennis) */}
+                    {ev.teams.length === 2 && ev.sport !== 'tennis' && (
+                      <button
+                        disabled={!isConnected || isBusy}
+                        onClick={() => resolve(ev.eventId, 1)}
+                        className={`px-3 py-1.5 rounded text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${OUTCOME_COLORS[1]}`}
+                      >
+                        {isThisResolving && pendingEvent?.outcome === 1
+                          ? (isSigningTx ? 'Sign in wallet…' : '⏳ Confirming…')
+                          : 'Draw'}
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                {/* Inline feedback */}
-                {fb && (
-                  <p className={`text-xs mt-2 ${fb.ok ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {fb.ok ? `✓ Resolved: ${fb.msg}` : `✗ ${fb.msg}`}
-                  </p>
+                {/* Not connected hint */}
+                {!isConnected && (
+                  <p className="text-xs text-slate-500 mt-2">Connect wallet to resolve.</p>
                 )}
               </div>
             )
@@ -173,7 +251,10 @@ export default function AdminResolverPage() {
             {resolved.map(ev => {
               const outcome = resolvedMap[ev.eventId]
               return (
-                <div key={ev.eventId} className="bg-slate-950 border border-slate-800/50 rounded-lg px-4 py-3 flex items-center gap-3 opacity-70">
+                <div
+                  key={ev.eventId}
+                  className="bg-slate-950 border border-slate-800/50 rounded-lg px-4 py-3 flex items-center gap-3 opacity-70"
+                >
                   <span className="text-lg shrink-0">{ev.icon}</span>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-slate-300 font-medium">{ev.name}</p>
