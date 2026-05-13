@@ -350,9 +350,15 @@ export default function CreateOfferForm({ eventId, eventName, sport, teams }: Pr
           disabled={status !== 'idle' && status !== 'error'}
           className="w-full py-3 text-sm font-bold rounded-md bg-[#FFB01F] hover:bg-amber-400 text-slate-950 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          {status === 'approving' && '① Approving USDT…'}
-          {status === 'creating'  && '② Creating offer…'}
-          {(status === 'idle' || status === 'error') && 'Create Offer'}
+          {(status === 'approving' || status === 'creating') ? (
+            <span className="flex items-center justify-center gap-2">
+              <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+              </svg>
+              {status === 'approving' ? '① Approving USDT…' : '② Creating offer…'}
+            </span>
+          ) : 'Create Offer'}
         </button>
       )}
     </div>

@@ -41,7 +41,7 @@ export default function Home() {
           href="/bet"
           className="text-sm font-semibold text-slate-400 hover:text-red-500 transition-colors"
         >
-          View all markets →
+          View All Bets →
         </Link>
       </div>
 

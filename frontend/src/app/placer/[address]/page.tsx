@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { use, useState, useEffect } from 'react'
 import { useAccount } from 'wagmi'
 import { MOCK_EVENTS, OUTCOMES } from '@/lib/abis'
@@ -101,6 +102,16 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
             />
           </div>
 
+          {/* Back navigation */}
+          <div className="px-4 sm:px-6 py-2.5 border-b border-slate-800 flex items-center">
+            <Link
+              href="/placer"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-400 hover:text-white transition-colors"
+            >
+              ← Back to Control Station
+            </Link>
+          </div>
+
           {/* Stream title bar */}
           <div className="px-4 sm:px-6 pt-4 pb-3 flex items-start justify-between gap-4">
             <div className="min-w-0">
@@ -182,6 +193,66 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* My Offers on This Event */}
+          <div className="px-4 sm:px-6 py-5 space-y-3 border-t border-slate-800">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h2 className="text-base font-semibold text-white">Placer&apos;s Offers</h2>
+              <span className="text-[10px] font-semibold uppercase tracking-widest px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                {selectedEvent.name}
+              </span>
+            </div>
+
+            {loadingOffers ? (
+              <div className="flex items-center gap-2 py-6 text-slate-500 text-sm">
+                <svg className="w-4 h-4 animate-spin shrink-0" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                </svg>
+                Loading…
+              </div>
+            ) : eventOffers.length === 0 ? (
+              <div className="rounded-lg bg-slate-900/50 border border-slate-800 px-6 py-10 text-center space-y-3">
+                <div className="text-3xl select-none">📋</div>
+                <p className="text-sm font-semibold text-slate-400">You haven&apos;t placed any bets yet.</p>
+                <p className="text-xs text-slate-600">This placer hasn&apos;t posted any offers for {selectedEvent.name} yet.</p>
+                <Link
+                  href="/bet"
+                  className="inline-block mt-1 px-4 py-2 text-xs font-semibold rounded-md bg-[#B31A1A]/10 border border-[#B31A1A]/30 text-red-400 hover:bg-[#B31A1A]/20 transition-colors"
+                >
+                  View All Bets →
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {eventOffers.map((o) => {
+                  const c = OUTCOME_CARD[o.outcome] ?? OUTCOME_CARD[0]
+                  return (
+                    <div
+                      key={o.offerId}
+                      className="flex items-center justify-between rounded-lg bg-slate-900/60 border border-slate-800 px-4 py-3"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${c.dot}`} />
+                        <div className="min-w-0 space-y-0.5">
+                          <p className="text-xs font-semibold text-slate-200">
+                            {OUTCOMES[o.outcome] ?? `Outcome ${o.outcome}`}
+                          </p>
+                          <p className="text-[11px] text-slate-600 font-mono">#{o.offerId}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="text-sm font-bold font-mono text-white">{o.oddsDecimal.toFixed(2)}x</span>
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded border bg-amber-500/10 text-amber-400 border-amber-500/25">
+                          Active
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           {/* Exclusive Odds */}
