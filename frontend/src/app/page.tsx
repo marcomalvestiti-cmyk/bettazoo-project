@@ -32,14 +32,14 @@ export default function Home() {
       </div>
 
       {/* Section header */}
-      <div className="flex items-end justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div className="space-y-1">
           <p className="text-sm font-semibold text-red-500 uppercase tracking-widest">Markets</p>
           <h2 className="text-3xl font-bold text-white">Featured Bets</h2>
         </div>
         <Link
           href="/bet"
-          className="text-sm font-semibold text-slate-400 hover:text-red-500 transition-colors"
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3 rounded-lg bg-[#B31A1A] hover:bg-red-600 active:scale-95 text-white font-bold text-sm shadow-lg hover:shadow-red-900/40 hover:scale-[1.02] transition-all"
         >
           View All Bets →
         </Link>

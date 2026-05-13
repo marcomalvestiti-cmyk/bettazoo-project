@@ -103,10 +103,10 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
           </div>
 
           {/* Back navigation */}
-          <div className="px-4 sm:px-6 py-2.5 border-b border-slate-800 flex items-center">
+          <div className="px-4 sm:px-6 py-3 border-b border-slate-800">
             <Link
               href="/placer"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-400 hover:text-white transition-colors"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-700 hover:border-slate-500 text-white font-semibold text-sm shadow-sm hover:shadow-md transition-all"
             >
               ← Back to Control Station
             </Link>
