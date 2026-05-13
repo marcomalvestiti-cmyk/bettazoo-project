@@ -30,18 +30,29 @@ async function main() {
   if (process.env.RPC_URL && process.env.CONTRACT_ADDRESS) {
     try {
       const { ethers } = require('ethers');
-      const provider = new ethers.WebSocketProvider(process.env.RPC_URL);
-      provider.websocket.on('error', (err) =>
-        console.warn('Web3 WebSocket error (Hardhat not running?):', err.message)
-      );
+      const url = process.env.RPC_URL;
+      let provider;
+      if (url.startsWith('wss://') || url.startsWith('ws://')) {
+        provider = new ethers.WebSocketProvider(url);
+        provider.websocket?.on('error', (err) =>
+          console.warn('[Web3] WebSocket error:', err.message)
+        );
+        console.log('[Web3] Using WebSocketProvider');
+      } else {
+        provider = new ethers.JsonRpcProvider(url);
+        console.log('[Web3] Using JsonRpcProvider (HTTP polling)');
+      }
+      // Store contract address on app so /api/admin/resync can reach it
+      app.set('rpcUrl', url);
+      app.set('contractAddress', process.env.CONTRACT_ADDRESS);
       startListener(provider, process.env.CONTRACT_ADDRESS, io).catch((err) =>
-        console.warn('Web3 listener error:', err.message)
+        console.warn('[Web3] Listener error:', err.message)
       );
     } catch (err) {
-      console.warn('Web3 listener failed to start:', err.message);
+      console.warn('[Web3] Listener failed to start:', err.message);
     }
   } else {
-    console.warn('RPC_URL or CONTRACT_ADDRESS not set — Web3 listener disabled');
+    console.warn('[Web3] RPC_URL or CONTRACT_ADDRESS not set — listener disabled');
   }
 
   server.listen(PORT, () =>

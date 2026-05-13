@@ -44,6 +44,8 @@ router.get('/:eventId', async (req, res, next) => {
       return res.json({ eventId, orders: [], summary: {}, _offline: true });
     }
 
+    console.log(`[orderbook] eventId=${eventId} filter=${JSON.stringify(filter)} → ${raw.length} orders`);
+
     const orders = raw.map(o => ({
       offerId:               o.offerId,
       placer:                o.placer,
