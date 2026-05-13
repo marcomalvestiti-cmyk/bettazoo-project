@@ -5,6 +5,7 @@ import { useAccount, usePublicClient, useReadContract, useWriteContract } from '
 import { parseUnits } from 'viem'
 import { waitForTransactionReceipt } from 'viem/actions'
 import { ESCROW_ABI, ERC20_ABI } from '@/lib/abis'
+import { withGasBuffer } from '@/lib/gasUtils'
 import type { Offer } from './OrderBook'
 
 type Props = {
@@ -40,12 +41,14 @@ export default function BetForm({ offers, stakeUsdt, onClose }: Props) {
     setErrorMsg('')
     setStatus(needsApprove ? 'approving' : 'betting')
     try {
+      const gas = await withGasBuffer(publicClient)
       if (needsApprove) {
         const approveTxHash = await writeContractAsync({
           address: USDT_ADDRESS,
           abi: ERC20_ABI,
           functionName: 'approve',
           args: [ESCROW_ADDRESS, totalStakeRaw],
+          ...gas,
         })
         await waitForTransactionReceipt(publicClient!, { hash: approveTxHash })
         setStatus('betting')
@@ -55,6 +58,7 @@ export default function BetForm({ offers, stakeUsdt, onClose }: Props) {
         abi: ESCROW_ABI,
         functionName: 'acceptOffers',
         args: [offers.map((o) => BigInt(o.offerId)), totalStakeRaw],
+        ...gas,
       })
       setStatus('done')
     } catch (err: unknown) {

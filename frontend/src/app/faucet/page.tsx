@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { useAccount, usePublicClient, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { formatUnits } from 'viem'
 import { MOCK_USDT_ABI } from '@/lib/abis'
+import { withGasBuffer } from '@/lib/gasUtils'
 
 const CONTRACT = (process.env.NEXT_PUBLIC_MOCK_USDT_ADDRESS ?? '') as `0x${string}`
 const FAUCET_AMOUNT = 1_000
@@ -17,6 +18,7 @@ function formatCooldown(secs: number): string {
 
 export default function FaucetPage() {
   const { address, isConnected } = useAccount()
+  const publicClient = usePublicClient()
   const [cooldownDisplay, setCooldownDisplay] = useState('')
 
   const enabled = isConnected && !!address && !!CONTRACT
@@ -56,12 +58,14 @@ export default function FaucetPage() {
     }
   }, [isSuccess, refetchBalance, refetchStatus])
 
-  function handleClaim() {
+  async function handleClaim() {
     reset()
+    const gas = await withGasBuffer(publicClient)
     writeContract({
       address: CONTRACT,
       abi:     MOCK_USDT_ABI,
       functionName: 'faucet',
+      ...gas,
     })
   }
 

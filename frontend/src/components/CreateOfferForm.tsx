@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useWriteContract } from 'wagmi'
+import { usePublicClient, useWriteContract } from 'wagmi'
 import { parseUnits } from 'viem'
+import { waitForTransactionReceipt } from 'viem/actions'
 import { ESCROW_ABI, ERC20_ABI, OUTCOMES } from '@/lib/abis'
 import { fetchSuggestOdds, fetchOrderBook } from '@/lib/api'
+import { withGasBuffer } from '@/lib/gasUtils'
 
 type Props = {
   eventId:    string
@@ -29,6 +31,7 @@ type StrategyId = typeof STRATEGIES[number]['id']
 const BOOKIE_MARGIN = 0.08 // mirrored from backend for local recalc
 
 export default function CreateOfferForm({ eventId, eventName, sport, teams }: Props) {
+  const publicClient       = usePublicClient()
   const { writeContractAsync } = useWriteContract()
 
   const [outcome,       setOutcome]       = useState(0)
@@ -112,14 +115,20 @@ export default function CreateOfferForm({ eventId, eventName, sport, teams }: Pr
     try {
       const oddsRaw      = BigInt(Math.round(oddsNum * 10000))
       const liabilityRaw = parseUnits(liabilityNum.toFixed(6), 6)
-      await writeContractAsync({
+      const gas          = await withGasBuffer(publicClient)
+      const approveTxHash = await writeContractAsync({
         address: USDT_ADDRESS, abi: ERC20_ABI,
         functionName: 'approve', args: [ESCROW_ADDRESS, liabilityRaw],
+        ...gas,
       })
+      // Wait for approve to be mined — createOffer uses safeTransferFrom
+      // which would revert if allowance is still 0 on-chain.
+      await waitForTransactionReceipt(publicClient!, { hash: approveTxHash })
       setStatus('creating')
       await writeContractAsync({
         address: ESCROW_ADDRESS, abi: ESCROW_ABI,
         functionName: 'createOffer', args: [eventId, outcome, oddsRaw, liabilityRaw],
+        ...gas,
       })
       setStatus('done')
       setOddsDecimal('')

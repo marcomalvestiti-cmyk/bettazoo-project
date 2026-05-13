@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { useAccount, usePublicClient, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { ESCROW_ABI, MOCK_EVENTS } from '@/lib/abis'
 import ConnectWallet from '@/components/ConnectWallet'
+import { withGasBuffer } from '@/lib/gasUtils'
 
 const ESCROW_ADDRESS = (process.env.NEXT_PUBLIC_ESCROW_ADDRESS ?? '') as `0x${string}`
 
@@ -43,6 +44,7 @@ function shortError(msg: string): string {
 
 export default function AdminResolverPage() {
   const { address, isConnected } = useAccount()
+  const publicClient = usePublicClient()
 
   const {
     writeContract,
@@ -71,14 +73,16 @@ export default function AdminResolverPage() {
     if (writeError) setPendingEvent(null)
   }, [writeError])
 
-  function resolve(eventId: string, outcome: number) {
+  async function resolve(eventId: string, outcome: number) {
     resetWrite()
     setPendingEvent({ eventId, outcome })
+    const gas = await withGasBuffer(publicClient)
     writeContract({
       address: ESCROW_ADDRESS,
       abi: ESCROW_ABI,
       functionName: 'resolveEvent',
       args: [eventId, outcome],
+      ...gas,
     })
   }
 

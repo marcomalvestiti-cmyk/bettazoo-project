@@ -5,6 +5,7 @@ import { useAccount, usePublicClient, useReadContract, useWriteContract } from '
 import { parseUnits } from 'viem'
 import { waitForTransactionReceipt } from 'viem/actions'
 import { ESCROW_ABI, ERC20_ABI, OUTCOMES } from '@/lib/abis'
+import { withGasBuffer } from '@/lib/gasUtils'
 import type { Offer } from './OrderBook'
 
 type Props = {
@@ -80,16 +81,15 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
     setErrorMsg('')
     setStatus(needsApprove ? 'approving' : 'betting')
     try {
+      const gas = await withGasBuffer(publicClient)
       if (needsApprove) {
         const approveTxHash = await writeContractAsync({
           address: USDT_ADDRESS,
           abi: ERC20_ABI,
           functionName: 'approve',
           args: [ESCROW_ADDRESS, totalStakeRaw],
+          ...gas,
         })
-        // Wait for the approve to be mined before calling acceptOffers.
-        // Without this, acceptOffers would revert (allowance still 0 on-chain)
-        // and MetaMask would show "Insufficient funds for network fees".
         await waitForTransactionReceipt(publicClient!, { hash: approveTxHash })
         setStatus('betting')
       }
@@ -98,6 +98,7 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
         abi: ESCROW_ABI,
         functionName: 'acceptOffers',
         args: [matchedOffers.map((o) => BigInt(o.offerId)), totalStakeRaw],
+        ...gas,
       })
       setStatus('done')
     } catch (err: unknown) {

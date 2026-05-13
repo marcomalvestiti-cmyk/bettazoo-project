@@ -2,9 +2,10 @@
 
 import Link from 'next/link'
 import { useEffect, useState, useCallback } from 'react'
-import { useAccount, useWriteContract } from 'wagmi'
+import { useAccount, usePublicClient, useWriteContract } from 'wagmi'
 import { fetchOrderBook } from '@/lib/api'
 import { ESCROW_ABI, MOCK_EVENTS, OUTCOMES } from '@/lib/abis'
+import { withGasBuffer } from '@/lib/gasUtils'
 
 export type Offer = {
   offerId:               number
@@ -25,6 +26,7 @@ interface Props {
 
 export default function MyOffers({ offers: externalOffers, onRefresh }: Props) {
   const { address } = useAccount()
+  const publicClient = usePublicClient()
   const { writeContractAsync } = useWriteContract()
   const [internalOffers, setInternalOffers] = useState<Offer[]>([])
   const [loading,     setLoading]     = useState(!externalOffers)
@@ -59,11 +61,13 @@ export default function MyOffers({ offers: externalOffers, onRefresh }: Props) {
     setCancelling(offerId)
     setError('')
     try {
+      const gas = await withGasBuffer(publicClient)
       await writeContractAsync({
         address: ESCROW_ADDRESS,
         abi: ESCROW_ABI,
         functionName: 'cancelOffer',
         args: [BigInt(offerId)],
+        ...gas,
       })
       if (onRefresh) onRefresh()
       else await loadOffers()
