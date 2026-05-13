@@ -9,8 +9,10 @@ const PORT = process.env.PORT || 3001;
 
 async function main() {
   // ── MongoDB: try to connect but NEVER crash the server if it fails ──────────
+  let dbConnected = false;
   try {
     await connectDB();
+    dbConnected = true;
   } catch (err) {
     console.warn('\n⚠️  MongoDB unavailable:', err.message);
     console.warn('⚠️  Server starting in OFFLINE mode.');
@@ -45,9 +47,13 @@ async function main() {
       // Store contract address on app so /api/admin/resync can reach it
       app.set('rpcUrl', url);
       app.set('contractAddress', process.env.CONTRACT_ADDRESS);
-      startListener(provider, process.env.CONTRACT_ADDRESS, io).catch((err) =>
-        console.warn('[Web3] Listener error:', err.message)
-      );
+      if (!dbConnected) {
+        console.warn('[Web3] Skipping listener — MongoDB not connected (historical sync would fail)');
+      } else {
+        startListener(provider, process.env.CONTRACT_ADDRESS, io).catch((err) =>
+          console.warn('[Web3] Listener error:', err.message)
+        );
+      }
     } catch (err) {
       console.warn('[Web3] Listener failed to start:', err.message);
     }
