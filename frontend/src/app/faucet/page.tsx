@@ -66,8 +66,12 @@ export default function FaucetPage() {
   }
 
   const formattedBalance = balance !== undefined
-    ? parseFloat(formatUnits(balance as bigint, 6)).toLocaleString('en-US', { maximumFractionDigits: 2 })
+    ? parseFloat(formatUnits(balance as bigint, 6)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : '—'
+
+  // 1 000 BTZ-USD at 6 decimals — enough to test the platform comfortably
+  const SUFFICIENT_THRESHOLD = BigInt(1_000_000_000)
+  const hasSufficientBalance = balance !== undefined && (balance as bigint) >= SUFFICIENT_THRESHOLD
 
   const notDeployed = !CONTRACT || CONTRACT === '0x0000000000000000000000000000000000000000'
 
@@ -133,22 +137,32 @@ export default function FaucetPage() {
               </div>
             )}
 
-            {/* Claim button */}
-            <button
-              onClick={handleClaim}
-              disabled={!canClaim || isPending || isConfirming}
-              className="w-full py-3 rounded-xl font-bold text-slate-950 bg-[#FFB01F] hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-base"
-            >
-              {isPending     ? 'Confirm in wallet…'  :
-               isConfirming  ? 'Minting in progress…' :
-               !canClaim && waitSeconds > 0 ? `Available in ${cooldownDisplay}` :
-               `Claim ${FAUCET_AMOUNT.toLocaleString()} BTZ-USD`}
-            </button>
-
-            {!canClaim && waitSeconds > 0 && (
-              <p className="text-center text-xs text-slate-600">
-                Next claim available in {cooldownDisplay}
-              </p>
+            {/* Claim button — hidden when wallet already has enough tokens */}
+            {hasSufficientBalance ? (
+              <div className="w-full rounded-xl bg-emerald-900/20 border border-emerald-700/40 px-4 py-4 text-center space-y-1">
+                <p className="text-emerald-400 font-bold text-sm">✓ You already have enough to test Bettazoo</p>
+                <p className="text-xs text-slate-500">
+                  Your balance ({formattedBalance} BTZ-USD) is sufficient. Go place a bet!
+                </p>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={handleClaim}
+                  disabled={!canClaim || isPending || isConfirming}
+                  className="w-full py-3 rounded-xl font-bold text-slate-950 bg-[#FFB01F] hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-base"
+                >
+                  {isPending     ? 'Confirm in wallet…'  :
+                   isConfirming  ? 'Minting in progress…' :
+                   !canClaim && waitSeconds > 0 ? `Available in ${cooldownDisplay}` :
+                   `Claim ${FAUCET_AMOUNT.toLocaleString()} BTZ-USD`}
+                </button>
+                {!canClaim && waitSeconds > 0 && (
+                  <p className="text-center text-xs text-slate-600">
+                    Next claim available in {cooldownDisplay}
+                  </p>
+                )}
+              </>
             )}
           </>
         )}

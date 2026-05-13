@@ -70,7 +70,7 @@ export default function PlacerStatsBar({ address, offers, pnlSeed }: Props) {
   const pnlStr = pnlPositive ? `+$${pnl.toFixed(2)}` : `-$${Math.abs(pnl).toFixed(2)}`
 
   const liquidityStr = rawBalance !== undefined
-    ? `$${parseFloat(formatUnits(rawBalance as bigint, 6)).toFixed(2)}`
+    ? `$${parseFloat(formatUnits(rawBalance as bigint, 6)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     : '—'
 
   return (
