@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { useAccount, useWriteContract } from 'wagmi'
+import { useAccount, usePublicClient, useReadContract, useWriteContract } from 'wagmi'
 import { parseUnits } from 'viem'
+import { waitForTransactionReceipt } from 'viem/actions'
 import { ESCROW_ABI, ERC20_ABI } from '@/lib/abis'
 import type { Offer } from './OrderBook'
 
@@ -16,8 +17,16 @@ const ESCROW_ADDRESS = (process.env.NEXT_PUBLIC_ESCROW_ADDRESS ?? '0x0') as `0x$
 const USDT_ADDRESS = (process.env.NEXT_PUBLIC_USDT_ADDRESS ?? '0x0') as `0x${string}`
 
 export default function BetForm({ offers, stakeUsdt, onClose }: Props) {
-  const { address } = useAccount()
+  const { address }    = useAccount()
+  const publicClient   = usePublicClient()
   const { writeContractAsync } = useWriteContract()
+  const { data: currentAllowance } = useReadContract({
+    address: USDT_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: 'allowance',
+    args: [address!, ESCROW_ADDRESS],
+    query: { enabled: !!address },
+  })
   const [status, setStatus] = useState<'idle' | 'approving' | 'betting' | 'done' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
 
@@ -27,16 +36,20 @@ export default function BetForm({ offers, stakeUsdt, onClose }: Props) {
 
   async function handleBet() {
     if (!address) return
-    setStatus('approving')
+    const needsApprove = ((currentAllowance as bigint | undefined) ?? BigInt(0)) < totalStakeRaw
     setErrorMsg('')
+    setStatus(needsApprove ? 'approving' : 'betting')
     try {
-      await writeContractAsync({
-        address: USDT_ADDRESS,
-        abi: ERC20_ABI,
-        functionName: 'approve',
-        args: [ESCROW_ADDRESS, totalStakeRaw],
-      })
-      setStatus('betting')
+      if (needsApprove) {
+        const approveTxHash = await writeContractAsync({
+          address: USDT_ADDRESS,
+          abi: ERC20_ABI,
+          functionName: 'approve',
+          args: [ESCROW_ADDRESS, totalStakeRaw],
+        })
+        await waitForTransactionReceipt(publicClient!, { hash: approveTxHash })
+        setStatus('betting')
+      }
       await writeContractAsync({
         address: ESCROW_ADDRESS,
         abi: ESCROW_ABI,

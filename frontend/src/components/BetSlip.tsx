@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAccount, useWriteContract } from 'wagmi'
+import { useAccount, usePublicClient, useReadContract, useWriteContract } from 'wagmi'
 import { parseUnits } from 'viem'
+import { waitForTransactionReceipt } from 'viem/actions'
 import { ESCROW_ABI, ERC20_ABI, OUTCOMES } from '@/lib/abis'
 import type { Offer } from './OrderBook'
 
@@ -40,8 +41,16 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
   const [stake, setStake]       = useState('')
   const [status, setStatus]     = useState<'idle' | 'approving' | 'betting' | 'done' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
-  const { address }             = useAccount()
-  const { writeContractAsync }  = useWriteContract()
+  const { address }            = useAccount()
+  const publicClient           = usePublicClient()
+  const { writeContractAsync } = useWriteContract()
+  const { data: currentAllowance } = useReadContract({
+    address: USDT_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: 'allowance',
+    args: [address!, ESCROW_ADDRESS],
+    query: { enabled: !!address },
+  })
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setVisible(true))
@@ -66,17 +75,24 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
 
   async function handleConfirm() {
     if (!address || !canBet) return
-    const totalStakeRaw = parseUnits(stakeNum.toFixed(6), 6)
-    setStatus('approving')
+    const totalStakeRaw  = parseUnits(stakeNum.toFixed(6), 6)
+    const needsApprove   = ((currentAllowance as bigint | undefined) ?? BigInt(0)) < totalStakeRaw
     setErrorMsg('')
+    setStatus(needsApprove ? 'approving' : 'betting')
     try {
-      await writeContractAsync({
-        address: USDT_ADDRESS,
-        abi: ERC20_ABI,
-        functionName: 'approve',
-        args: [ESCROW_ADDRESS, totalStakeRaw],
-      })
-      setStatus('betting')
+      if (needsApprove) {
+        const approveTxHash = await writeContractAsync({
+          address: USDT_ADDRESS,
+          abi: ERC20_ABI,
+          functionName: 'approve',
+          args: [ESCROW_ADDRESS, totalStakeRaw],
+        })
+        // Wait for the approve to be mined before calling acceptOffers.
+        // Without this, acceptOffers would revert (allowance still 0 on-chain)
+        // and MetaMask would show "Insufficient funds for network fees".
+        await waitForTransactionReceipt(publicClient!, { hash: approveTxHash })
+        setStatus('betting')
+      }
       await writeContractAsync({
         address: ESCROW_ADDRESS,
         abi: ESCROW_ABI,
