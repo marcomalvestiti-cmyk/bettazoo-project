@@ -63,17 +63,23 @@ const OUTCOME_STYLE: Record<number, {
 export default function OrderBook({ eventId, onBet }: Props) {
   const [data, setData]               = useState<{ orders: Offer[]; summary: Summary } | null>(null)
   const [loading, setLoading]         = useState(true)
+  const [error, setError]             = useState<string | null>(null)
   const [selectedOutcome, setSelectedOutcome] = useState<number | undefined>()
 
   useEffect(() => {
     let cancelled = false
     async function load() {
       setLoading(true)
+      setError(null)
       try {
         const result = await fetchOrderBook(eventId)
         if (!cancelled) setData(result)
-      } catch {
-        if (!cancelled) setData(null)
+      } catch (err) {
+        if (!cancelled) {
+          setData(null)
+          setError(err instanceof Error ? err.message : 'Failed to load order book')
+          console.error('[OrderBook] fetch failed:', err)
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -198,6 +204,25 @@ export default function OrderBook({ eventId, onBet }: Props) {
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
           </svg>
           Loading order book…
+        </div>
+      ) : error ? (
+        <div className="flex flex-col items-center justify-center py-16 gap-3">
+          <span className="text-3xl select-none">⚠️</span>
+          <span className="text-sm font-medium text-red-400">Order book unavailable</span>
+          <span className="text-xs text-slate-600 text-center max-w-xs">{error}</span>
+          <button
+            onClick={() => {
+              setError(null)
+              setLoading(true)
+              fetchOrderBook(eventId)
+                .then((result) => setData(result))
+                .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load order book'))
+                .finally(() => setLoading(false))
+            }}
+            className="mt-1 px-4 py-1.5 text-xs font-semibold rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors"
+          >
+            Retry
+          </button>
         </div>
       ) : displayOrders.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 gap-2 text-slate-600">

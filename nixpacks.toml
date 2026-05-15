@@ -1,3 +1,7 @@
+[variables]
+MONGOMS_DISABLE_POSTINSTALL = "1"
+NODE_ENV = "production"
+
 [phases.install]
 cmds = ['npm install --prefix backend --omit=dev']
 

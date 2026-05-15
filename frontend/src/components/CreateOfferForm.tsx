@@ -37,10 +37,13 @@ export default function CreateOfferForm({ eventId, eventName, sport, teams }: Pr
   const [outcome,       setOutcome]       = useState(0)
   const [oddsDecimal,   setOddsDecimal]   = useState('')
   const [liabilityUsdt, setLiabilityUsdt] = useState('')
-  const [status, setStatus] = useState<'idle' | 'suggesting' | 'approving' | 'creating' | 'done' | 'error'>('idle')
+  const [status, setStatus] = useState<'idle' | 'approving' | 'creating' | 'done' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
 
-  // AI state
+  // AI state — kept separate from form status so the Create Offer button
+  // remains usable while the AI suggestion is loading
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError,   setAiError]   = useState('')
   const [strategy,   setStrategy]   = useState<StrategyId>('balanced')
   const [trueBase,   setTrueBase]   = useState<Record<string, number> | null>(null)
   const [bookieOdds, setBookieOdds] = useState<Record<string, number> | null>(null)
@@ -61,8 +64,8 @@ export default function CreateOfferForm({ eventId, eventName, sport, teams }: Pr
   }, [strategy, trueBase, outcome])
 
   async function handleAiSuggest() {
-    setStatus('suggesting')
-    setErrorMsg('')
+    setAiLoading(true)
+    setAiError('')
     setAiResult(null)
     setTrueBase(null)
     setBookieOdds(null)
@@ -96,10 +99,10 @@ export default function CreateOfferForm({ eventId, eventName, sport, teams }: Pr
       if (result.suggestedOdds?.[key] !== undefined) {
         setOddsDecimal(String(result.suggestedOdds[key]))
       }
-      setStatus('idle')
     } catch {
-      setErrorMsg('AI service unavailable')
-      setStatus('idle')
+      setAiError('AI temporarily offline — enter odds manually')
+    } finally {
+      setAiLoading(false)
     }
   }
 
@@ -218,10 +221,10 @@ export default function CreateOfferForm({ eventId, eventName, sport, teams }: Pr
           />
           <button
             onClick={handleAiSuggest}
-            disabled={status === 'suggesting'}
+            disabled={aiLoading}
             className="shrink-0 px-3 py-2 text-xs font-bold rounded-md bg-[#FFB01F]/10 border border-[#FFB01F]/40 text-[#FFB01F] hover:bg-[#FFB01F]/20 disabled:opacity-50 transition-colors whitespace-nowrap"
           >
-            {status === 'suggesting' ? (
+            {aiLoading ? (
               <span className="flex items-center gap-1.5">
                 <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
@@ -344,6 +347,12 @@ export default function CreateOfferForm({ eventId, eventName, sport, teams }: Pr
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 font-mono">USDT</span>
         </div>
       </div>
+
+      {aiError && (
+        <p className="text-xs text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-md px-3 py-2">
+          {aiError}
+        </p>
+      )}
 
       {errorMsg && (
         <p className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-md px-3 py-2">

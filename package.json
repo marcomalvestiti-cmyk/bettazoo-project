@@ -3,6 +3,6 @@
   "version": "1.0.0",
   "scripts": {
     "start": "node backend/src/server.js",
-    "postinstall": "npm install --prefix backend"
+    "postinstall": "npm install --prefix backend --omit=dev"
   }
 }

@@ -1,11 +1,21 @@
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
-// ── Generic fetch wrapper with detailed error logging ─────────────────────────
+const FETCH_TIMEOUT_MS = 10_000
+
+// ── Generic fetch wrapper with timeout and detailed error logging ──────────────
 async function apiFetch(label: string, input: RequestInfo, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
   let res: Response
   try {
-    res = await fetch(input, init)
+    res = await fetch(input, { ...init, signal: controller.signal })
+    clearTimeout(timer)
   } catch (networkErr) {
+    clearTimeout(timer)
+    if (networkErr instanceof Error && networkErr.name === 'AbortError') {
+      console.error(`[${label}] Request timed out after ${FETCH_TIMEOUT_MS}ms`)
+      throw new Error(`${label}: request timed out after ${FETCH_TIMEOUT_MS / 1000}s`)
+    }
     console.error(
       `[${label}] Network error — is the backend running on ${BASE}?`,
       networkErr

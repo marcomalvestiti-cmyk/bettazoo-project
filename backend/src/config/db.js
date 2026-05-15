@@ -8,6 +8,7 @@ async function connectDB(uri) {
   await mongoose.connect(mongoUri, {
     serverSelectionTimeoutMS: 3000,
     connectTimeoutMS: 3000,
+    socketTimeoutMS: 5000,
   });
   // Re-enable buffering now that we're connected
   mongoose.set('bufferCommands', true);

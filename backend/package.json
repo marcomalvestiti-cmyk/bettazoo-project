@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Bettazoo P2P Betting Exchange — Backend API",
   "main": "src/server.js",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
