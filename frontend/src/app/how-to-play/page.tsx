@@ -45,7 +45,7 @@ const PLACER_STEPS = [
     step: 3,
     Icon: Users,
     title: 'Attract Bettors & Earn the Edge',
-    desc: 'Your offers appear live in the global order book. Share your Placer profile to build a following. Earn the margin between your quoted odds and the true probability.',
+    desc: 'Your offers appear live in the betting market. Share your Placer profile to build a following. Earn the margin between your quoted odds and the true probability.',
   },
 ]
 

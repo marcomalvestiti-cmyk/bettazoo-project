@@ -35,7 +35,7 @@ const RULES = [
   {
     Icon: Scale,
     title: 'Fair Matching',
-    tag: 'Order Book',
+    tag: 'View Odds',
     body: 'Orders are matched in the smart contract using a greedy algorithm that prioritises the best available odds. Partial matching is supported — your bet can be split across multiple Placer offers to maximise fill.',
   },
   {

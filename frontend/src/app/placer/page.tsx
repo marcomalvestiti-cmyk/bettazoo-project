@@ -135,7 +135,7 @@ export default function PlacerDashboard() {
           />
         </div>
 
-        {/* RIGHT COLUMN — live order book */}
+        {/* RIGHT COLUMN — live odds / view odds */}
         <div className="space-y-3">
           {/* Event header */}
           <div className="flex items-center gap-3 flex-wrap">

@@ -203,12 +203,12 @@ export default function OrderBook({ eventId, onBet }: Props) {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
           </svg>
-          Loading order book…
+          Loading odds…
         </div>
       ) : error ? (
         <div className="flex flex-col items-center justify-center py-16 gap-3">
           <span className="text-3xl select-none">⚠️</span>
-          <span className="text-sm font-medium text-red-400">Order book unavailable</span>
+          <span className="text-sm font-medium text-red-400">View Odds unavailable</span>
           <span className="text-xs text-slate-600 text-center max-w-xs">{error}</span>
           <button
             onClick={() => {

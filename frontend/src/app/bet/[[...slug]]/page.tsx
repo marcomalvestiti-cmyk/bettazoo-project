@@ -101,7 +101,7 @@ export default async function BetPage({
                     </div>
                   </div>
                   <div className="flex items-center gap-3 shrink-0 ml-3">
-                    <span className="text-sm font-medium text-slate-500 hidden sm:block">Order book</span>
+                    <span className="text-sm font-medium text-slate-500 hidden sm:block">View Odds</span>
                     <span className="text-slate-400 group-hover:text-red-500 transition-colors text-xl">→</span>
                   </div>
                 </Link>

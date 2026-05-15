@@ -8,6 +8,7 @@ import ConnectWallet from './ConnectWallet'
 
 const NAV_LINKS = [
   { href: '/bet',         label: 'Bet' },
+  { href: '/bettor',      label: 'My Bets' },
   { href: '/how-to-play', label: 'How to Play' },
   { href: '/rules',       label: 'Rules' },
 ]
@@ -17,7 +18,8 @@ export default function Navbar() {
   const [open, setOpen] = useState(false)
 
   function isActive(href: string) {
-    if (href === '/bet') return pathname === '/bet' || pathname.startsWith('/bet/')
+    if (href === '/bet')    return pathname === '/bet' || pathname.startsWith('/bet/')
+    if (href === '/bettor') return pathname === '/bettor' || pathname.startsWith('/bettor/')
     return pathname === href
   }
 

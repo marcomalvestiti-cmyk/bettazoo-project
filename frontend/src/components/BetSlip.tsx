@@ -6,6 +6,7 @@ import { parseUnits } from 'viem'
 import { waitForTransactionReceipt } from 'viem/actions'
 import { ESCROW_ABI, ERC20_ABI, OUTCOMES } from '@/lib/abis'
 import { withGasBuffer } from '@/lib/gasUtils'
+import { saveBet } from '@/lib/betHistory'
 import type { Offer } from './OrderBook'
 
 type Props = {
@@ -101,6 +102,17 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
         ...gas,
       })
       setStatus('done')
+      saveBet(address, {
+        id: `${Date.now()}-${matchedOffers[0].offerId}`,
+        offerId: matchedOffers[0].offerId,
+        eventId: matchedOffers[0].eventId,
+        eventName,
+        outcome,
+        oddsDecimal: avgOdds,
+        stakeUsdt: stakeNum,
+        potentialWinUsdt: potentialWin,
+        placedAt: new Date().toISOString(),
+      })
     } catch (err: unknown) {
       setStatus('error')
       setErrorMsg(err instanceof Error ? err.message : 'Transaction failed')

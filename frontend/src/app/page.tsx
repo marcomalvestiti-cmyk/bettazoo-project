@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { MOCK_EVENTS } from '@/lib/abis'
+import BestOddsStrip from '@/components/BestOddsStrip'
 
 const FEATURED_IDS = ['evt-001', 'evt-002', 'evt-003', 'evt-010', 'evt-012']
 const FEATURED = MOCK_EVENTS.filter(e => FEATURED_IDS.includes(e.eventId))
@@ -84,10 +85,13 @@ export default function Home() {
                       </span>
                     ))}
                   </div>
+                  <div className="mt-2">
+                    <BestOddsStrip eventId={event.eventId} />
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-3 shrink-0">
-                <span className="text-sm font-medium text-slate-500 hidden sm:block">Order book</span>
+                <span className="text-sm font-medium text-slate-500 hidden sm:block">View Odds</span>
                 <span className="text-slate-400 group-hover:text-red-500 transition-colors text-xl">→</span>
               </div>
             </Link>
