@@ -5,13 +5,27 @@ import { fetchOrderBook } from '@/lib/api'
 
 type BestOdds = [number | null, number | null, number | null]
 
-const LABELS = ['1', 'X', '2']
+// Module-level 30s cache — prevents duplicate requests in React Strict Mode
+// and on quick navigation back to home
+const CACHE = new Map<string, { data: BestOdds; ts: number }>()
+const CACHE_TTL = 30_000
+
+function getCached(id: string): BestOdds | null {
+  const e = CACHE.get(id)
+  if (!e) return null
+  if (Date.now() - e.ts > CACHE_TTL) { CACHE.delete(id); return null }
+  return e.data
+}
+
+const LABELS = ['1', 'X', '2'] as const
 
 export default function BestOddsStrip({ eventId }: { eventId: string }) {
-  const [odds, setOdds]       = useState<BestOdds | null>(null)
-  const [loading, setLoading] = useState(true)
+  const cached = getCached(eventId)
+  const [odds, setOdds]       = useState<BestOdds | null>(cached)
+  const [loading, setLoading] = useState(!cached)
 
   useEffect(() => {
+    if (getCached(eventId)) return   // already fresh — skip fetch
     let cancelled = false
     fetchOrderBook(eventId)
       .then((data) => {
@@ -25,46 +39,67 @@ export default function BestOddsStrip({ eventId }: { eventId: string }) {
             }
           }
         }
+        CACHE.set(eventId, { data: best, ts: Date.now() })
         setOdds(best)
         setLoading(false)
       })
       .catch(() => {
         if (!cancelled) {
-          setOdds([null, null, null])
+          const empty: BestOdds = [null, null, null]
+          setOdds(empty)
           setLoading(false)
         }
       })
     return () => { cancelled = true }
   }, [eventId])
 
+  // ── Skeleton ──────────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="flex gap-1.5">
+      <div className="flex gap-2">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="w-[52px] h-[26px] bg-slate-800/60 rounded animate-pulse" />
+          <div
+            key={i}
+            className="flex flex-col items-center justify-center min-w-[62px] h-[54px] rounded-xl bg-slate-800/50 animate-pulse"
+          />
         ))}
       </div>
     )
   }
 
+  // ── Bookmaker-style blocks ────────────────────────────────────────────────────
   return (
-    <div className="flex gap-1.5">
+    <div className="flex gap-2">
       {LABELS.map((label, i) => {
-        const val = odds?.[i] ?? null
+        const val      = odds?.[i] ?? null
+        const hasOdds  = val !== null
+
         return (
           <div
             key={label}
-            className={`flex items-center gap-1 rounded px-2 py-1 border transition-colors ${
-              val !== null
-                ? 'bg-[#B31A1A]/8 border-[#B31A1A]/25'
-                : 'bg-slate-950/40 border-slate-800/60'
-            }`}
+            className={[
+              'flex flex-col items-center justify-center',
+              'min-w-[62px] px-2.5 py-2 rounded-xl border',
+              'select-none transition-all duration-150',
+              hasOdds
+                ? 'bg-[#B31A1A]/10 border-[#B31A1A]/35 group-hover:bg-[#B31A1A]/18 group-hover:border-[#B31A1A]/55'
+                : 'bg-slate-950/25 border-slate-800/50 opacity-40',
+            ].join(' ')}
           >
-            <span className={`text-[9px] font-bold leading-none ${val !== null ? 'text-red-600' : 'text-slate-600'}`}>
+            {/* outcome label */}
+            <span className={[
+              'text-[9px] font-black uppercase tracking-widest leading-none mb-1.5',
+              hasOdds ? 'text-red-600/80' : 'text-slate-700',
+            ].join(' ')}>
               {label}
             </span>
-            <span className={`text-xs font-bold font-mono tabular-nums leading-none ${val !== null ? 'text-red-500' : 'text-slate-600'}`}>
-              {val !== null ? val.toFixed(2) : '—'}
+
+            {/* odds value */}
+            <span className={[
+              'text-base font-extrabold font-mono tabular-nums leading-none',
+              hasOdds ? 'text-white' : 'text-slate-600',
+            ].join(' ')}>
+              {hasOdds ? val.toFixed(2) : '—'}
             </span>
           </div>
         )

@@ -55,25 +55,30 @@ export default function Home() {
             <Link
               key={event.eventId}
               href={`/event/${event.eventId}`}
-              className="group flex items-center justify-between bg-slate-900 border border-slate-800 hover:border-slate-700 hover:bg-slate-800 rounded-lg px-5 py-4 transition-colors"
+              className="group flex flex-col sm:flex-row sm:items-center gap-4 bg-slate-900 border border-slate-800 hover:border-slate-700 hover:bg-slate-800 rounded-lg px-5 py-4 transition-colors"
             >
-              <div className="flex items-center gap-4">
-                <span className="hidden sm:flex w-10 h-10 rounded-lg bg-slate-800 items-center justify-center text-xl select-none">
+              {/* icon + info */}
+              <div className="flex items-start gap-4 flex-1 min-w-0">
+                <span className="hidden sm:flex w-10 h-10 rounded-lg bg-slate-800 items-center justify-center text-xl select-none shrink-0">
                   {event.icon}
                 </span>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-red-500 bg-[#B31A1A]/10 px-2 py-0.5 rounded">
-                      {event.sportLabel}
-                    </span>
-                    {badge && (
-                      <span className={`inline-flex items-center gap-0.5 text-xs font-semibold px-2 py-0.5 rounded border leading-none select-none ${badge.className}`}>
-                        {badge.emoji} {badge.label}
+                <div className="space-y-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-red-500 bg-[#B31A1A]/10 px-2 py-0.5 rounded">
+                        {event.sportLabel}
                       </span>
-                    )}
-                    <span className="text-xs text-slate-500">
-                      {start.toLocaleDateString('en-GB')} · {start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-                    </span>
+                      {badge && (
+                        <span className={`inline-flex items-center gap-0.5 text-xs font-semibold px-2 py-0.5 rounded border leading-none select-none ${badge.className}`}>
+                          {badge.emoji} {badge.label}
+                        </span>
+                      )}
+                      <span className="text-xs text-slate-500">
+                        {start.toLocaleDateString('en-GB')} · {start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    {/* mobile arrow — top-right of info block */}
+                    <span className="sm:hidden text-slate-400 group-hover:text-red-500 transition-colors text-xl shrink-0">→</span>
                   </div>
                   <h3 className="text-lg font-semibold text-slate-100 group-hover:text-white transition-colors">
                     {event.name}
@@ -85,14 +90,13 @@ export default function Home() {
                       </span>
                     ))}
                   </div>
-                  <div className="mt-2">
-                    <BestOddsStrip eventId={event.eventId} />
-                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3 shrink-0">
-                <span className="text-sm font-medium text-slate-500 hidden sm:block">View Odds</span>
-                <span className="text-slate-400 group-hover:text-red-500 transition-colors text-xl">→</span>
+
+              {/* odds strip + desktop arrow */}
+              <div className="flex items-center gap-3 sm:shrink-0">
+                <BestOddsStrip eventId={event.eventId} />
+                <span className="hidden sm:block text-slate-400 group-hover:text-red-500 transition-colors text-xl">→</span>
               </div>
             </Link>
           )
