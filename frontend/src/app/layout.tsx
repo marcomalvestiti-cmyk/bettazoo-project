@@ -3,6 +3,7 @@ import { Inter, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import Providers from './providers'
 import Navbar from '@/components/Navbar'
+import BackendBanner from '@/components/BackendBanner'
 
 const inter = Inter({ variable: '--font-inter', subsets: ['latin'] })
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] })
@@ -18,6 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-full flex flex-col bg-slate-950 text-slate-100">
         <Providers>
           <Navbar />
+          <BackendBanner />
           <main className="flex-1">{children}</main>
         </Providers>
       </body>

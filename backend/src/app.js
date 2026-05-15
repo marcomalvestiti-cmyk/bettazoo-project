@@ -10,9 +10,19 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json());
+app.use(express.json())
 
-app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+// Request timeout — no route should block indefinitely (e.g. hung RPC call)
+app.use((req, res, next) => {
+  res.setTimeout(30_000, () => {
+    const msg = `[${new Date().toISOString()}] [TIMEOUT] ${req.method} ${req.path} timed out after 30s`
+    console.error(msg)
+    if (!res.headersSent) res.status(503).json({ error: 'Request timed out — try again' })
+  })
+  next()
+})
+
+app.get('/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }))
 
 app.use('/api/orderbook', require('./routes/orderbook'));
 app.use('/api/ai',        require('./routes/ai'));

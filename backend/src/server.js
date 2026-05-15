@@ -1,72 +1,134 @@
-require('dotenv').config();
-const http = require('http');
-const { Server } = require('socket.io');
-const app = require('./app');
-const connectDB = require('./config/db');
-const { startListener } = require('./services/web3Listener');
+// ── Global crash guards — MUST be registered before any other code ───────────
+// Node 18+ exits on unhandledRejection by default; these handlers keep Railway alive.
+process.on('uncaughtException', (err) => {
+  console.error(`[${ts()}] [CRASH GUARD] Uncaught exception — process continues:`)
+  console.error(err.stack || err.message)
+})
+process.on('unhandledRejection', (reason) => {
+  console.error(`[${ts()}] [CRASH GUARD] Unhandled promise rejection — process continues:`)
+  console.error(reason instanceof Error ? reason.stack : String(reason))
+})
 
-const PORT = process.env.PORT || 3001;
+function ts() { return new Date().toISOString() }
+
+require('dotenv').config()
+const http = require('http')
+const { Server } = require('socket.io')
+const app = require('./app')
+const connectDB = require('./config/db')
+const { startListener } = require('./services/web3Listener')
+
+const PORT = process.env.PORT || 3001
+
+// Reconnect timer handle (shared state for debounce)
+let web3ReconnectTimer = null
 
 async function main() {
-  // ── MongoDB: try to connect but NEVER crash the server if it fails ──────────
-  let dbConnected = false;
+  // ── MongoDB ──────────────────────────────────────────────────────────────────
+  let dbConnected = false
   try {
-    await connectDB();
-    dbConnected = true;
+    await connectDB()
+    dbConnected = true
   } catch (err) {
-    console.warn('\n⚠️  MongoDB unavailable:', err.message);
-    console.warn('⚠️  Server starting in OFFLINE mode.');
-    console.warn('⚠️  DB-dependent routes will return mock/empty data.\n');
+    console.warn(`[${ts()}] ⚠️  MongoDB unavailable: ${err.message}`)
+    console.warn(`[${ts()}] ⚠️  Server starting in OFFLINE mode — DB routes return mock/empty data.`)
   }
 
-  const server = http.createServer(app);
-  const io = new Server(server, { cors: { origin: '*' } });
-
-  app.set('io', io);
+  const server = http.createServer(app)
+  const io = new Server(server, { cors: { origin: '*' } })
+  app.set('io', io)
 
   io.on('connection', (socket) => {
-    console.log(`Socket connected: ${socket.id}`);
-    socket.on('disconnect', () => console.log(`Socket disconnected: ${socket.id}`));
-  });
+    console.log(`[${ts()}] Socket connected: ${socket.id}`)
+    socket.on('disconnect', () => console.log(`[${ts()}] Socket disconnected: ${socket.id}`))
+  })
 
+  // ── Web3 listener ────────────────────────────────────────────────────────────
   if (process.env.RPC_URL && process.env.CONTRACT_ADDRESS) {
-    try {
-      const { ethers } = require('ethers');
-      const url = process.env.RPC_URL;
-      let provider;
-      if (url.startsWith('wss://') || url.startsWith('ws://')) {
-        provider = new ethers.WebSocketProvider(url);
-        provider.websocket?.on('error', (err) =>
-          console.warn('[Web3] WebSocket error:', err.message)
-        );
-        console.log('[Web3] Using WebSocketProvider');
-      } else {
-        provider = new ethers.JsonRpcProvider(url);
-        console.log('[Web3] Using JsonRpcProvider (HTTP polling)');
-      }
-      // Store contract address on app so /api/admin/resync can reach it
-      app.set('rpcUrl', url);
-      app.set('contractAddress', process.env.CONTRACT_ADDRESS);
-      if (!dbConnected) {
-        console.warn('[Web3] Skipping listener — MongoDB not connected (historical sync would fail)');
-      } else {
-        startListener(provider, process.env.CONTRACT_ADDRESS, io).catch((err) =>
-          console.warn('[Web3] Listener error:', err.message)
-        );
-      }
-    } catch (err) {
-      console.warn('[Web3] Listener failed to start:', err.message);
+    app.set('rpcUrl', process.env.RPC_URL)
+    app.set('contractAddress', process.env.CONTRACT_ADDRESS)
+    if (!dbConnected) {
+      console.warn(`[${ts()}] [Web3] Skipping listener — MongoDB not connected (historical sync would fail)`)
+    } else {
+      startWeb3(process.env.RPC_URL, process.env.CONTRACT_ADDRESS, io, false)
     }
   } else {
-    console.warn('[Web3] RPC_URL or CONTRACT_ADDRESS not set — listener disabled');
+    console.warn(`[${ts()}] [Web3] RPC_URL or CONTRACT_ADDRESS not set — listener disabled`)
   }
 
   server.listen(PORT, () =>
-    console.log(`\n🚀 Bettazoo backend listening on http://localhost:${PORT}\n`)
-  );
+    console.log(`\n[${ts()}] 🚀 Bettazoo backend listening on http://localhost:${PORT}\n`)
+  )
+}
+
+/**
+ * Creates an ethers provider, wires up error/disconnect recovery, then starts
+ * the Web3 event listener.
+ *
+ * @param {string}  url              - RPC endpoint (http/https or wss)
+ * @param {string}  contractAddress
+ * @param {object}  io               - Socket.IO server
+ * @param {boolean} skipHistoricalSync - true on reconnect (DB already populated)
+ */
+function startWeb3(url, contractAddress, io, skipHistoricalSync) {
+  const { ethers } = require('ethers')
+
+  let provider
+  try {
+    if (url.startsWith('wss://') || url.startsWith('ws://')) {
+      provider = new ethers.WebSocketProvider(url)
+      console.log(`[${ts()}] [Web3] Using WebSocketProvider`)
+
+      // ethers v6 exposes the raw WebSocket on _websocket (private but accessible)
+      // Register close/error handlers immediately so no event is missed before
+      // startListener() registers provider.on('error').
+      const ws = provider._websocket
+      if (ws) {
+        ws.on('close', (code) => {
+          console.warn(`[${ts()}] [Web3] WebSocket closed (code=${code}) — scheduling reconnect`)
+          scheduleReconnect(url, contractAddress, io)
+        })
+        ws.on('error', (err) => {
+          console.error(`[${ts()}] [Web3] WebSocket error: ${err?.message || err}`)
+          // scheduleReconnect is also called via provider.on('error') — the timer
+          // debounce prevents double scheduling.
+        })
+      }
+    } else {
+      provider = new ethers.JsonRpcProvider(url)
+      console.log(`[${ts()}] [Web3] Using JsonRpcProvider (HTTP polling)`)
+    }
+  } catch (err) {
+    console.error(`[${ts()}] [Web3] Failed to create provider: ${err.message}`)
+    scheduleReconnect(url, contractAddress, io)
+    return
+  }
+
+  // Public provider error event (works for both WS and HTTP providers in ethers v6)
+  provider.on('error', (err) => {
+    console.error(`[${ts()}] [Web3] Provider error: ${err?.message || err}`)
+    scheduleReconnect(url, contractAddress, io)
+  })
+
+  startListener(provider, contractAddress, io, skipHistoricalSync).catch((err) => {
+    console.error(`[${ts()}] [Web3] Listener startup failed: ${err.message}`)
+    scheduleReconnect(url, contractAddress, io)
+  })
+}
+
+function scheduleReconnect(url, contractAddress, io) {
+  if (web3ReconnectTimer) return // already scheduled — don't double-up
+  const delayMs = 30_000
+  console.warn(`[${ts()}] [Web3] Reconnect scheduled in ${delayMs / 1000}s`)
+  web3ReconnectTimer = setTimeout(() => {
+    web3ReconnectTimer = null
+    console.log(`[${ts()}] [Web3] Attempting reconnect…`)
+    // Skip historical sync on reconnect — DB is already populated from the first run
+    startWeb3(url, contractAddress, io, true)
+  }, delayMs)
 }
 
 main().catch((err) => {
-  console.error('Unrecoverable startup error:', err);
-  process.exit(1);
-});
+  console.error(`[${ts()}] Unrecoverable startup error:`, err)
+  process.exit(1)
+})
