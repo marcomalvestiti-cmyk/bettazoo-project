@@ -118,7 +118,10 @@ function startWeb3(url, contractAddress, io, skipHistoricalSync) {
       }
     } else {
       provider = new ethers.JsonRpcProvider(url)
-      console.log(`[${ts()}] [Web3] Using JsonRpcProvider (HTTP polling)`)
+      // Reduce background eth_blockNumber polling from the default 4s to 15s
+      // to stay under public RPC rate limits (public Arbitrum nodes are strict).
+      provider.pollingInterval = 15_000
+      console.log(`[${ts()}] [Web3] Using JsonRpcProvider (HTTP polling every 15s)`)
     }
   } catch (err) {
     console.error(`[${ts()}] [Web3] Failed to create provider: ${err.message}`)

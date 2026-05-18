@@ -119,8 +119,9 @@ async function processEventsInChunks(contract, eventName, fromBlock, toBlock, on
 // ── syncHistoricalEvents ─────────────────────────────────────────────────────
 
 // Batch size and inter-batch delay for on-chain offers() reads.
-const OFFER_BATCH_SIZE  = 5
-const OFFER_BATCH_DELAY = 400 // ms between batches
+// Kept small to stay under public RPC rate limits.
+const OFFER_BATCH_SIZE  = 3
+const OFFER_BATCH_DELAY = 800 // ms between batches
 
 async function syncHistoricalEvents(contract) {
   // Start from where we left off, not from scratch every time.
@@ -172,6 +173,7 @@ async function syncHistoricalEvents(contract) {
     `[${ts()}] [Sync] OfferMatched total: ${matchedCount} ` +
     `(${Object.keys(totalMatchedByOffer).length} unique offers affected) | heap ${heapMB()}MB`
   )
+  await sleep(2_000) // breathe before next pass to avoid 429 bursts
 
   // Pass 2: Stream OfferCreated events, upsert to MongoDB per chunk.
   // Each chunk is processed and discarded before the next one is fetched,
@@ -191,7 +193,7 @@ async function syncHistoricalEvents(contract) {
           let onChainRemaining = computedRemaining.toString()
 
           try {
-            const onChain = await contract.offers(id)
+            const onChain = await withRetry(() => contract.offers(id), `Sync/offers#${id}`, 4)
             onChainActive    = onChain.active
             onChainRemaining = onChain.remainingLiability.toString()
           } catch (err) {
@@ -228,6 +230,7 @@ async function syncHistoricalEvents(contract) {
     }
   )
   console.log(`[${ts()}] [Sync] OfferCreated total: ${createdCount} | heap ${heapMB()}MB`)
+  await sleep(2_000) // breathe before next pass
 
   // Pass 3: Stream EventResolved events, update DB per chunk.
   const resolvedCount = await processEventsInChunks(
