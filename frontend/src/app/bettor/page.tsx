@@ -45,17 +45,24 @@ function EmptyState({ tab }: { tab: 'open' | 'settled' }) {
   )
 }
 
+const PLATFORM_FEE = 0.05
+
+function netPayout(gross: number, stake: number) {
+  return gross - (gross - stake) * PLATFORM_FEE
+}
+
 function BetRow({ bet, status }: { bet: BetRecord; status: BetStatus }) {
   const st   = STATUS_STYLE[status]
   const date = new Date(bet.placedAt).toLocaleDateString('en-GB', {
     day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
   })
 
+  const net = netPayout(bet.potentialWinUsdt, bet.stakeUsdt)
   const profit = status === 'won'
-    ? `+$${(bet.potentialWinUsdt - bet.stakeUsdt).toFixed(2)}`
+    ? `+$${(net - bet.stakeUsdt).toFixed(2)}`
     : status === 'lost'
     ? `-$${bet.stakeUsdt.toFixed(2)}`
-    : `$${bet.potentialWinUsdt.toFixed(2)}`
+    : `$${net.toFixed(2)}`
 
   const profitColor = status === 'won'
     ? 'text-emerald-400'
@@ -99,9 +106,9 @@ function BetRow({ bet, status }: { bet: BetRecord; status: BetStatus }) {
         <span className={`text-sm font-mono font-bold tabular-nums ${profitColor}`}>
           {profit}
         </span>
-        {status === 'open' && (
-          <p className="text-[10px] text-slate-600 text-right">potential</p>
-        )}
+        <p className="text-[10px] text-slate-600 text-right">
+          {status === 'open' ? 'net of 5% fee' : status === 'won' ? 'after 5% fee' : ''}
+        </p>
       </td>
       {/* Status */}
       <td className="px-4 py-3.5 text-right">
@@ -155,7 +162,7 @@ export default function BettorDashboard() {
   const totalStaked = bets.reduce((s, b) => s + b.stakeUsdt, 0)
   const totalProfit = bets
     .filter((b) => getStatus(b, resolved) === 'won')
-    .reduce((s, b) => s + (b.potentialWinUsdt - b.stakeUsdt), 0)
+    .reduce((s, b) => s + (netPayout(b.potentialWinUsdt, b.stakeUsdt) - b.stakeUsdt), 0)
   const totalLoss = bets
     .filter((b) => getStatus(b, resolved) === 'lost')
     .reduce((s, b) => s + b.stakeUsdt, 0)

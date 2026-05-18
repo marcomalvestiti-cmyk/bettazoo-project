@@ -19,6 +19,11 @@ contract MockUSDT is ERC20 {
         return 6;
     }
 
+    /// @notice Admin mint for testing — no access control intentional (test-only token).
+    function mint(address to, uint256 amount) external {
+        _mint(to, amount);
+    }
+
     /// @notice Claim 1 000 BTZ-USD once every 24 hours.
     function faucet() external {
         require(

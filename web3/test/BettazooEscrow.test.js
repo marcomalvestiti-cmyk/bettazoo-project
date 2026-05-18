@@ -14,12 +14,13 @@ const { ethers } = require("hardhat");
  * Formule chiave:
  *   maxBettorStake = placerLiability * ODDS_PRECISION / (odds - ODDS_PRECISION)
  *   liabilityConsumed = bettorStake * (odds - ODDS_PRECISION) / ODDS_PRECISION
- *   rake = totalPot * 2 / 100
- *   winnerPayout = totalPot - rake
+ *   platformFee = winnerNetProfit * 5 / 100
+ *     (netProfit = placerLiability se vince il bettor, bettorStake se vince il placer)
+ *   winnerPayout = totalPot - platformFee
  */
 describe("BettazooEscrow", function () {
   const ODDS_PRECISION = 10000n;
-  const RAKE_PERCENT = 2n;
+  const PLATFORM_FEE_PCT = 5n;
 
   // Helper: converte USDT interi in unità con 6 decimali
   const USDT = (n) => BigInt(n) * 1_000_000n;
@@ -364,7 +365,7 @@ describe("BettazooEscrow", function () {
   describe("resolveEvent – bettor vince", function () {
     /**
      * odds 2.0, liability 100, bettorStake 100
-     * totalPot = 200 USDT | rake = 4 USDT | bettor riceve 196 USDT
+     * totalPot = 200 USDT | netProfit = placerLiability = 100 | fee = 5 USDT | bettor riceve 195 USDT
      */
     beforeEach(async function () {
       await escrow.connect(placer1).createOffer("EVENT_1", 0, 20000n, USDT(100));
@@ -380,9 +381,9 @@ describe("BettazooEscrow", function () {
       const bettorAfter = await usdt.balanceOf(bettor1.address);
       const treasuryAfter = await usdt.balanceOf(treasury.address);
 
-      // totalPot=200, rake=4, payout=196
-      expect(bettorAfter - bettorBefore).to.equal(USDT(196));
-      expect(treasuryAfter - treasuryBefore).to.equal(USDT(4));
+      // netProfit=placerLiability=100, fee=5, payout=195
+      expect(bettorAfter - bettorBefore).to.equal(USDT(195));
+      expect(treasuryAfter - treasuryBefore).to.equal(USDT(5));
     });
 
     it("non paga il placer quando perde", async function () {
@@ -407,7 +408,7 @@ describe("BettazooEscrow", function () {
     it("emette WinningsPaid per il bettor", async function () {
       await expect(escrow.connect(oracle).resolveEvent("EVENT_1", 0))
         .to.emit(escrow, "WinningsPaid")
-        .withArgs(bettor1.address, USDT(196));
+        .withArgs(bettor1.address, USDT(195));
     });
   });
 
@@ -417,7 +418,7 @@ describe("BettazooEscrow", function () {
   describe("resolveEvent – placer vince", function () {
     /**
      * odds 3.0, liability 60, bettorStake 30
-     * totalPot = 90 USDT | rake = 1.8 USDT | placer riceve 88.2 USDT
+     * totalPot = 90 USDT | netProfit = bettorStake = 30 | fee = 1.5 USDT | placer riceve 88.5 USDT
      */
     beforeEach(async function () {
       await escrow.connect(placer1).createOffer("EVENT_1", 0, 30000n, USDT(60));
@@ -433,13 +434,13 @@ describe("BettazooEscrow", function () {
       const placerAfter = await usdt.balanceOf(placer1.address);
       const treasuryAfter = await usdt.balanceOf(treasury.address);
 
-      // totalPot=90, rake=1.8 (1_800_000), payout=88.2 (88_200_000)
-      const totalPot = USDT(90);
-      const rake = totalPot * RAKE_PERCENT / 100n;
-      const payout = totalPot - rake;
+      // netProfit=bettorStake=30, fee=1.5 (1_500_000), payout=88.5 (88_500_000)
+      const netProfit = USDT(30);
+      const fee = netProfit * PLATFORM_FEE_PCT / 100n;
+      const payout = USDT(90) - fee;
 
       expect(placerAfter - placerBefore).to.equal(payout);
-      expect(treasuryAfter - treasuryBefore).to.equal(rake);
+      expect(treasuryAfter - treasuryBefore).to.equal(fee);
     });
 
     it("non paga il bettor quando perde", async function () {
@@ -456,11 +457,11 @@ describe("BettazooEscrow", function () {
   describe("resolveEvent – multi-matching completo", function () {
     /**
      * Tre placer, un bettor copre 180 USDT su tre offerte:
-     *   Match 0: stake=100, liability=100 → pot=200, rake=4,   payout=196
-     *   Match 1: stake= 30, liability= 60 → pot= 90, rake=1.8, payout=88.2
-     *   Match 2: stake= 50, liability= 75 → pot=125, rake=2.5, payout=122.5
+     *   Match 0: stake=100, liability=100 → pot=200, netProfit=100, fee=5,    payout=195
+     *   Match 1: stake= 30, liability= 60 → pot= 90, netProfit= 60, fee=3,    payout= 87
+     *   Match 2: stake= 50, liability= 75 → pot=125, netProfit= 75, fee=3.75, payout=121.25
      *
-     * Totale rake: 8.3 USDT
+     * Totale fee (bettor wins): 11.75 USDT
      */
     beforeEach(async function () {
       await escrow.connect(placer1).createOffer("EVENT_1", 0, 20000n, USDT(100));
@@ -478,16 +479,16 @@ describe("BettazooEscrow", function () {
       const bettorAfter = await usdt.balanceOf(bettor1.address);
       const treasuryAfter = await usdt.balanceOf(treasury.address);
 
-      // Calcolo preciso per-match (integer math identico al contratto)
-      const pot0 = USDT(200); const rake0 = pot0 * 2n / 100n; // 4 USDT
-      const pot1 = USDT(90);  const rake1 = pot1 * 2n / 100n; // 1.8 USDT
-      const pot2 = USDT(125); const rake2 = pot2 * 2n / 100n; // 2.5 USDT
+      // fee = placerLiability * 5% per ogni match (bettor vince, netProfit = placerLiability)
+      const fee0 = USDT(100) * PLATFORM_FEE_PCT / 100n; // 5 USDT
+      const fee1 = USDT(60)  * PLATFORM_FEE_PCT / 100n; // 3 USDT
+      const fee2 = USDT(75)  * PLATFORM_FEE_PCT / 100n; // 3.75 USDT = 3_750_000n
 
-      const totalBettorGain = (pot0 - rake0) + (pot1 - rake1) + (pot2 - rake2);
-      const totalRake = rake0 + rake1 + rake2;
+      const totalBettorGain = (USDT(200) - fee0) + (USDT(90) - fee1) + (USDT(125) - fee2);
+      const totalFee = fee0 + fee1 + fee2;
 
       expect(bettorAfter - bettorBefore).to.equal(totalBettorGain);
-      expect(treasuryAfter - treasuryBefore).to.equal(totalRake);
+      expect(treasuryAfter - treasuryBefore).to.equal(totalFee);
     });
 
     it("placer vincono: ciascuno riceve il proprio payout netto", async function () {
@@ -503,14 +504,17 @@ describe("BettazooEscrow", function () {
       const p3After = await usdt.balanceOf(placer3.address);
       const treasuryAfter = await usdt.balanceOf(treasury.address);
 
-      const pot0 = USDT(200); const pot1 = USDT(90); const pot2 = USDT(125);
+      // fee = bettorStake * 5% per ogni match (placer vince, netProfit = bettorStake)
+      const fee0p = USDT(100) * PLATFORM_FEE_PCT / 100n; // bettorStake0=100 → fee=5
+      const fee1p = USDT(30)  * PLATFORM_FEE_PCT / 100n; // bettorStake1= 30 → fee=1.5
+      const fee2p = USDT(50)  * PLATFORM_FEE_PCT / 100n; // bettorStake2= 50 → fee=2.5
 
-      expect(p1After - p1Before).to.equal(pot0 * 98n / 100n);
-      expect(p2After - p2Before).to.equal(pot1 * 98n / 100n);
-      expect(p3After - p3Before).to.equal(pot2 * 98n / 100n);
+      expect(p1After - p1Before).to.equal(USDT(200) - fee0p); // 195
+      expect(p2After - p2Before).to.equal(USDT(90)  - fee1p); // 88.5
+      expect(p3After - p3Before).to.equal(USDT(125) - fee2p); // 122.5
 
-      const totalRake = pot0 * 2n / 100n + pot1 * 2n / 100n + pot2 * 2n / 100n;
-      expect(treasuryAfter - treasuryBefore).to.equal(totalRake);
+      const totalFee = fee0p + fee1p + fee2p; // 9 USDT
+      expect(treasuryAfter - treasuryBefore).to.equal(totalFee);
     });
 
     it("il contratto si svuota completamente dopo la risoluzione", async function () {
@@ -534,22 +538,25 @@ describe("BettazooEscrow", function () {
       const b1After = await usdt.balanceOf(bettor1.address);
       const b2After = await usdt.balanceOf(bettor2.address);
 
-      // bettor1: 406_700_000 come calcolato sopra
-      const pot0 = USDT(200); const pot1 = USDT(90); const pot2 = USDT(125);
-      const expectedB1 = (pot0 * 98n / 100n) + (pot1 * 98n / 100n) + (pot2 * 98n / 100n);
+      // bettor1: fee = placerLiability * 5% per match
+      const f0 = USDT(100) * PLATFORM_FEE_PCT / 100n;
+      const f1 = USDT(60)  * PLATFORM_FEE_PCT / 100n;
+      const f2 = USDT(75)  * PLATFORM_FEE_PCT / 100n;
+      const expectedB1 = (USDT(200) - f0) + (USDT(90) - f1) + (USDT(125) - f2);
       expect(b1After - b1Before).to.equal(expectedB1);
 
-      // bettor2: stake=200, liability=200 → pot=400, rake=8, payout=392
-      expect(b2After - b2Before).to.equal(USDT(400) * 98n / 100n);
+      // bettor2: stake=200, liability=200 → netProfit=200, fee=10, payout=390
+      expect(b2After - b2Before).to.equal(USDT(390));
     });
   });
 
   // ══════════════════════════════════════════════════════════════════════════════
-  // Precisione calcolo rake al 2%
+  // Precisione platform fee 5% sul net profit
   // ══════════════════════════════════════════════════════════════════════════════
-  describe("precisione rake 2%", function () {
-    it("calcola il rake esatto su pot divisibile per 100", async function () {
-      // pot = 400 USDT → rake = 8 USDT, vincitore = 392 USDT
+  describe("precisione platform fee 5%", function () {
+    it("fee esatta su netProfit divisibile per 100", async function () {
+      // odds 2.0, liability 200, stake 200 → pot 400, bettor vince
+      // netProfit = placerLiability = 200, fee = 10, payout = 390
       await escrow.connect(placer1).createOffer("EVENT_1", 0, 20000n, USDT(200));
       await escrow.connect(bettor1).acceptOffers([0], USDT(200));
 
@@ -558,12 +565,13 @@ describe("BettazooEscrow", function () {
 
       await escrow.connect(oracle).resolveEvent("EVENT_1", 0);
 
-      expect(await usdt.balanceOf(treasury.address) - treasuryBefore).to.equal(USDT(8));
-      expect(await usdt.balanceOf(bettor1.address) - bettorBefore).to.equal(USDT(392));
+      expect(await usdt.balanceOf(treasury.address) - treasuryBefore).to.equal(USDT(10));
+      expect(await usdt.balanceOf(bettor1.address) - bettorBefore).to.equal(USDT(390));
     });
 
-    it("calcola il rake con decimali USDT (90 USDT pot → 1.8 USDT rake)", async function () {
-      // odds 3.0, liability 60, stake 30 → pot 90
+    it("fee con decimali USDT (netProfit 60 USDT → fee 3 USDT)", async function () {
+      // odds 3.0, liability 60, stake 30 → pot 90, bettor vince
+      // netProfit = placerLiability = 60, fee = 3_000_000 = 3 USDT
       await escrow.connect(placer1).createOffer("EVENT_1", 0, 30000n, USDT(60));
       await escrow.connect(bettor1).acceptOffers([0], USDT(30));
 
@@ -571,8 +579,8 @@ describe("BettazooEscrow", function () {
 
       await escrow.connect(oracle).resolveEvent("EVENT_1", 0); // bettor vince
 
-      // rake = 90_000_000 * 2 / 100 = 1_800_000 = 1.8 USDT
-      expect(await usdt.balanceOf(treasury.address) - treasuryBefore).to.equal(1_800_000n);
+      // fee = 60_000_000 * 5 / 100 = 3_000_000 = 3 USDT
+      expect(await usdt.balanceOf(treasury.address) - treasuryBefore).to.equal(3_000_000n);
     });
   });
 
@@ -657,6 +665,25 @@ describe("BettazooEscrow", function () {
     it("setTreasury funziona solo per l'owner", async function () {
       await escrow.connect(owner).setTreasury(bettor1.address);
       expect(await escrow.treasury()).to.equal(bettor1.address);
+    });
+
+    it("platformFeePercentage di default è 5", async function () {
+      expect(await escrow.platformFeePercentage()).to.equal(5);
+    });
+
+    it("setPlatformFee funziona solo per l'owner", async function () {
+      await escrow.connect(owner).setPlatformFee(10);
+      expect(await escrow.platformFeePercentage()).to.equal(10);
+
+      await expect(
+        escrow.connect(bettor1).setPlatformFee(0)
+      ).to.be.revertedWithCustomError(escrow, "OwnableUnauthorizedAccount");
+    });
+
+    it("setPlatformFee reverte se fee > 100%", async function () {
+      await expect(
+        escrow.connect(owner).setPlatformFee(101)
+      ).to.be.revertedWith("Fee exceeds 100%");
     });
 
     it("acceptOffers reverte se nessun array di offerte", async function () {

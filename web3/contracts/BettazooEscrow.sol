@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title BettazooEscrow
- * @notice Escrow P2P per scommesse in stablecoin con multi-matching e rake del 2%.
+ * @notice Escrow P2P per scommesse in stablecoin con multi-matching e platform fee del 5%.
  *
  * Meccanica delle quote (odds):
  *   odds in formato europeo decimale * ODDS_PRECISION (10000).
@@ -22,14 +22,18 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  *      - trasferisce l'actualStake (potenzialmente < totalStake se offerte esaurite)
  *   3. Oracle/Admin chiama resolveEvent(eventId, winningOutcome):
  *      - itera tutti i BetRecord dell'evento
- *      - calcola rake = totalPot * 2%
- *      - paga il vincitore e il treasury
+ *      - calcola fee = winnerNetProfit * platformFeePercentage / 100
+ *        (winnerNetProfit = placerLiability se vince il bettor, bettorStake se vince il placer)
+ *      - paga il vincitore (totalPot - fee) e il treasury (fee)
  */
 contract BettazooEscrow is Ownable {
     using SafeERC20 for IERC20;
 
     uint256 public constant ODDS_PRECISION = 10000;
-    uint256 public constant RAKE_PERCENT = 2;
+
+    // Percentage of the winner's net profit sent to treasury.
+    // Applied only to profit (not to the returned stake), settable by owner.
+    uint256 public platformFeePercentage = 5;
 
     IERC20 public immutable stablecoin;
     address public treasury;
@@ -249,7 +253,8 @@ contract BettazooEscrow is Ownable {
 
     /**
      * @notice Risolve un evento e distribuisce i fondi.
-     *         Rake del 2% sul pot totale di ogni match inviato al treasury.
+     *         Fee = winnerNetProfit * platformFeePercentage / 100, inviata al treasury.
+     *         Il vincitore riceve la propria puntata iniziale + profitto netto al netto della fee.
      * @param eventId        Identificativo dell'evento
      * @param winningOutcome L'esito vincente
      */
@@ -270,15 +275,24 @@ contract BettazooEscrow is Ownable {
             record.settled = true;
 
             uint256 totalPot = record.bettorStake + record.placerLiability;
-            uint256 rake = totalPot * RAKE_PERCENT / 100;
-            uint256 winnerPayout = totalPot - rake;
 
-            address winner = (winningOutcome == record.outcome)
-                ? record.bettor
-                : record.placer;
+            // Net profit of the winner (what they earned above their own stake).
+            // Fee applies only to this profit, not to the returned stake.
+            address winner;
+            uint256 winnerNetProfit;
+            if (winningOutcome == record.outcome) {
+                winner = record.bettor;
+                winnerNetProfit = record.placerLiability;
+            } else {
+                winner = record.placer;
+                winnerNetProfit = record.bettorStake;
+            }
+
+            uint256 fee = winnerNetProfit * platformFeePercentage / 100;
+            uint256 winnerPayout = totalPot - fee;
 
             stablecoin.safeTransfer(winner, winnerPayout);
-            stablecoin.safeTransfer(treasury, rake);
+            if (fee > 0) stablecoin.safeTransfer(treasury, fee);
 
             emit WinningsPaid(winner, winnerPayout);
         }
@@ -294,6 +308,11 @@ contract BettazooEscrow is Ownable {
 
     function setTreasury(address _treasury) external onlyOwner {
         treasury = _treasury;
+    }
+
+    function setPlatformFee(uint256 _fee) external onlyOwner {
+        require(_fee <= 100, "Fee exceeds 100%");
+        platformFeePercentage = _fee;
     }
 
     // ─── View ──────────────────────────────────────────────────────────────────

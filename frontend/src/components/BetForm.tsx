@@ -34,6 +34,8 @@ export default function BetForm({ offers, stakeUsdt, onClose }: Props) {
   const totalStakeRaw = parseUnits(stakeUsdt.toFixed(6), 6)
   const avgOdds = offers.reduce((s, o) => s + o.oddsDecimal, 0) / (offers.length || 1)
   const potentialWin = stakeUsdt * avgOdds
+  const platformFee = (potentialWin - stakeUsdt) * 0.05
+  const netPayout = potentialWin - platformFee
 
   async function handleBet() {
     if (!address) return
@@ -97,8 +99,9 @@ export default function BetForm({ offers, stakeUsdt, onClose }: Props) {
             <div className="text-sm font-semibold font-mono text-white">${stakeUsdt.toFixed(2)}</div>
           </div>
           <div className="bg-green-500/10 border border-green-500/30 rounded-md p-3">
-            <div className="text-xs text-slate-400 mb-1">Pot. payout</div>
-            <div className="text-sm font-semibold font-mono text-green-400">${potentialWin.toFixed(2)}</div>
+            <div className="text-xs text-slate-400 mb-1">Net payout</div>
+            <div className="text-sm font-semibold font-mono text-green-400">${netPayout.toFixed(2)}</div>
+            <div className="text-[10px] text-slate-500 mt-0.5">–${platformFee.toFixed(2)} fee (5%)</div>
           </div>
         </div>
 
