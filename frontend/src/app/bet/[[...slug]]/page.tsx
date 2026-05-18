@@ -19,11 +19,11 @@ export default async function BetPage({
   const filtered = filterEventsBySlug(MOCK_EVENTS, slug)
 
   let title = 'Featured Events'
-  let subtitle = 'Top markets right now'
+  let subtitle = 'Top events right now'
 
   if (slug.length >= 1) {
     title   = slug[0] === 'sports' ? 'Sports' : 'E-Sports'
-    subtitle = slug[0] === 'sports' ? 'All sports markets' : 'All e-sports markets'
+    subtitle = slug[0] === 'sports' ? 'All sports events' : 'All e-sports events'
   }
   if (slug.length >= 2) {
     const sample = MOCK_EVENTS.find(e => e.sport === slug[1])

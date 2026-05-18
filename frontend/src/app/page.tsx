@@ -35,7 +35,7 @@ export default function Home() {
       {/* Section header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div className="space-y-1">
-          <p className="text-sm font-semibold text-red-500 uppercase tracking-widest">Markets</p>
+          <p className="text-sm font-semibold text-red-500 uppercase tracking-widest">Events</p>
           <h2 className="text-3xl font-bold text-white">Featured Bets</h2>
         </div>
         <Link

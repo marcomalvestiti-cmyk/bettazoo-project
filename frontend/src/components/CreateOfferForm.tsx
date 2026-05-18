@@ -70,7 +70,7 @@ export default function CreateOfferForm({ eventId, eventName, sport, teams }: Pr
     setTrueBase(null)
     setBookieOdds(null)
     try {
-      // 1. Fetch live market odds from orderbook
+      // 1. Fetch live event odds from orderbook
       let currentMarketOdds: number[] | undefined
       try {
         const ob = await fetchOrderBook(eventId)
@@ -147,7 +147,7 @@ export default function CreateOfferForm({ eventId, eventName, sport, teams }: Pr
 
   const inputCls = 'w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-sm font-semibold text-white placeholder:text-slate-600 focus:outline-none focus:border-[#FFB01F] transition-colors'
 
-  // ── Task 3: Market Edge data for the selected outcome ──────────────────────
+  // ── Task 3: Event Edge data for the selected outcome ───────────────────────
   const activeKey     = OUTCOME_KEYS[outcome]
   const bettazooOdd   = aiResult?.[activeKey]
   const bookieOdd     = bookieOdds?.[activeKey]
@@ -237,13 +237,13 @@ export default function CreateOfferForm({ eventId, eventName, sport, teams }: Pr
         </div>
       </div>
 
-      {/* ── Task 3: Market Edge panel ── */}
+      {/* ── Task 3: Event Edge panel ── */}
       {showEdge && (
         <div className="rounded-lg border border-slate-700/60 bg-slate-950/70 p-3.5 space-y-2.5">
           {/* Header */}
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-              Market Edge — {OUTCOMES[outcome]}
+              Event Edge — {OUTCOMES[outcome]}
             </span>
             <span className="text-[9px] font-mono text-slate-600 uppercase">{aiSource}</span>
           </div>
@@ -253,7 +253,7 @@ export default function CreateOfferForm({ eventId, eventName, sport, teams }: Pr
             {/* Traditional bookie */}
             <div className="flex items-center justify-between">
               <span className="text-xs text-slate-600 line-through">
-                Traditional Market
+                Bookmaker Odds
               </span>
               <span className="text-xs font-mono font-semibold text-slate-600 line-through">
                 {bookieOdd?.toFixed(2)}x
@@ -273,7 +273,7 @@ export default function CreateOfferForm({ eventId, eventName, sport, teams }: Pr
             {/* Divider */}
             <div className="border-t border-slate-800" />
 
-            {/* Edge vs market */}
+            {/* Edge vs bookmaker */}
             <div className="flex items-center justify-between">
               <span className="text-xs text-emerald-400 font-semibold">
                 Your Mathematical Edge

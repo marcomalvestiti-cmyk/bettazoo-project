@@ -105,7 +105,7 @@ export default function RulesPage() {
           href="/bet"
           className="px-5 py-2.5 rounded-md border border-slate-700 text-slate-300 hover:border-slate-600 hover:text-white text-sm font-semibold transition-colors"
         >
-          Browse Markets
+          Browse Events
         </Link>
       </div>
 

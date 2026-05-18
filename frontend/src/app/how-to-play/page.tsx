@@ -45,7 +45,7 @@ const PLACER_STEPS = [
     step: 3,
     Icon: Users,
     title: 'Attract Bettors & Earn the Edge',
-    desc: 'Your offers appear live in the betting market. Share your Placer profile to build a following. Earn the margin between your quoted odds and the true probability.',
+    desc: 'Your offers appear live in the betting exchange. Share your Placer profile to build a following. Earn the margin between your quoted odds and the true probability.',
   },
 ]
 
@@ -119,7 +119,7 @@ export default function HowToPlayPage() {
             href="/bet"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md bg-[#B31A1A] hover:bg-[#9a1515] text-white text-sm font-semibold transition-colors"
           >
-            Browse Markets →
+            Browse Events →
           </Link>
         </div>
 

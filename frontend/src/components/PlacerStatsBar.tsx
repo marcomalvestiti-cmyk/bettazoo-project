@@ -63,7 +63,7 @@ export default function PlacerStatsBar({ address, offers, pnlSeed }: Props) {
   })
 
   const committed = offers.reduce((s, o) => s + parseFloat(o.remainingLiabilityUsdt || '0'), 0)
-  const activeMarkets = new Set(offers.map(o => o.eventId)).size
+  const activeEvents = new Set(offers.map(o => o.eventId)).size
 
   const pnl = deterministicPnL(pnlSeed ?? address)
   const pnlPositive = pnl >= 0
@@ -86,9 +86,9 @@ export default function PlacerStatsBar({ address, offers, pnlSeed }: Props) {
         sub={`${offers.length} open offer${offers.length !== 1 ? 's' : ''}`}
       />
       <StatCard
-        label="Active Markets"
-        value={activeMarkets.toString()}
-        sub={`of ${MOCK_EVENTS.length} total markets`}
+        label="Active Events"
+        value={activeEvents.toString()}
+        sub={`of ${MOCK_EVENTS.length} total events`}
       />
       <StatCard
         label="24h P&L"

@@ -135,14 +135,14 @@ export default function SportSidebar({ activeSlug }: { activeSlug: string[] }) {
         className="md:hidden fixed bottom-5 right-5 z-40 flex items-center gap-2 bg-[#B31A1A] text-white text-sm font-semibold px-4 py-3 rounded-full shadow-xl"
       >
         <SlidersHorizontal size={15} />
-        Markets
+        Events
       </button>
 
       {/* Desktop sidebar */}
       <aside className="hidden md:flex flex-col w-56 shrink-0 border-r border-slate-800 sticky top-16 h-[calc(100vh-64px)] overflow-y-auto">
         <div className="px-3 pt-5 pb-4">
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 px-3 mb-3">
-            Markets
+            Events
           </p>
           {tree}
         </div>
@@ -157,7 +157,7 @@ export default function SportSidebar({ activeSlug }: { activeSlug: string[] }) {
           />
           <aside className="relative w-72 max-w-[85vw] bg-slate-950 border-r border-slate-800 overflow-y-auto flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 shrink-0">
-              <span className="text-sm font-bold text-white">Markets</span>
+              <span className="text-sm font-bold text-white">Events</span>
               <button
                 onClick={() => setMobileOpen(false)}
                 className="p-1.5 rounded hover:bg-slate-800 transition-colors"

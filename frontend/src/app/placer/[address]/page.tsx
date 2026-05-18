@@ -171,7 +171,7 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
               </div>
 
               <p className="text-xs text-slate-500 italic leading-relaxed">
-                &quot;The best odds on the market, guaranteed. Bet with confidence.&quot;
+                &quot;The best odds available, guaranteed. Bet with confidence.&quot;
               </p>
             </div>
           </div>
