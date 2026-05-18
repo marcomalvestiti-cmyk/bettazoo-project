@@ -22,6 +22,18 @@ const PORT = process.env.PORT || 3001
 
 // Reconnect timer handle (shared state for debounce)
 let web3ReconnectTimer = null
+// Keep a reference to the active provider so we can destroy it before reconnecting,
+// preventing listener leaks and orphaned WebSocket connections in memory.
+let activeProvider = null
+
+// ── Memory monitor — logs heap usage every 60 s so Railway logs show trends ──
+setInterval(() => {
+  const { heapUsed, heapTotal, rss } = process.memoryUsage()
+  console.log(
+    `[${ts()}] [Memory] RSS: ${Math.round(rss / 1024 / 1024)}MB | ` +
+    `Heap: ${Math.round(heapUsed / 1024 / 1024)}/${Math.round(heapTotal / 1024 / 1024)}MB`
+  )
+}, 60_000).unref() // unref so the interval doesn't prevent graceful shutdown
 
 async function main() {
   // ── MongoDB ──────────────────────────────────────────────────────────────────
@@ -73,6 +85,20 @@ async function main() {
 function startWeb3(url, contractAddress, io, skipHistoricalSync) {
   const { ethers } = require('ethers')
 
+  // Destroy the previous provider before creating a new one.
+  // This removes all contract event listeners and closes the WebSocket,
+  // preventing orphaned connections and listener leaks across reconnects.
+  if (activeProvider) {
+    try {
+      activeProvider.removeAllListeners?.()
+      activeProvider.destroy?.()
+      console.log(`[${ts()}] [Web3] Previous provider destroyed`)
+    } catch (err) {
+      console.warn(`[${ts()}] [Web3] Could not destroy previous provider: ${err?.message}`)
+    }
+    activeProvider = null
+  }
+
   let provider
   try {
     if (url.startsWith('wss://') || url.startsWith('ws://')) {
@@ -80,8 +106,6 @@ function startWeb3(url, contractAddress, io, skipHistoricalSync) {
       console.log(`[${ts()}] [Web3] Using WebSocketProvider`)
 
       // ethers v6 exposes the raw WebSocket on _websocket (private but accessible)
-      // Register close/error handlers immediately so no event is missed before
-      // startListener() registers provider.on('error').
       const ws = provider._websocket
       if (ws) {
         ws.on('close', (code) => {
@@ -90,8 +114,6 @@ function startWeb3(url, contractAddress, io, skipHistoricalSync) {
         })
         ws.on('error', (err) => {
           console.error(`[${ts()}] [Web3] WebSocket error: ${err?.message || err}`)
-          // scheduleReconnect is also called via provider.on('error') — the timer
-          // debounce prevents double scheduling.
         })
       }
     } else {
@@ -103,6 +125,8 @@ function startWeb3(url, contractAddress, io, skipHistoricalSync) {
     scheduleReconnect(url, contractAddress, io)
     return
   }
+
+  activeProvider = provider
 
   // Public provider error event (works for both WS and HTTP providers in ethers v6)
   provider.on('error', (err) => {

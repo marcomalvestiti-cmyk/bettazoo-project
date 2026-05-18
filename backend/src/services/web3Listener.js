@@ -1,4 +1,5 @@
 const { ethers } = require('ethers')
+const mongoose = require('mongoose')
 const Order = require('../models/Order')
 const Event = require('../models/Event')
 
@@ -14,9 +15,45 @@ const DEPLOY_BLOCK = parseInt(process.env.ESCROW_DEPLOY_BLOCK ?? '0')
 // Most public RPCs cap eth_getLogs to 10 000 blocks.
 const CHUNK_SIZE = 9_000
 
+// ── SyncState — tracks last synced block across restarts ──────────────────────
+// Stored in MongoDB so Railway restarts resume from where they left off instead
+// of re-loading the full blockchain history every time (the main OOM trigger).
+const SyncState = mongoose.models.SyncState ?? mongoose.model(
+  'SyncState',
+  new mongoose.Schema(
+    { _id: String, lastBlock: { type: Number, default: 0 } },
+    { collection: 'syncstate' }
+  )
+)
+
+async function getLastSyncedBlock() {
+  try {
+    const doc = await SyncState.findById('web3').lean()
+    const block = doc?.lastBlock ?? DEPLOY_BLOCK
+    console.log(`[${ts()}] [Sync] Last synced block from DB: ${block}`)
+    return block
+  } catch (err) {
+    console.warn(`[${ts()}] [Sync] Could not read lastSyncedBlock: ${err.message} — using DEPLOY_BLOCK=${DEPLOY_BLOCK}`)
+    return DEPLOY_BLOCK
+  }
+}
+
+async function saveLastSyncedBlock(blockNumber) {
+  try {
+    await SyncState.findByIdAndUpdate('web3', { lastBlock: blockNumber }, { upsert: true })
+    console.log(`[${ts()}] [Sync] lastSyncedBlock saved: ${blockNumber}`)
+  } catch (err) {
+    console.warn(`[${ts()}] [Sync] Could not save lastSyncedBlock: ${err.message}`)
+  }
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+function heapMB() {
+  return Math.round(process.memoryUsage().heapUsed / 1024 / 1024)
+}
 
 /**
  * Retries fn up to maxAttempts times, backing off on 429 / rate-limit errors.
@@ -47,32 +84,15 @@ async function withRetry(fn, label, maxAttempts = 3) {
 
 function ts() { return new Date().toISOString() }
 
-// ── queryAllEvents ───────────────────────────────────────────────────────────
-
-// Paginated queryFilter: handles RPC block-range limits and retries on 429.
-async function queryAllEvents(contract, eventName, fromBlock) {
-  let toBlock
-  try {
-    toBlock = await withRetry(
-      () => contract.runner.provider.getBlockNumber(),
-      `Sync/getBlockNumber`
-    )
-  } catch {
-    console.warn(`[${ts()}] [Sync] Could not get block number — trying single queryFilter for ${eventName}`)
-    return contract.queryFilter(eventName, fromBlock, 'latest')
-  }
-
-  if (fromBlock > toBlock) return []
-
-  const totalBlocks = toBlock - fromBlock
-  if (totalBlocks > 500_000) {
-    console.warn(
-      `[${ts()}] [Sync] Block range is very large (${totalBlocks} blocks). ` +
-      `Set ESCROW_DEPLOY_BLOCK in your env to the contract deploy block to speed this up.`
-    )
-  }
-
-  const events = []
+// ── processEventsInChunks ─────────────────────────────────────────────────────
+// Processes blockchain events in 9 000-block chunks WITHOUT accumulating them
+// all in RAM. onChunk is called per chunk and the chunk array is discarded
+// immediately after (GC-eligible), keeping heap usage flat regardless of
+// how many total events exist on-chain.
+//
+// Returns total number of events processed.
+async function processEventsInChunks(contract, eventName, fromBlock, toBlock, onChunk) {
+  let totalProcessed = 0
   for (let start = fromBlock; start <= toBlock; start += CHUNK_SIZE) {
     const end = Math.min(start + CHUNK_SIZE - 1, toBlock)
     try {
@@ -80,99 +100,157 @@ async function queryAllEvents(contract, eventName, fromBlock) {
         () => contract.queryFilter(eventName, start, end),
         `Sync/${eventName} ${start}-${end}`
       )
-      events.push(...chunk)
       if (chunk.length > 0) {
-        console.log(`[${ts()}] [Sync][${eventName}] blocks ${start}–${end}: ${chunk.length} event(s)`)
+        console.log(
+          `[${ts()}] [Sync][${eventName}] blocks ${start}–${end}: ` +
+          `${chunk.length} event(s) | heap ${heapMB()}MB`
+        )
+        await onChunk(chunk)
+        totalProcessed += chunk.length
+        // chunk goes out of scope here — GC can reclaim all event objects
       }
     } catch (err) {
       console.warn(`[${ts()}] [Sync][${eventName}] chunk ${start}–${end} failed after retries: ${err.message}`)
     }
   }
-  return events
+  return totalProcessed
 }
 
 // ── syncHistoricalEvents ─────────────────────────────────────────────────────
 
 // Batch size and inter-batch delay for on-chain offers() reads.
-// Keeps per-second RPC call count well under public node rate limits.
 const OFFER_BATCH_SIZE  = 5
 const OFFER_BATCH_DELAY = 400 // ms between batches
 
 async function syncHistoricalEvents(contract) {
-  console.log(`\n[${ts()}] [Sync] ── Historical event sync starting (from block ${DEPLOY_BLOCK}) ──`)
+  // Start from where we left off, not from scratch every time.
+  const fromBlock = await getLastSyncedBlock()
 
-  // 1. OfferCreated
-  const created = await queryAllEvents(contract, 'OfferCreated', DEPLOY_BLOCK)
-  console.log(`[${ts()}] [Sync] OfferCreated total: ${created.length}`)
-
-  // 2. OfferMatched — precompute cumulative matched liability per offer
-  const matched = await queryAllEvents(contract, 'OfferMatched', DEPLOY_BLOCK)
-  const totalMatchedByOffer = {}
-  for (const ev of matched) {
-    const id = Number(ev.args.offerId)
-    totalMatchedByOffer[id] = (totalMatchedByOffer[id] ?? BigInt(0)) + BigInt(ev.args.placerLiability)
-  }
-
-  // 3. Upsert each order in batches (avoid RPC rate limit on offers() reads)
-  for (let i = 0; i < created.length; i += OFFER_BATCH_SIZE) {
-    const batch = created.slice(i, i + OFFER_BATCH_SIZE)
-
-    await Promise.all(batch.map(async (ev) => {
-      const { offerId, placer, eventId, outcome, odds, liability } = ev.args
-      const id = Number(offerId)
-
-      const computedRemaining = BigInt(liability) - (totalMatchedByOffer[id] ?? BigInt(0))
-      let onChainActive    = computedRemaining > BigInt(0)
-      let onChainRemaining = computedRemaining.toString()
-
-      try {
-        const onChain = await contract.offers(id)
-        onChainActive    = onChain.active
-        onChainRemaining = onChain.remainingLiability.toString()
-      } catch (err) {
-        console.warn(`[${ts()}] [Sync] on-chain read for offer #${id} failed (using computed): ${err.message}`)
-      }
-
-      await Order.findOneAndUpdate(
-        { offerId: id },
-        {
-          offerId:            id,
-          placer:             placer.toLowerCase(),
-          eventId,
-          outcome:            Number(outcome),
-          odds:               Number(odds),
-          oddsDecimal:        Number(odds) / 10000,
-          liability:          liability.toString(),
-          remainingLiability: onChainRemaining,
-          active:             onChainActive,
-          txHash:             ev.transactionHash,
-          blockNumber:        ev.blockNumber,
-        },
-        { upsert: true, new: true }
-      )
-
-      await Event.findOneAndUpdate({ eventId }, { eventId }, { upsert: true, setDefaultsOnInsert: true })
-    }))
-
-    // Throttle between batches to stay under rate limits
-    if (i + OFFER_BATCH_SIZE < created.length) await sleep(OFFER_BATCH_DELAY)
-  }
-
-  // 4. EventResolved
-  const resolved = await queryAllEvents(contract, 'EventResolved', DEPLOY_BLOCK)
-  for (const ev of resolved) {
-    const { eventId, winningOutcome } = ev.args
-    await Event.findOneAndUpdate(
-      { eventId },
-      { eventId, resolved: true, winningOutcome: Number(winningOutcome), resolvedAt: new Date() },
-      { upsert: true }
+  let toBlock
+  try {
+    toBlock = await withRetry(
+      () => contract.runner.provider.getBlockNumber(),
+      'Sync/getBlockNumber'
     )
-    await Order.updateMany({ eventId }, { active: false })
+  } catch (err) {
+    console.warn(`[${ts()}] [Sync] Could not get block number: ${err.message} — skipping historical sync`)
+    return
   }
+
+  if (fromBlock >= toBlock) {
+    console.log(`[${ts()}] [Sync] Already up to date at block ${toBlock} — skipping historical sync`)
+    return
+  }
+
+  const totalBlocks = toBlock - fromBlock
+  console.log(
+    `\n[${ts()}] [Sync] ── Historical sync: blocks ${fromBlock}–${toBlock} ` +
+    `(${totalBlocks.toLocaleString()} blocks) | heap ${heapMB()}MB ──`
+  )
+  if (totalBlocks > 500_000) {
+    console.warn(
+      `[${ts()}] [Sync] Block range is very large (${totalBlocks.toLocaleString()} blocks). ` +
+      `Set ESCROW_DEPLOY_BLOCK in your env to the contract deploy block to speed this up.`
+    )
+  }
+
+  // Pass 1: Stream OfferMatched events to build a compact aggregation map.
+  // We keep ONLY { offerId -> BigInt } — NOT the event objects — so heap stays tiny
+  // even with thousands of matches.
+  const totalMatchedByOffer = {}
+  const matchedCount = await processEventsInChunks(
+    contract, 'OfferMatched', fromBlock, toBlock,
+    async (chunk) => {
+      for (const ev of chunk) {
+        const id = Number(ev.args.offerId)
+        totalMatchedByOffer[id] = (totalMatchedByOffer[id] ?? BigInt(0)) + BigInt(ev.args.placerLiability)
+      }
+      // chunk dereferenced here — event objects freed by GC
+    }
+  )
+  console.log(
+    `[${ts()}] [Sync] OfferMatched total: ${matchedCount} ` +
+    `(${Object.keys(totalMatchedByOffer).length} unique offers affected) | heap ${heapMB()}MB`
+  )
+
+  // Pass 2: Stream OfferCreated events, upsert to MongoDB per chunk.
+  // Each chunk is processed and discarded before the next one is fetched,
+  // so RAM usage is bounded by CHUNK_SIZE, not by total event count.
+  const createdCount = await processEventsInChunks(
+    contract, 'OfferCreated', fromBlock, toBlock,
+    async (chunk) => {
+      for (let i = 0; i < chunk.length; i += OFFER_BATCH_SIZE) {
+        const batch = chunk.slice(i, i + OFFER_BATCH_SIZE)
+
+        await Promise.all(batch.map(async (ev) => {
+          const { offerId, placer, eventId, outcome, odds, liability } = ev.args
+          const id = Number(offerId)
+
+          const computedRemaining = BigInt(liability) - (totalMatchedByOffer[id] ?? BigInt(0))
+          let onChainActive    = computedRemaining > BigInt(0)
+          let onChainRemaining = computedRemaining.toString()
+
+          try {
+            const onChain = await contract.offers(id)
+            onChainActive    = onChain.active
+            onChainRemaining = onChain.remainingLiability.toString()
+          } catch (err) {
+            console.warn(`[${ts()}] [Sync] on-chain read for offer #${id} failed (using computed): ${err.message}`)
+          }
+
+          await Order.findOneAndUpdate(
+            { offerId: id },
+            {
+              offerId:            id,
+              placer:             placer.toLowerCase(),
+              eventId,
+              outcome:            Number(outcome),
+              odds:               Number(odds),
+              oddsDecimal:        Number(odds) / 10000,
+              liability:          liability.toString(),
+              remainingLiability: onChainRemaining,
+              active:             onChainActive,
+              txHash:             ev.transactionHash,
+              blockNumber:        ev.blockNumber,
+            },
+            { upsert: true, new: true }
+          )
+
+          await Event.findOneAndUpdate(
+            { eventId }, { eventId },
+            { upsert: true, setDefaultsOnInsert: true }
+          )
+        }))
+
+        if (i + OFFER_BATCH_SIZE < chunk.length) await sleep(OFFER_BATCH_DELAY)
+      }
+      // chunk dereferenced — event objects freed by GC
+    }
+  )
+  console.log(`[${ts()}] [Sync] OfferCreated total: ${createdCount} | heap ${heapMB()}MB`)
+
+  // Pass 3: Stream EventResolved events, update DB per chunk.
+  const resolvedCount = await processEventsInChunks(
+    contract, 'EventResolved', fromBlock, toBlock,
+    async (chunk) => {
+      for (const ev of chunk) {
+        const { eventId, winningOutcome } = ev.args
+        await Event.findOneAndUpdate(
+          { eventId },
+          { eventId, resolved: true, winningOutcome: Number(winningOutcome), resolvedAt: new Date() },
+          { upsert: true }
+        )
+        await Order.updateMany({ eventId }, { active: false })
+      }
+    }
+  )
+
+  // Persist the high-water mark so the next Railway restart resumes from here.
+  await saveLastSyncedBlock(toBlock)
 
   console.log(
-    `[${ts()}] [Sync] ── Done: ${created.length} offers synced, ` +
-    `${matched.length} matches applied, ${resolved.length} events resolved ──\n`
+    `[${ts()}] [Sync] ── Done: ${createdCount} offers, ${matchedCount} matches, ` +
+    `${resolvedCount} events resolved | heap ${heapMB()}MB ──\n`
   )
 }
 
@@ -217,7 +295,7 @@ async function startListener(provider, contractAddress, io, skipHistoricalSync =
       )
       await Event.findOneAndUpdate({ eventId }, { eventId }, { upsert: true, setDefaultsOnInsert: true })
       io?.emit('offer:created', { offerId: Number(offerId), placer, eventId, outcome: Number(outcome) })
-      console.log(`[${ts()}] [OfferCreated] offerId=${offerId} eventId=${eventId}`)
+      console.log(`[${ts()}] [OfferCreated] offerId=${offerId} eventId=${eventId} | heap ${heapMB()}MB`)
     } catch (err) {
       console.error(`[${ts()}] [OfferCreated] error: ${err.message}`)
     }
@@ -244,7 +322,7 @@ async function startListener(provider, contractAddress, io, skipHistoricalSync =
         { remainingLiability: onChainRemaining, active: onChainActive }
       )
       io?.emit('offer:matched', { matchId: Number(matchId), offerId: id, bettor })
-      console.log(`[${ts()}] [OfferMatched] matchId=${matchId} offerId=${offerId}`)
+      console.log(`[${ts()}] [OfferMatched] matchId=${matchId} offerId=${offerId} | heap ${heapMB()}MB`)
     } catch (err) {
       console.error(`[${ts()}] [OfferMatched] error: ${err.message}`)
     }
