@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type MouseEvent } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   Trophy, Gamepad2, CircleDot, Dumbbell,
   Crosshair, Sword, ShieldHalf, Target, Zap,
-  ChevronRight, X, SlidersHorizontal,
+  ChevronDown, X, SlidersHorizontal,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { SPORTS_TREE, type SportNode } from '@/lib/sportsData'
@@ -45,7 +45,9 @@ export default function SportSidebar({ activeSlug }: { activeSlug: string[] }) {
     setMobileOpen(false)
   }, [pathname])
 
-  function toggle(id: string) {
+  function toggle(id: string, e: MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
     setOpenNodes(prev => {
       const next = new Set(prev)
       next.has(id) ? next.delete(id) : next.add(id)
@@ -55,31 +57,38 @@ export default function SportSidebar({ activeSlug }: { activeSlug: string[] }) {
 
   function renderNode(node: SportNode, pathParts: string[], depth: number): React.ReactNode {
     const hasChildren = !!node.children?.length
-    const fullParts = [...pathParts, node.id]
-    const href = `/bet/${fullParts.join('/')}`
-    const nodeStr = fullParts.join('/')
-    const isSelected = activeStr === nodeStr
-    const isInPath = activeStr === nodeStr || activeStr.startsWith(`${nodeStr}/`)
-    const isOpen = openNodes.has(node.id)
-    const Icon: LucideIcon = node.iconType ? (ICON_MAP[node.iconType] ?? Zap) : Zap
-    const pl = (depth + 1) * 12 + 8
+    const fullParts   = [...pathParts, node.id]
+    const href        = `/bet/${fullParts.join('/')}`
+    const nodeStr     = fullParts.join('/')
+    const isSelected  = activeStr === nodeStr
+    const isInPath    = activeStr === nodeStr || activeStr.startsWith(`${nodeStr}/`)
+    const isOpen      = openNodes.has(node.id)
+    const Icon        = node.iconType ? (ICON_MAP[node.iconType] ?? Zap) : Zap
+    const pl          = (depth + 1) * 12 + 8
+
+    const linkCls = [
+      'flex items-center gap-2 min-w-0 rounded-l-md text-sm transition-colors py-2.5 flex-1',
+      isSelected
+        ? 'text-white bg-slate-800 border-l-2 border-[#B31A1A]'
+        : isInPath
+        ? 'text-slate-200 hover:bg-slate-900'
+        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900',
+    ].join(' ')
 
     return (
       <div key={node.id}>
-        <Link
-          href={href}
-          onClick={() => { if (hasChildren) toggle(node.id) }}
-          className={[
-            'flex items-center justify-between py-2 pr-3 rounded-md text-sm transition-colors',
-            isSelected
-              ? 'text-white bg-slate-800 border-l-2 border-[#B31A1A]'
-              : isInPath
-              ? 'text-slate-200 hover:bg-slate-900'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900',
-          ].join(' ')}
-          style={{ paddingLeft: `${isSelected ? pl - 2 : pl}px` }}
-        >
-          <span className="flex items-center gap-2 min-w-0">
+
+        {/* ── Row: navigate link + (optional) separate expand button ── */}
+        <div className="flex items-stretch">
+
+          <Link
+            href={href}
+            className={linkCls}
+            style={{
+              paddingLeft:  `${isSelected ? pl - 2 : pl}px`,
+              paddingRight: hasChildren ? '4px' : '12px',
+            }}
+          >
             {depth <= 1 && (
               <Icon
                 size={depth === 0 ? 15 : 13}
@@ -89,19 +98,41 @@ export default function SportSidebar({ activeSlug }: { activeSlug: string[] }) {
             <span className={`truncate ${depth === 0 ? 'font-semibold' : 'font-medium'}`}>
               {node.label}
             </span>
-          </span>
+          </Link>
+
+          {/* Expand/collapse — dedicated touch target (min 44 × 44 px) */}
           {hasChildren && (
-            <ChevronRight
-              size={12}
-              className={`shrink-0 ml-1 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`}
-            />
+            <button
+              onClick={(e) => toggle(node.id, e)}
+              aria-label={isOpen ? `Chiudi ${node.label}` : `Apri ${node.label}`}
+              className={[
+                'flex items-center justify-center w-11 self-stretch shrink-0 rounded-r-md',
+                'transition-colors',
+                isSelected || isInPath
+                  ? 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                  : 'text-slate-600 hover:text-slate-300 hover:bg-slate-800/60',
+              ].join(' ')}
+            >
+              <ChevronDown
+                size={13}
+                className={`transition-transform duration-300 ease-in-out ${isOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
           )}
-        </Link>
-        {hasChildren && isOpen && (
-          <div>
+        </div>
+
+        {/* ── Animated children container ── */}
+        {hasChildren && (
+          <div
+            className={[
+              'overflow-hidden transition-all duration-300 ease-in-out',
+              isOpen ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0',
+            ].join(' ')}
+          >
             {node.children!.map(child => renderNode(child, fullParts, depth + 1))}
           </div>
         )}
+
       </div>
     )
   }
@@ -111,7 +142,7 @@ export default function SportSidebar({ activeSlug }: { activeSlug: string[] }) {
       <Link
         href="/bet"
         className={[
-          'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-semibold transition-colors',
+          'flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-semibold transition-colors',
           activeSlug.length === 0
             ? 'text-white bg-slate-800 border-l-2 border-[#B31A1A] pl-[10px]'
             : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900',
@@ -129,16 +160,16 @@ export default function SportSidebar({ activeSlug }: { activeSlug: string[] }) {
 
   return (
     <>
-      {/* Mobile FAB */}
+      {/* ── Mobile FAB ── */}
       <button
         onClick={() => setMobileOpen(true)}
-        className="md:hidden fixed bottom-5 right-5 z-40 flex items-center gap-2 bg-[#B31A1A] text-white text-sm font-semibold px-4 py-3 rounded-full shadow-xl"
+        className="md:hidden fixed bottom-5 right-5 z-40 flex items-center gap-2 bg-[#B31A1A] text-white text-sm font-semibold px-4 py-3 rounded-full shadow-xl active:scale-95 transition-transform"
       >
         <SlidersHorizontal size={15} />
         Events
       </button>
 
-      {/* Desktop sidebar */}
+      {/* ── Desktop sidebar ── */}
       <aside className="hidden md:flex flex-col w-56 shrink-0 border-r border-slate-800 sticky top-16 h-[calc(100vh-64px)] overflow-y-auto">
         <div className="px-3 pt-5 pb-4">
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 px-3 mb-3">
@@ -148,29 +179,47 @@ export default function SportSidebar({ activeSlug }: { activeSlug: string[] }) {
         </div>
       </aside>
 
-      {/* Mobile drawer */}
-      {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex">
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setMobileOpen(false)}
-          />
-          <aside className="relative w-72 max-w-[85vw] bg-slate-950 border-r border-slate-800 overflow-y-auto flex flex-col">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 shrink-0">
-              <span className="text-sm font-bold text-white">Events</span>
-              <button
-                onClick={() => setMobileOpen(false)}
-                className="p-1.5 rounded hover:bg-slate-800 transition-colors"
-              >
-                <X size={16} className="text-slate-400" />
-              </button>
-            </div>
-            <div className="px-3 py-3">
-              {tree}
-            </div>
-          </aside>
-        </div>
-      )}
+      {/* ── Mobile drawer (always in DOM for smooth enter/exit animation) ── */}
+      <div
+        className={[
+          'md:hidden fixed inset-0 z-50 flex',
+          'transition-opacity duration-300 ease-in-out',
+          mobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
+        ].join(' ')}
+      >
+        {/* Backdrop */}
+        <div
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          onClick={() => setMobileOpen(false)}
+        />
+
+        {/* Sliding panel */}
+        <aside
+          className={[
+            'relative w-72 max-w-[85vw] bg-slate-950 border-r border-slate-800',
+            'overflow-y-auto flex flex-col',
+            'transition-transform duration-300 ease-in-out',
+            mobileOpen ? 'translate-x-0' : '-translate-x-full',
+          ].join(' ')}
+        >
+          {/* Drawer header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 shrink-0">
+            <span className="text-sm font-bold text-white">Events</span>
+            <button
+              onClick={() => setMobileOpen(false)}
+              className="p-2 rounded hover:bg-slate-800 transition-colors"
+              aria-label="Chiudi menu"
+            >
+              <X size={16} className="text-slate-400" />
+            </button>
+          </div>
+
+          {/* Drawer content */}
+          <div className="px-3 py-3 flex-1 overflow-y-auto">
+            {tree}
+          </div>
+        </aside>
+      </div>
     </>
   )
 }
