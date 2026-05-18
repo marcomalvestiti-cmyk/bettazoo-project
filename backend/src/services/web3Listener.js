@@ -12,8 +12,9 @@ const ESCROW_ABI = [
 ]
 
 const DEPLOY_BLOCK = parseInt(process.env.ESCROW_DEPLOY_BLOCK ?? '0')
-// Most public RPCs cap eth_getLogs to 10 000 blocks.
-const CHUNK_SIZE = 9_000
+// Alchemy free tier: max 10 blocks per eth_getLogs. Public RPCs: up to 10 000.
+// Set ESCROW_CHUNK_SIZE=10 for Alchemy free, 2000 for Infura/QuickNode, 9000 for public RPCs.
+const CHUNK_SIZE = parseInt(process.env.ESCROW_CHUNK_SIZE ?? '2000')
 
 // ── SyncState — tracks last synced block across restarts ──────────────────────
 // Stored in MongoDB so Railway restarts resume from where they left off instead
