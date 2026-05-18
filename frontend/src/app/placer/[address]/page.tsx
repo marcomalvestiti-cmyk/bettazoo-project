@@ -9,6 +9,7 @@ import StreamPlayer from '@/components/StreamPlayer'
 import LiveChat from '@/components/LiveChat'
 import BetSlip from '@/components/BetSlip'
 import type { Offer } from '@/components/OrderBook'
+import { displayMakerName, isKnownMaker } from '@/lib/formatAddress'
 
 const AVATAR_GRADIENTS = [
   'from-red-500 to-rose-600',
@@ -121,7 +122,7 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
               <p className="text-sm text-slate-400 mt-0.5 flex items-center gap-2 flex-wrap">
                 <span className="text-red-500 font-semibold">Sports Betting</span>
                 <span className="text-slate-700">·</span>
-                <span className="font-mono text-xs text-slate-500">{shortAddr}</span>
+                <span className={`text-xs ${isKnownMaker(address) ? 'font-semibold text-sky-400' : 'font-mono text-slate-500'}`}>{displayMakerName(address)}</span>
               </p>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
@@ -149,7 +150,14 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
             {/* Name + bio + actions */}
             <div className="flex-1 min-w-0 space-y-2">
               <div className="flex items-center gap-3 flex-wrap">
-                <span className="text-base font-semibold text-white font-mono">{shortAddr}</span>
+                <span className={`text-base font-semibold ${isKnownMaker(address) ? 'text-sky-300' : 'text-white font-mono'}`}>
+                  {displayMakerName(address)}
+                </span>
+                {isKnownMaker(address) && (
+                  <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded bg-sky-500/15 text-sky-400 border border-sky-500/30 leading-none select-none whitespace-nowrap">
+                    ✓ Official
+                  </span>
+                )}
                 <button className="px-4 py-1.5 text-xs font-semibold rounded-md bg-[#B31A1A] hover:bg-red-600 text-white transition-colors">
                   + Follow
                 </button>

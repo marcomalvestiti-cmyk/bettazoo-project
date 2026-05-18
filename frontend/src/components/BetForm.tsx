@@ -7,6 +7,7 @@ import { waitForTransactionReceipt } from 'viem/actions'
 import { ESCROW_ABI, ERC20_ABI } from '@/lib/abis'
 import { withGasBuffer } from '@/lib/gasUtils'
 import type { Offer } from './OrderBook'
+import { displayMakerName, isKnownMaker } from '@/lib/formatAddress'
 
 type Props = {
   offers: Offer[]
@@ -109,8 +110,13 @@ export default function BetForm({ offers, stakeUsdt, onClose }: Props) {
         <div className="rounded-md bg-slate-950/60 border border-slate-700 divide-y divide-slate-700/60">
           {offers.map((o) => (
             <div key={o.offerId} className="px-4 py-2.5 flex justify-between items-center">
-              <span className="text-xs text-slate-400 font-mono">
-                #{o.offerId} · {o.placer.slice(0, 6)}…{o.placer.slice(-4)}
+              <span className={`text-xs font-mono flex items-center gap-1.5 ${isKnownMaker(o.placer) ? 'text-sky-400' : 'text-slate-400'}`}>
+                #{o.offerId} · {displayMakerName(o.placer)}
+                {isKnownMaker(o.placer) && (
+                  <span className="inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-400 border border-sky-500/30 leading-none select-none whitespace-nowrap">
+                    ✓ Official
+                  </span>
+                )}
               </span>
               <span className="font-mono text-sm font-semibold text-green-400">{o.oddsDecimal.toFixed(2)}x</span>
             </div>

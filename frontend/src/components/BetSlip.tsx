@@ -8,6 +8,7 @@ import { ESCROW_ABI, ERC20_ABI, OUTCOMES } from '@/lib/abis'
 import { withGasBuffer } from '@/lib/gasUtils'
 import { saveBet } from '@/lib/betHistory'
 import type { Offer } from './OrderBook'
+import { displayMakerName, isKnownMaker } from '@/lib/formatAddress'
 
 type Props = {
   outcome: number
@@ -266,8 +267,13 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
                     key={o.offerId}
                     className="flex items-center justify-between rounded-md bg-slate-900/50 border border-slate-800 px-3 py-2.5"
                   >
-                    <span className="text-xs font-mono text-slate-500">
-                      #{o.offerId} · {o.placer.slice(0, 6)}…{o.placer.slice(-4)}
+                    <span className={`text-xs font-mono flex items-center gap-1.5 ${isKnownMaker(o.placer) ? 'text-sky-400' : 'text-slate-500'}`}>
+                      #{o.offerId} · {displayMakerName(o.placer)}
+                      {isKnownMaker(o.placer) && (
+                        <span className="inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-400 border border-sky-500/30 leading-none select-none whitespace-nowrap">
+                          ✓ Official
+                        </span>
+                      )}
                     </span>
                     <span className="text-xs font-semibold font-mono text-red-500 tabular-nums">
                       {o.oddsDecimal.toFixed(2)}x

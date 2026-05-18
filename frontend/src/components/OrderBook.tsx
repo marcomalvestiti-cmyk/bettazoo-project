@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { fetchOrderBook } from '@/lib/api'
 import { OUTCOMES } from '@/lib/abis'
+import { displayMakerName, isKnownMaker } from '@/lib/formatAddress'
 
 export type Offer = {
   offerId: number
@@ -307,9 +308,14 @@ export default function OrderBook({ eventId, onBet }: Props) {
 
                     <td className="px-4 py-3.5 hidden md:table-cell">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-mono text-xs text-slate-600 group-hover:text-slate-400 transition-colors">
-                          {o.placer.slice(0, 6)}…{o.placer.slice(-4)}
+                        <span className={`text-xs transition-colors ${isKnownMaker(o.placer) ? 'font-semibold text-sky-400 group-hover:text-sky-300' : 'font-mono text-slate-600 group-hover:text-slate-400'}`}>
+                          {displayMakerName(o.placer)}
                         </span>
+                        {isKnownMaker(o.placer) && (
+                          <span className="inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-400 border border-sky-500/30 leading-none select-none whitespace-nowrap">
+                            ✓ Official
+                          </span>
+                        )}
                         {o.placer === topPlacer && (
                           <span className="inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 leading-none select-none whitespace-nowrap">
                             🏆 Top
