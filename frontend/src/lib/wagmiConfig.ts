@@ -1,16 +1,22 @@
 import { createConfig, createStorage, http, injected } from 'wagmi'
+import { walletConnect, coinbaseWallet } from 'wagmi/connectors'
 import { arbitrumSepolia } from 'wagmi/chains'
 
-// Use a dedicated RPC when available (NEXT_PUBLIC_RPC_URL env var),
-// falling back to the public Arbitrum Sepolia endpoint.
-// The public endpoint can return 429 rate-limit errors under load.
 const rpcUrl =
   process.env.NEXT_PUBLIC_RPC_URL ??
   'https://sepolia-rollup.arbitrum.io/rpc'
 
+const wcProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? ''
+
 export const wagmiConfig = createConfig({
   chains: [arbitrumSepolia],
-  connectors: [injected()],
+  connectors: [
+    injected({ shimDisconnect: true }),
+    ...(wcProjectId
+      ? [walletConnect({ projectId: wcProjectId, showQrModal: true })]
+      : []),
+    coinbaseWallet({ appName: 'Bettazoo' }),
+  ],
   transports: {
     [arbitrumSepolia.id]: http(rpcUrl, { retryCount: 3, retryDelay: 1_000 }),
   },
