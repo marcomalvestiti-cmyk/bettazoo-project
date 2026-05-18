@@ -7,7 +7,6 @@ import { X, ChevronDown, AlertTriangle } from 'lucide-react'
 
 const WC_PROJECT_ID = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? ''
 
-// Wallet display metadata keyed by connector.id
 const WALLET_META: Record<string, { name: string; icon: string; sub: string }> = {
   injected:       { name: 'Browser Wallet',  icon: '🌐', sub: 'MetaMask · Brave · any injected wallet' },
   walletConnect:  { name: 'WalletConnect',   icon: '🔗', sub: 'All mobile wallets · QR code on desktop' },
@@ -20,7 +19,6 @@ function shortAddress(addr: string) {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`
 }
 
-// ── Connected address chip ───────────────────────────────────────────────────
 function ConnectedChip() {
   const { address, chain } = useAccount()
   const { disconnect } = useDisconnect()
@@ -41,7 +39,6 @@ function ConnectedChip() {
           {isSwitching ? 'Switching…' : '⚠ Switch to Arb Sepolia'}
         </button>
       )}
-
       <div className="relative">
         <button
           onClick={() => setOpen(v => !v)}
@@ -55,7 +52,6 @@ function ConnectedChip() {
           <span className="text-xs font-mono">{shortAddress(address)}</span>
           <ChevronDown size={11} className={`shrink-0 text-slate-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
         </button>
-
         {open && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
@@ -87,7 +83,6 @@ function ConnectedChip() {
   )
 }
 
-// ── Main component ───────────────────────────────────────────────────────────
 export default function ConnectWallet() {
   const { isConnected } = useAccount()
   const { connect, connectors, isPending, error: connectError } = useConnect()
@@ -106,117 +101,117 @@ export default function ConnectWallet() {
         {isPending ? 'Connecting…' : 'Connect Wallet'}
       </button>
 
-      {/* ── Wallet select modal ──────────────────────────────────────────────── */}
       {modalOpen && (
+        /*
+         * Centered overlay on ALL screen sizes.
+         * The previous bottom-sheet (items-end) caused wallet buttons to
+         * be pushed above the viewport on small phones, leaving only the
+         * footer text visible. A centered modal avoids all such issues.
+         */
         <div
-          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
           role="dialog"
           aria-modal="true"
-          aria-label="Connect wallet"
         >
           {/* Backdrop */}
           <div
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/75 backdrop-blur-sm"
             onClick={() => setModalOpen(false)}
           />
 
-          {/*
-            Panel — bottom sheet on mobile, centered card on sm+.
-            max-h + overflow-y-auto prevents the wallet list from being
-            pushed off-screen on small phones (the root cause of the
-            "only disclaimer visible" bug on mobile).
-          */}
-          <div className="relative w-full sm:w-[400px] max-h-[82dvh] overflow-y-auto bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-xl shadow-2xl flex flex-col">
+          {/* Panel — max-h + overflow-y-auto ensures wallet list is always scrollable */}
+          <div className="relative w-full max-w-sm bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden"
+               style={{ maxHeight: 'min(90vh, 560px)' }}>
 
-            {/* Header — sticky so it's always visible while scrolling */}
-            <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-slate-900 shrink-0">
-              <div>
-                <h2 className="text-base font-bold text-white">Connect Wallet</h2>
-                <p className="text-[11px] text-slate-500 mt-0.5">Network: Arbitrum Sepolia (testnet)</p>
+            {/* Scrollable inner content */}
+            <div className="overflow-y-auto" style={{ maxHeight: 'min(90vh, 560px)' }}>
+
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+                <div>
+                  <h2 className="text-base font-bold text-white">Connect Wallet</h2>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Arbitrum Sepolia (testnet)</p>
+                </div>
+                <button
+                  onClick={() => setModalOpen(false)}
+                  className="p-2 rounded-md text-slate-500 hover:text-white hover:bg-slate-700 transition-colors"
+                  aria-label="Close"
+                >
+                  <X size={16} />
+                </button>
               </div>
-              <button
-                onClick={() => setModalOpen(false)}
-                className="p-2 rounded-md text-slate-500 hover:text-white hover:bg-slate-700 transition-colors"
-                aria-label="Close"
-              >
-                <X size={16} />
-              </button>
-            </div>
 
-            {/* Project ID warning — dev/ops helper */}
-            {!WC_PROJECT_ID && (
-              <div className="mx-4 mt-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30">
-                <AlertTriangle size={14} className="text-amber-400 shrink-0 mt-0.5" />
-                <p className="text-[11px] text-amber-300 leading-relaxed">
-                  <strong>WalletConnect disabled</strong> — <code className="text-amber-400">NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID</code> is not set. Mobile wallets won&apos;t appear.
-                </p>
-              </div>
-            )}
-
-            {/* Wallet list */}
-            <div className="p-4 space-y-2.5 flex-1">
-              {connectors.length === 0 && (
-                <p className="text-sm text-slate-500 text-center py-8">
-                  No wallets detected in this browser.
-                </p>
+              {/* Project ID warning */}
+              {!WC_PROJECT_ID && (
+                <div className="mx-4 mt-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                  <AlertTriangle size={13} className="text-amber-400 shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-amber-300 leading-relaxed">
+                    <strong>WalletConnect disabled</strong> — env var not set. Mobile wallets unavailable.
+                  </p>
+                </div>
               )}
-              {connectors.map((connector) => {
-                const meta   = WALLET_META[connector.id] ?? { name: connector.name, icon: '💼', sub: '' }
-                const isThis = pendingId === connector.uid
-                return (
-                  <button
-                    key={connector.uid}
-                    onClick={() => {
-                      setPendingId(connector.uid)
-                      connect(
-                        { connector },
-                        {
-                          onSettled: () => setPendingId(null),
-                          onSuccess: () => setModalOpen(false),
-                        },
-                      )
-                    }}
-                    disabled={isPending}
-                    className="w-full flex items-center gap-4 px-4 py-4 rounded-xl bg-slate-800 hover:bg-slate-750 active:bg-slate-700 border border-slate-700 hover:border-slate-500 text-left transition-colors group disabled:opacity-60"
-                  >
-                    <span className="text-2xl select-none w-9 text-center shrink-0" aria-hidden>
-                      {meta.icon}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-white">{meta.name}</p>
-                      {meta.sub && (
-                        <p className="text-[11px] text-slate-500 mt-0.5 truncate">{meta.sub}</p>
+
+              {/* Wallet buttons — these are the FIRST thing visible after the header */}
+              <div className="p-4 space-y-2">
+                {connectors.length === 0 && (
+                  <p className="text-sm text-slate-500 text-center py-8">
+                    No wallets detected in this browser.
+                  </p>
+                )}
+                {connectors.map((connector) => {
+                  const meta   = WALLET_META[connector.id] ?? { name: connector.name, icon: '💼', sub: '' }
+                  const isThis = pendingId === connector.uid
+                  return (
+                    <button
+                      key={connector.uid}
+                      onClick={() => {
+                        setPendingId(connector.uid)
+                        connect(
+                          { connector },
+                          {
+                            onSettled: () => setPendingId(null),
+                            onSuccess: () => setModalOpen(false),
+                          },
+                        )
+                      }}
+                      disabled={isPending}
+                      className="w-full flex items-center gap-3 px-4 py-4 rounded-xl bg-slate-800 hover:bg-slate-700 active:bg-slate-600 border border-slate-700 hover:border-slate-500 text-left transition-colors group disabled:opacity-60"
+                    >
+                      <span className="text-2xl w-9 text-center shrink-0 select-none" aria-hidden>
+                        {meta.icon}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-white">{meta.name}</p>
+                        {meta.sub && (
+                          <p className="text-[11px] text-slate-500 mt-0.5 truncate">{meta.sub}</p>
+                        )}
+                      </div>
+                      {isThis ? (
+                        <svg className="w-4 h-4 animate-spin text-red-400 shrink-0" viewBox="0 0 24 24" fill="none">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                        </svg>
+                      ) : (
+                        <span className="text-slate-600 group-hover:text-slate-300 transition-colors text-lg">›</span>
                       )}
-                    </div>
-                    {isThis ? (
-                      <svg className="w-4 h-4 animate-spin text-red-500 shrink-0" viewBox="0 0 24 24" fill="none">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                      </svg>
-                    ) : (
-                      <span className="text-slate-600 group-hover:text-slate-300 transition-colors text-lg shrink-0">›</span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* Inline error */}
-            {connectError && (
-              <div className="mx-4 mb-4 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-red-400/10 border border-red-400/20">
-                <AlertTriangle size={13} className="text-red-400 shrink-0 mt-0.5" />
-                <p className="text-xs text-red-400 leading-relaxed">
-                  {connectError.message.length > 140
-                    ? connectError.message.slice(0, 140) + '…'
-                    : connectError.message}
-                </p>
+                    </button>
+                  )
+                })}
               </div>
-            )}
 
-            {/* Minimal non-blocking note — NOT a blocking disclaimer */}
-            <p className="px-5 pb-5 text-[10px] text-slate-700 text-center leading-relaxed shrink-0">
-              Non-custodial · funds secured by smart contract · testnet only
-            </p>
+              {/* Error */}
+              {connectError && (
+                <div className="mx-4 mb-4 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-red-400/10 border border-red-400/20">
+                  <AlertTriangle size={13} className="text-red-400 shrink-0 mt-0.5" />
+                  <p className="text-xs text-red-400 leading-relaxed break-words">
+                    {connectError.message.length > 140
+                      ? connectError.message.slice(0, 140) + '…'
+                      : connectError.message}
+                  </p>
+                </div>
+              )}
+
+            </div>
           </div>
         </div>
       )}
