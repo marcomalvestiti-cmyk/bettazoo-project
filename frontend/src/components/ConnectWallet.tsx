@@ -3,102 +3,99 @@
 import { useState } from 'react'
 import { useAccount, useConnect, useDisconnect, useSwitchChain } from 'wagmi'
 import { arbitrumSepolia } from 'wagmi/chains'
-import { X, ChevronDown } from 'lucide-react'
+import { X, ChevronDown, AlertTriangle } from 'lucide-react'
 
-// ── Wallet display metadata keyed by connector.id ────────────────────────────
-const WALLET_META: Record<string, { name: string; icon: string; sub?: string }> = {
-  injected:      { name: 'Browser Wallet', icon: '🌐', sub: 'MetaMask · Brave · any injected wallet' },
-  walletConnect: { name: 'WalletConnect',  icon: '🔗', sub: 'All mobile wallets · QR code on desktop' },
-  coinbaseWallet:{ name: 'Coinbase Wallet',icon: '🔵', sub: 'Coinbase Wallet app · smart accounts' },
-  metaMask:      { name: 'MetaMask',       icon: '🦊', sub: 'MetaMask browser extension' },
-  safe:          { name: 'Safe',           icon: '🛡️', sub: 'Safe multi-sig wallet' },
+const WC_PROJECT_ID = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? ''
+
+// Wallet display metadata keyed by connector.id
+const WALLET_META: Record<string, { name: string; icon: string; sub: string }> = {
+  injected:       { name: 'Browser Wallet',  icon: '🌐', sub: 'MetaMask · Brave · any injected wallet' },
+  walletConnect:  { name: 'WalletConnect',   icon: '🔗', sub: 'All mobile wallets · QR code on desktop' },
+  coinbaseWallet: { name: 'Coinbase Wallet', icon: '🔵', sub: 'Coinbase Wallet app' },
+  metaMask:       { name: 'MetaMask',        icon: '🦊', sub: 'MetaMask browser extension' },
+  safe:           { name: 'Safe',            icon: '🛡️', sub: 'Safe multi-sig wallet' },
 }
 
 function shortAddress(addr: string) {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`
 }
 
-export default function ConnectWallet() {
-  const { address, isConnected, chain } = useAccount()
-  const { connect, connectors, isPending, error: connectError } = useConnect()
+// ── Connected address chip ───────────────────────────────────────────────────
+function ConnectedChip() {
+  const { address, chain } = useAccount()
   const { disconnect } = useDisconnect()
   const { switchChain, isPending: isSwitching } = useSwitchChain()
+  const [open, setOpen] = useState(false)
 
-  const [modalOpen, setModalOpen]       = useState(false)
-  const [pendingId, setPendingId]       = useState<string | null>(null)
-  const [showDisconnect, setShowDisconnect] = useState(false)
+  if (!address) return null
+  const wrongNet = chain?.id !== arbitrumSepolia.id
 
-  const wrongNetwork = isConnected && chain?.id !== arbitrumSepolia.id
+  return (
+    <div className="flex items-center gap-2">
+      {wrongNet && (
+        <button
+          onClick={() => switchChain({ chainId: arbitrumSepolia.id })}
+          disabled={isSwitching}
+          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-amber-500/10 border border-amber-500/40 text-amber-400 hover:bg-amber-500/20 disabled:opacity-60 transition-colors whitespace-nowrap"
+        >
+          {isSwitching ? 'Switching…' : '⚠ Switch to Arb Sepolia'}
+        </button>
+      )}
 
-  // ── Connected state ──────────────────────────────────────────────────────────
-  if (isConnected && address) {
-    return (
-      <div className="flex items-center gap-2">
+      <div className="relative">
+        <button
+          onClick={() => setOpen(v => !v)}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-md border transition-colors ${
+            wrongNet
+              ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+              : 'bg-[#B31A1A]/10 border-[#B31A1A]/30 text-slate-300'
+          }`}
+        >
+          <span className={`w-2 h-2 rounded-full shrink-0 ${wrongNet ? 'bg-amber-400' : 'bg-red-500 animate-pulse'}`} />
+          <span className="text-xs font-mono">{shortAddress(address)}</span>
+          <ChevronDown size={11} className={`shrink-0 text-slate-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+        </button>
 
-        {/* Wrong-network banner */}
-        {wrongNetwork && (
-          <button
-            onClick={() => switchChain({ chainId: arbitrumSepolia.id })}
-            disabled={isSwitching}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-amber-500/10 border border-amber-500/40 text-amber-400 hover:bg-amber-500/20 disabled:opacity-60 transition-colors whitespace-nowrap"
-          >
-            {isSwitching ? 'Switching…' : '⚠ Switch to Arbitrum Sepolia'}
-          </button>
-        )}
-
-        {/* Address chip — tap to open disconnect menu */}
-        <div className="relative">
-          <button
-            onClick={() => setShowDisconnect(v => !v)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-md border transition-colors ${
-              wrongNetwork
-                ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
-                : 'bg-[#B31A1A]/10 border-[#B31A1A]/30 text-slate-300'
-            }`}
-          >
-            <span className={`w-2 h-2 rounded-full shrink-0 ${wrongNetwork ? 'bg-amber-400' : 'bg-red-500 animate-pulse'}`} />
-            <span className="text-xs font-mono">{shortAddress(address)}</span>
-            <ChevronDown
-              size={11}
-              className={`shrink-0 text-slate-500 transition-transform duration-200 ${showDisconnect ? 'rotate-180' : ''}`}
-            />
-          </button>
-
-          {/* Dropdown */}
-          {showDisconnect && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={() => setShowDisconnect(false)} />
-              <div className="absolute right-0 top-full mt-1.5 z-50 w-56 bg-slate-900 border border-slate-700 rounded-lg shadow-2xl overflow-hidden">
-                {wrongNetwork && (
-                  <button
-                    onClick={() => { switchChain({ chainId: arbitrumSepolia.id }); setShowDisconnect(false) }}
-                    disabled={isSwitching}
-                    className="w-full px-4 py-3 text-left text-xs font-semibold text-amber-400 bg-amber-500/5 hover:bg-amber-500/10 border-b border-slate-800 transition-colors"
-                  >
-                    {isSwitching ? '⏳ Switching…' : '⚠ Switch to Arbitrum Sepolia'}
-                  </button>
-                )}
-                <div className="px-4 py-2 border-b border-slate-800">
-                  <p className="text-[10px] text-slate-600 font-mono">{address}</p>
-                  <p className="text-[10px] text-slate-600 mt-0.5">
-                    {chain ? chain.name : 'Unknown network'}
-                  </p>
-                </div>
+        {open && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+            <div className="absolute right-0 top-full mt-1.5 z-50 w-56 bg-slate-900 border border-slate-700 rounded-lg shadow-2xl overflow-hidden">
+              {wrongNet && (
                 <button
-                  onClick={() => { disconnect(); setShowDisconnect(false) }}
-                  className="w-full px-4 py-3 text-left text-xs font-semibold text-red-400 hover:bg-[#B31A1A]/10 transition-colors"
+                  onClick={() => { switchChain({ chainId: arbitrumSepolia.id }); setOpen(false) }}
+                  disabled={isSwitching}
+                  className="w-full px-4 py-3 text-left text-xs font-semibold text-amber-400 bg-amber-500/5 hover:bg-amber-500/10 border-b border-slate-800 transition-colors"
                 >
-                  Disconnect wallet
+                  {isSwitching ? '⏳ Switching…' : '⚠ Switch to Arbitrum Sepolia'}
                 </button>
+              )}
+              <div className="px-4 py-2.5 border-b border-slate-800 space-y-0.5">
+                <p className="text-[10px] text-slate-500 font-mono break-all">{address}</p>
+                <p className="text-[10px] text-slate-600">{chain?.name ?? 'Unknown network'}</p>
               </div>
-            </>
-          )}
-        </div>
+              <button
+                onClick={() => { disconnect(); setOpen(false) }}
+                className="w-full px-4 py-3 text-left text-xs font-semibold text-red-400 hover:bg-[#B31A1A]/10 transition-colors"
+              >
+                Disconnect wallet
+              </button>
+            </div>
+          </>
+        )}
       </div>
-    )
-  }
+    </div>
+  )
+}
 
-  // ── Disconnected state ───────────────────────────────────────────────────────
+// ── Main component ───────────────────────────────────────────────────────────
+export default function ConnectWallet() {
+  const { isConnected } = useAccount()
+  const { connect, connectors, isPending, error: connectError } = useConnect()
+  const [modalOpen, setModalOpen] = useState(false)
+  const [pendingId, setPendingId] = useState<string | null>(null)
+
+  if (isConnected) return <ConnectedChip />
+
   return (
     <>
       <button
@@ -123,14 +120,19 @@ export default function ConnectWallet() {
             onClick={() => setModalOpen(false)}
           />
 
-          {/* Panel — bottom sheet on mobile, centered card on ≥sm */}
-          <div className="relative w-full sm:w-[400px] bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-xl shadow-2xl">
+          {/*
+            Panel — bottom sheet on mobile, centered card on sm+.
+            max-h + overflow-y-auto prevents the wallet list from being
+            pushed off-screen on small phones (the root cause of the
+            "only disclaimer visible" bug on mobile).
+          */}
+          <div className="relative w-full sm:w-[400px] max-h-[82dvh] overflow-y-auto bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-xl shadow-2xl flex flex-col">
 
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+            {/* Header — sticky so it's always visible while scrolling */}
+            <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-slate-900 shrink-0">
               <div>
                 <h2 className="text-base font-bold text-white">Connect Wallet</h2>
-                <p className="text-[10px] text-slate-500 mt-0.5">Arbitrum Sepolia testnet</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">Network: Arbitrum Sepolia (testnet)</p>
               </div>
               <button
                 onClick={() => setModalOpen(false)}
@@ -141,17 +143,26 @@ export default function ConnectWallet() {
               </button>
             </div>
 
+            {/* Project ID warning — dev/ops helper */}
+            {!WC_PROJECT_ID && (
+              <div className="mx-4 mt-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                <AlertTriangle size={14} className="text-amber-400 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-amber-300 leading-relaxed">
+                  <strong>WalletConnect disabled</strong> — <code className="text-amber-400">NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID</code> is not set. Mobile wallets won&apos;t appear.
+                </p>
+              </div>
+            )}
+
             {/* Wallet list */}
-            <div className="p-3 space-y-2">
+            <div className="p-4 space-y-2.5 flex-1">
               {connectors.length === 0 && (
-                <p className="text-sm text-slate-500 text-center py-6">
-                  No wallets available in this browser.
+                <p className="text-sm text-slate-500 text-center py-8">
+                  No wallets detected in this browser.
                 </p>
               )}
               {connectors.map((connector) => {
-                const meta  = WALLET_META[connector.id] ?? { name: connector.name, icon: '💼' }
+                const meta   = WALLET_META[connector.id] ?? { name: connector.name, icon: '💼', sub: '' }
                 const isThis = pendingId === connector.uid
-
                 return (
                   <button
                     key={connector.uid}
@@ -166,7 +177,7 @@ export default function ConnectWallet() {
                       )
                     }}
                     disabled={isPending}
-                    className="w-full flex items-center gap-4 px-4 py-3.5 rounded-lg bg-slate-800 hover:bg-slate-750 active:bg-slate-700 border border-slate-700 hover:border-slate-500 text-left transition-colors group disabled:opacity-60"
+                    className="w-full flex items-center gap-4 px-4 py-4 rounded-xl bg-slate-800 hover:bg-slate-750 active:bg-slate-700 border border-slate-700 hover:border-slate-500 text-left transition-colors group disabled:opacity-60"
                   >
                     <span className="text-2xl select-none w-9 text-center shrink-0" aria-hidden>
                       {meta.icon}
@@ -174,7 +185,7 @@ export default function ConnectWallet() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-white">{meta.name}</p>
                       {meta.sub && (
-                        <p className="text-[10px] text-slate-500 mt-0.5 truncate">{meta.sub}</p>
+                        <p className="text-[11px] text-slate-500 mt-0.5 truncate">{meta.sub}</p>
                       )}
                     </div>
                     {isThis ? (
@@ -183,32 +194,29 @@ export default function ConnectWallet() {
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                       </svg>
                     ) : (
-                      <span className="text-slate-600 group-hover:text-slate-400 transition-colors text-lg shrink-0">→</span>
+                      <span className="text-slate-600 group-hover:text-slate-300 transition-colors text-lg shrink-0">›</span>
                     )}
                   </button>
                 )
               })}
             </div>
 
-            {/* Error */}
+            {/* Inline error */}
             {connectError && (
-              <p className="mx-3 mb-2 px-4 py-2.5 rounded-lg text-xs text-red-400 bg-red-400/10 border border-red-400/20">
-                {connectError.message.length > 120
-                  ? connectError.message.slice(0, 120) + '…'
-                  : connectError.message}
-              </p>
+              <div className="mx-4 mb-4 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-red-400/10 border border-red-400/20">
+                <AlertTriangle size={13} className="text-red-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-red-400 leading-relaxed">
+                  {connectError.message.length > 140
+                    ? connectError.message.slice(0, 140) + '…'
+                    : connectError.message}
+                </p>
+              </div>
             )}
 
-            {/* Footer */}
-            <div className="px-5 pb-5 pt-2">
-              <p className="text-[10px] text-slate-600 text-center leading-relaxed">
-                By connecting you accept our{' '}
-                <a href="/rules" className="text-slate-500 hover:text-slate-400 underline underline-offset-2" onClick={() => setModalOpen(false)}>
-                  platform rules
-                </a>.
-                Your keys stay in your wallet — we never hold funds.
-              </p>
-            </div>
+            {/* Minimal non-blocking note — NOT a blocking disclaimer */}
+            <p className="px-5 pb-5 text-[10px] text-slate-700 text-center leading-relaxed shrink-0">
+              Non-custodial · funds secured by smart contract · testnet only
+            </p>
           </div>
         </div>
       )}
