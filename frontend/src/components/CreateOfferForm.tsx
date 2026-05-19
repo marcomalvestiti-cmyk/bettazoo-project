@@ -8,12 +8,19 @@ import { ESCROW_ABI, ERC20_ABI, OUTCOMES } from '@/lib/abis'
 import { fetchSuggestOdds, fetchOrderBook } from '@/lib/api'
 import { withGasBuffer } from '@/lib/gasUtils'
 
+export type NewOfferData = {
+  eventId:       string
+  outcome:       number
+  oddsDecimal:   number
+  liabilityUsdt: number
+}
+
 type Props = {
   eventId:          string
   eventName?:       string
   sport?:           string
   teams?:           string[]
-  onOfferCreated?:  () => void
+  onOfferCreated?:  (data: NewOfferData) => void
 }
 
 const ESCROW_ADDRESS = (process.env.NEXT_PUBLIC_ESCROW_ADDRESS ?? '0x0') as `0x${string}`
@@ -136,18 +143,21 @@ export default function CreateOfferForm({ eventId, eventName, sport, teams, onOf
       // which would revert if allowance is still 0 on-chain.
       await waitForTransactionReceipt(publicClient!, { hash: approveTxHash })
       setStatus('creating')
-      await writeContractAsync({
+      const createTxHash = await writeContractAsync({
         address: ESCROW_ADDRESS, abi: ESCROW_ABI,
         functionName: 'createOffer', args: [eventId, outcome, oddsRaw, liabilityRaw],
         ...gas,
       })
+      // Wait for the block to be mined — without this, downstream effects fire
+      // before the tx exists on-chain and the indexer has nothing to return.
+      await waitForTransactionReceipt(publicClient!, { hash: createTxHash })
       setStatus('done')
       setOddsDecimal('')
       setLiabilityUsdt('')
       setAiResult(null)
       setTrueBase(null)
       setBookieOdds(null)
-      onOfferCreated?.()  // immediately refresh parent stats + offers list
+      onOfferCreated?.({ eventId, outcome, oddsDecimal: oddsNum, liabilityUsdt: liabilityNum })
     } catch (err: unknown) {
       setStatus('error')
       setErrorMsg(err instanceof Error ? err.message : 'Transaction error')

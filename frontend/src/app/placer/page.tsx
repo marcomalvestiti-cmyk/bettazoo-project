@@ -4,7 +4,7 @@ import { useAccount } from 'wagmi'
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 
-import CreateOfferForm  from '@/components/CreateOfferForm'
+import CreateOfferForm, { type NewOfferData } from '@/components/CreateOfferForm'
 import RiskWidget       from '@/components/RiskWidget'
 import OrderBook        from '@/components/OrderBook'
 import { type Offer }   from '@/components/MyOffers'
@@ -56,6 +56,25 @@ export default function PlacerDashboard() {
   }, [address])
 
   useEffect(() => { refreshOffers() }, [refreshOffers])
+
+  // Called by CreateOfferForm right after the createOffer tx is mined.
+  // 1. Injects an optimistic offer so the UI updates instantly.
+  // 2. Schedules a real refresh after 4s to replace it with the indexed data.
+  const handleOfferCreated = useCallback((data: NewOfferData) => {
+    if (address) {
+      const optimistic = {
+        offerId:               Date.now(),          // temp placeholder ID
+        placer:                address,
+        eventId:               data.eventId,
+        outcome:               data.outcome,
+        oddsDecimal:           data.oddsDecimal,
+        remainingLiabilityUsdt: data.liabilityUsdt.toFixed(6),
+        maxBettorStakeUsdt:    (data.liabilityUsdt / (data.oddsDecimal - 1)).toFixed(6),
+      }
+      setOffers(prev => [...prev, optimistic])
+    }
+    setTimeout(refreshOffers, 4000)
+  }, [address, refreshOffers])
 
   if (!isConnected || !address) {
     return (
@@ -123,7 +142,7 @@ export default function PlacerDashboard() {
             eventName={selectedEvent.name}
             sport={selectedEvent.sport}
             teams={selectedEvent.teams}
-            onOfferCreated={refreshOffers}
+            onOfferCreated={handleOfferCreated}
           />
           <RiskWidget address={address} />
         </div>
