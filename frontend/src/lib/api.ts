@@ -35,8 +35,14 @@ async function apiFetch(label: string, input: RequestInfo, init?: RequestInit): 
 // ── API functions ─────────────────────────────────────────────────────────────
 
 export async function fetchOrderBook(eventId: string, outcome?: number) {
-  const qs = outcome !== undefined ? `?outcome=${outcome}` : ''
-  const res = await apiFetch('orderbook', `${BASE}/api/orderbook/${eventId}${qs}`)
+  const params = new URLSearchParams()
+  if (outcome !== undefined) params.set('outcome', String(outcome))
+  params.set('_t', String(Date.now()))
+  const res = await apiFetch(
+    'orderbook',
+    `${BASE}/api/orderbook/${eventId}?${params}`,
+    { cache: 'no-store' },
+  )
   return res.json()
 }
 

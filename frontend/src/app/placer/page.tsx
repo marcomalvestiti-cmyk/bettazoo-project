@@ -2,6 +2,7 @@
 
 import { useAccount, useWatchContractEvent } from 'wagmi'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 import CreateOfferForm, { type NewOfferData } from '@/components/CreateOfferForm'
@@ -19,10 +20,12 @@ const ESCROW_ADDRESS = (process.env.NEXT_PUBLIC_ESCROW_ADDRESS ?? '0x0') as `0x$
 
 export default function PlacerDashboard() {
   const { address, isConnected } = useAccount()
+  const router = useRouter()
 
   const [selectedEventId, setSelectedEventId] = useState(MOCK_EVENTS[0].eventId)
   const [offers,          setOffers]          = useState<Offer[]>([])
   const [profileOpen,     setProfileOpen]     = useState(false)
+  const [refreshKey,      setRefreshKey]      = useState(0)
 
   const selectedEvent = MOCK_EVENTS.find(e => e.eventId === selectedEventId) ?? MOCK_EVENTS[0]
 
@@ -57,7 +60,7 @@ export default function PlacerDashboard() {
     }
   }, [address])
 
-  useEffect(() => { refreshOffers() }, [refreshOffers])
+  useEffect(() => { refreshOffers() }, [refreshOffers, refreshKey])
 
   // Called by CreateOfferForm right after the createOffer tx is mined.
   // 1. Injects an optimistic offer so the UI updates instantly.
@@ -147,8 +150,10 @@ export default function PlacerDashboard() {
         })
       }
 
-      // Step 3 — delayed backend sync once Railway indexer has caught up
-      setTimeout(() => refreshRef.current(), 3_000)
+      // Step 3 — bust Next.js data cache + force immediate & delayed re-fetch
+      router.refresh()
+      setRefreshKey(k => k + 1)
+      setTimeout(() => setRefreshKey(k => k + 1), 3_000)
     },
   })
 
