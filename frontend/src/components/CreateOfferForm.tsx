@@ -9,10 +9,11 @@ import { fetchSuggestOdds, fetchOrderBook } from '@/lib/api'
 import { withGasBuffer } from '@/lib/gasUtils'
 
 type Props = {
-  eventId:    string
-  eventName?: string
-  sport?:     string
-  teams?:     string[]
+  eventId:          string
+  eventName?:       string
+  sport?:           string
+  teams?:           string[]
+  onOfferCreated?:  () => void
 }
 
 const ESCROW_ADDRESS = (process.env.NEXT_PUBLIC_ESCROW_ADDRESS ?? '0x0') as `0x${string}`
@@ -30,7 +31,7 @@ type StrategyId = typeof STRATEGIES[number]['id']
 
 const BOOKIE_MARGIN = 0.08 // mirrored from backend for local recalc
 
-export default function CreateOfferForm({ eventId, eventName, sport, teams }: Props) {
+export default function CreateOfferForm({ eventId, eventName, sport, teams, onOfferCreated }: Props) {
   const publicClient       = usePublicClient()
   const { writeContractAsync } = useWriteContract()
 
@@ -146,6 +147,7 @@ export default function CreateOfferForm({ eventId, eventName, sport, teams }: Pr
       setAiResult(null)
       setTrueBase(null)
       setBookieOdds(null)
+      onOfferCreated?.()  // immediately refresh parent stats + offers list
     } catch (err: unknown) {
       setStatus('error')
       setErrorMsg(err instanceof Error ? err.message : 'Transaction error')

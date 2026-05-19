@@ -4,13 +4,13 @@ import { useAccount } from 'wagmi'
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 
-import CreateOfferForm      from '@/components/CreateOfferForm'
-import RiskWidget           from '@/components/RiskWidget'
-import OrderBook            from '@/components/OrderBook'
-import MyOffers, { type Offer } from '@/components/MyOffers'
-import ProfileEditor        from '@/components/ProfileEditor'
-import PlacerStatsBar       from '@/components/PlacerStatsBar'
-import EventSelector        from '@/components/EventSelector'
+import CreateOfferForm  from '@/components/CreateOfferForm'
+import RiskWidget       from '@/components/RiskWidget'
+import OrderBook        from '@/components/OrderBook'
+import { type Offer }   from '@/components/MyOffers'
+import ProfileEditor    from '@/components/ProfileEditor'
+import PlacerStatsBar   from '@/components/PlacerStatsBar'
+import EventSelector    from '@/components/EventSelector'
 
 import { MOCK_EVENTS } from '@/lib/abis'
 import { fetchOrderBook, fetchProfile } from '@/lib/api'
@@ -20,11 +20,11 @@ export default function PlacerDashboard() {
 
   const [selectedEventId, setSelectedEventId] = useState(MOCK_EVENTS[0].eventId)
   const [offers,          setOffers]          = useState<Offer[]>([])
-  const [offersLoading,   setOffersLoading]   = useState(false)
+  const [profileOpen,     setProfileOpen]     = useState(false)
 
   const selectedEvent = MOCK_EVENTS.find(e => e.eventId === selectedEventId) ?? MOCK_EVENTS[0]
 
-  // Load profile on mount and pre-select league if specialization saved
+  // Pre-select league from saved profile specialization
   useEffect(() => {
     if (!address) return
     fetchProfile(address)
@@ -38,10 +38,8 @@ export default function PlacerDashboard() {
       .catch(() => { /* silently ignore */ })
   }, [address])
 
-  // Lift offers data to feed both StatsBar and MyOffers
   const refreshOffers = useCallback(async () => {
     if (!address) return
-    setOffersLoading(true)
     try {
       const all: Offer[] = []
       for (const event of MOCK_EVENTS) {
@@ -54,14 +52,11 @@ export default function PlacerDashboard() {
       setOffers(all)
     } catch {
       setOffers([])
-    } finally {
-      setOffersLoading(false)
     }
   }, [address])
 
   useEffect(() => { refreshOffers() }, [refreshOffers])
 
-  // Wallet not connected gate
   if (!isConnected || !address) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-24 text-center space-y-5">
@@ -73,8 +68,6 @@ export default function PlacerDashboard() {
       </div>
     )
   }
-
-  const shortAddr = `${address.slice(0, 6)}…${address.slice(-4)}`
 
   return (
     <div className="max-w-[1400px] mx-auto px-4 py-6 space-y-5">
@@ -88,27 +81,35 @@ export default function PlacerDashboard() {
           <h1 className="text-3xl font-bold text-white leading-none">Control Station</h1>
           <p className="text-xs text-slate-500 font-mono truncate">{address}</p>
         </div>
-        <Link
-          href={`/placer/${address}`}
-          className="flex items-center gap-1.5 text-sm font-semibold text-slate-400 hover:text-[#FFB01F] border border-slate-700 hover:border-[#FFB01F]/50 px-3 py-2 rounded-md transition-colors shrink-0 whitespace-nowrap"
-        >
-          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-          <span className="hidden sm:inline">Live Stream</span>
-          <span>→</span>
-        </Link>
+
+        {/* Header actions */}
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => setProfileOpen(true)}
+            className="flex items-center gap-1.5 text-sm font-semibold text-slate-400 hover:text-white border border-slate-700 hover:border-slate-500 px-3 py-2 rounded-md transition-colors whitespace-nowrap"
+          >
+            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            <span className="hidden sm:inline">Profile</span>
+          </button>
+          <Link
+            href={`/placer/${address}`}
+            className="flex items-center gap-1.5 text-sm font-semibold text-slate-400 hover:text-[#FFB01F] border border-slate-700 hover:border-[#FFB01F]/50 px-3 py-2 rounded-md transition-colors whitespace-nowrap"
+          >
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <span className="hidden sm:inline">Live Stream</span>
+            <span>→</span>
+          </Link>
+        </div>
       </div>
 
-      {/* ── Stats Bar (Task 3) ── */}
+      {/* ── Stats Bar ── */}
       <PlacerStatsBar
         address={address as `0x${string}`}
         offers={offers}
         pnlSeed={address}
-      />
-
-      {/* ── My Active Offers — hero section (full-width) ── */}
-      <MyOffers
-        offers={offersLoading ? undefined : offers}
-        onRefresh={refreshOffers}
       />
 
       {/* ── Main Grid ── */}
@@ -116,28 +117,19 @@ export default function PlacerDashboard() {
 
         {/* LEFT COLUMN — controls */}
         <div className="space-y-4">
-
-          {/* Profile + Specialization */}
-          <ProfileEditor address={address} />
-
-          {/* Hierarchical event selector */}
           <EventSelector value={selectedEventId} onSelect={setSelectedEventId} />
-
-          {/* Create Offer form */}
           <CreateOfferForm
             eventId={selectedEventId}
             eventName={selectedEvent.name}
             sport={selectedEvent.sport}
             teams={selectedEvent.teams}
+            onOfferCreated={refreshOffers}
           />
-
-          {/* Risk Manager */}
           <RiskWidget address={address} />
         </div>
 
-        {/* RIGHT COLUMN — live odds / view odds */}
+        {/* RIGHT COLUMN — order book */}
         <div className="space-y-3">
-          {/* Event header */}
           <div className="flex items-center gap-3 flex-wrap">
             <span className="text-xl">{selectedEvent.icon}</span>
             <div className="min-w-0">
@@ -154,10 +146,28 @@ export default function PlacerDashboard() {
               ))}
             </div>
           </div>
-
           <OrderBook eventId={selectedEventId} />
         </div>
       </div>
+
+      {/* ── Profile Modal ── */}
+      {profileOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
+            onClick={() => setProfileOpen(false)}
+          />
+          <div className="relative z-10 w-full max-w-md">
+            <button
+              onClick={() => setProfileOpen(false)}
+              className="absolute -top-3 -right-3 z-20 w-7 h-7 flex items-center justify-center rounded-full bg-slate-700 border border-slate-600 text-slate-300 hover:text-white hover:bg-slate-600 transition-colors text-base font-bold leading-none"
+            >
+              ×
+            </button>
+            <ProfileEditor address={address} />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

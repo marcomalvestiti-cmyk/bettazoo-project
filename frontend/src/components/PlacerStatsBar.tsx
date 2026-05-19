@@ -74,7 +74,7 @@ export default function PlacerStatsBar({ address, offers, pnlSeed }: Props) {
     : '—'
 
   return (
-    <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
       <StatCard
         label="Available Liquidity"
         value={liquidityStr}
@@ -83,12 +83,17 @@ export default function PlacerStatsBar({ address, offers, pnlSeed }: Props) {
       <StatCard
         label="Committed Credit"
         value={`$${committed.toFixed(2)}`}
-        sub={`${offers.length} open offer${offers.length !== 1 ? 's' : ''}`}
+        sub="USDT locked as collateral"
+      />
+      <StatCard
+        label="Active Offers"
+        value={offers.length.toString()}
+        sub={`across ${activeEvents} event${activeEvents !== 1 ? 's' : ''}`}
       />
       <StatCard
         label="Active Events"
         value={activeEvents.toString()}
-        sub={`of ${MOCK_EVENTS.length} total events`}
+        sub={`of ${MOCK_EVENTS.length} total`}
       />
       <StatCard
         label="24h P&L"
