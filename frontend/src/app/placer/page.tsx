@@ -2,7 +2,6 @@
 
 import { useAccount, useWatchContractEvent } from 'wagmi'
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 import CreateOfferForm, { type NewOfferData } from '@/components/CreateOfferForm'
@@ -20,12 +19,10 @@ const ESCROW_ADDRESS = (process.env.NEXT_PUBLIC_ESCROW_ADDRESS ?? '0x0') as `0x$
 
 export default function PlacerDashboard() {
   const { address, isConnected } = useAccount()
-  const router = useRouter()
 
   const [selectedEventId, setSelectedEventId] = useState(MOCK_EVENTS[0].eventId)
   const [offers,          setOffers]          = useState<Offer[]>([])
   const [profileOpen,     setProfileOpen]     = useState(false)
-  const [refreshKey,      setRefreshKey]      = useState(0)
 
   const selectedEvent = MOCK_EVENTS.find(e => e.eventId === selectedEventId) ?? MOCK_EVENTS[0]
 
@@ -43,7 +40,10 @@ export default function PlacerDashboard() {
       .catch(() => { /* silently ignore */ })
   }, [address])
 
-  const refreshOffers = useCallback(async () => {
+  // ── Initial load from backend (runs once on mount / address change) ───────────
+  // After this, local state is the source of truth for the session.
+  // No backend refetch is triggered by transactions — only direct state merges.
+  const loadOffers = useCallback(async () => {
     if (!address) return
     try {
       const all: Offer[] = []
@@ -60,41 +60,36 @@ export default function PlacerDashboard() {
     }
   }, [address])
 
-  useEffect(() => { refreshOffers() }, [refreshOffers, refreshKey])
+  useEffect(() => { loadOffers() }, [loadOffers])
 
-  // Called by CreateOfferForm right after the createOffer tx is mined.
-  // 1. Injects an optimistic offer so the UI updates instantly.
-  // 2. Schedules a real refresh after 4s to replace it with the indexed data.
+  // ── Post-tx: optimistic inject, no backend refetch ────────────────────────────
+  // Injects the offer directly into local state the moment the tx is mined.
+  // The on-chain event listener below will later replace the temp ID with the
+  // real offerId once the OfferCreated event is polled from the chain.
   const handleOfferCreated = useCallback((data: NewOfferData) => {
-    if (address) {
-      const optimistic = {
-        offerId:               Date.now(),          // temp placeholder ID
-        placer:                address,
-        eventId:               data.eventId,
-        outcome:               data.outcome,
-        oddsDecimal:           data.oddsDecimal,
-        remainingLiabilityUsdt: data.liabilityUsdt.toFixed(6),
-        maxBettorStakeUsdt:    (data.liabilityUsdt / (data.oddsDecimal - 1)).toFixed(6),
-      }
-      setOffers(prev => [...prev, optimistic])
+    if (!address) return
+    const optimistic: Offer = {
+      offerId:                Date.now(),   // temp ID ≈ 1.75e12; replaced by real on-chain ID
+      placer:                 address,
+      eventId:                data.eventId,
+      outcome:                data.outcome,
+      oddsDecimal:            data.oddsDecimal,
+      remainingLiabilityUsdt: data.liabilityUsdt.toFixed(6),
+      maxBettorStakeUsdt:     (data.liabilityUsdt / (data.oddsDecimal - 1)).toFixed(6),
     }
-    setTimeout(refreshOffers, 4000)
-  }, [address, refreshOffers])
+    setOffers(prev => [...prev, optimistic])
+  }, [address])
 
-  // Refs that always hold the latest values — prevents stale closures in the
-  // wagmi event callback which may be registered once and never re-created.
-  const addressRef  = useRef(address)
-  const refreshRef  = useRef(refreshOffers)
-  useEffect(() => { addressRef.current = address },        [address])
-  useEffect(() => { refreshRef.current = refreshOffers }, [refreshOffers])
+  // ── Ref: always holds current address — prevents stale closure in wagmi cb ───
+  const addressRef = useRef(address)
+  useEffect(() => { addressRef.current = address }, [address])
 
-  // ── On-chain event listener ────────────────────────────────────────────────
+  // ── On-chain event listener ────────────────────────────────────────────────────
   // Polls Arbitrum Sepolia via eth_getLogs every 2s.
-  // Strategy:
-  //   1. Read address/refresh from refs (never stale).
-  //   2. Build Offer directly from event args — zero indexer dependency.
-  //   3. Replace any optimistic placeholder, add real offer → instant UI update.
-  //   4. Delayed refreshOffers() as backend safety net.
+  // On OfferCreated for our address:
+  //   1. Build Offer directly from event args (zero backend dependency).
+  //   2. Replace optimistic placeholder if present (IDs > 1e12 are temps).
+  //   3. No backend refetch — local state is the source of truth.
   useWatchContractEvent({
     address:         ESCROW_ADDRESS,
     abi:             ESCROW_ABI,
@@ -131,16 +126,14 @@ export default function PlacerDashboard() {
           remainingLiabilityUsdt: liabilityUsdt.toFixed(6),
           maxBettorStakeUsdt:     (liabilityUsdt / (oddsDecimal - 1)).toFixed(6),
         }
-        console.log('[bettazoo] injecting offer into state:', real)
+        console.log('[bettazoo] injecting real offer into state:', real)
 
-        // Step 2 — direct state update (no backend round-trip)
         setOffers(prev => {
           if (prev.some(o => o.offerId === real.offerId)) {
             console.log('[bettazoo] offer already in state, skipping')
             return prev
           }
           // Remove optimistic placeholder for this event+outcome if present
-          // (optimistic IDs are Date.now() ≈ 1.75e12; real IDs are sequential ints)
           const filtered = prev.filter(o =>
             !(o.offerId > 1_000_000_000 && o.eventId === evId && o.outcome === real.outcome)
           )
@@ -149,11 +142,6 @@ export default function PlacerDashboard() {
           return next
         })
       }
-
-      // Step 3 — bust Next.js data cache + force immediate & delayed re-fetch
-      router.refresh()
-      setRefreshKey(k => k + 1)
-      setTimeout(() => setRefreshKey(k => k + 1), 3_000)
     },
   })
 
