@@ -105,6 +105,12 @@ export default function PlacerDashboard() {
         pnlSeed={address}
       />
 
+      {/* ── My Active Offers — hero section (full-width) ── */}
+      <MyOffers
+        offers={offersLoading ? undefined : offers}
+        onRefresh={refreshOffers}
+      />
+
       {/* ── Main Grid ── */}
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5">
 
@@ -127,12 +133,6 @@ export default function PlacerDashboard() {
 
           {/* Risk Manager */}
           <RiskWidget address={address} />
-
-          {/* My Active Offers */}
-          <MyOffers
-            offers={offersLoading ? undefined : offers}
-            onRefresh={refreshOffers}
-          />
         </div>
 
         {/* RIGHT COLUMN — live odds / view odds */}
