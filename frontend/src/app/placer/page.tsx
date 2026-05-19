@@ -1,6 +1,6 @@
 'use client'
 
-import { useAccount } from 'wagmi'
+import { useAccount, useWatchContractEvent } from 'wagmi'
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 
@@ -12,8 +12,10 @@ import ProfileEditor    from '@/components/ProfileEditor'
 import PlacerStatsBar   from '@/components/PlacerStatsBar'
 import EventSelector    from '@/components/EventSelector'
 
-import { MOCK_EVENTS } from '@/lib/abis'
+import { MOCK_EVENTS, ESCROW_ABI } from '@/lib/abis'
 import { fetchOrderBook, fetchProfile } from '@/lib/api'
+
+const ESCROW_ADDRESS = (process.env.NEXT_PUBLIC_ESCROW_ADDRESS ?? '0x0') as `0x${string}`
 
 export default function PlacerDashboard() {
   const { address, isConnected } = useAccount()
@@ -75,6 +77,63 @@ export default function PlacerDashboard() {
     }
     setTimeout(refreshOffers, 4000)
   }, [address, refreshOffers])
+
+  // ── On-chain event listener ────────────────────────────────────────────────
+  // Watches OfferCreated directly from the RPC (eth_getLogs polling, ~2s interval).
+  // When an event from our wallet arrives:
+  //   • Decodes args from the chain — no indexer round-trip, zero lag.
+  //   • Replaces any optimistic placeholder (Date.now() IDs > 1e12) with the
+  //     real offerId assigned by the smart contract.
+  //   • Still schedules a delayed refreshOffers() to catch edge cases.
+  useWatchContractEvent({
+    address:         ESCROW_ADDRESS,
+    abi:             ESCROW_ABI,
+    eventName:       'OfferCreated',
+    pollingInterval: 2_000,
+    onLogs(logs) {
+      console.log('EVENTO BLOCKCHAIN CAPTATO:', logs)
+      if (!address) return
+
+      const mine = logs.filter(
+        log => log.args.placer?.toLowerCase() === address.toLowerCase()
+      )
+      if (mine.length === 0) return
+
+      setOffers(prev => {
+        let next = [...prev]
+        for (const log of mine) {
+          const { offerId, placer, eventId: evId, outcome, odds, liability } = log.args
+          if (!offerId || !placer || evId === undefined || outcome === undefined || !odds || !liability) continue
+
+          const oddsDecimal   = Number(odds) / 10_000
+          const liabilityUsdt = Number(liability) / 1_000_000
+          const real: Offer = {
+            offerId:                Number(offerId),
+            placer,
+            eventId:                evId,
+            outcome:                Number(outcome),
+            oddsDecimal,
+            remainingLiabilityUsdt: liabilityUsdt.toFixed(6),
+            maxBettorStakeUsdt:     (liabilityUsdt / (oddsDecimal - 1)).toFixed(6),
+          }
+
+          // Skip if already present with the real ID
+          if (next.some(o => o.offerId === real.offerId)) continue
+
+          // Replace optimistic placeholder for this event+outcome if one exists
+          // (optimistic IDs use Date.now() ≈ 1.75e12; real sequential IDs are tiny)
+          next = next.filter(o =>
+            !(o.offerId > 1_000_000_000 && o.eventId === evId && o.outcome === real.outcome)
+          )
+          next = [...next, real]
+        }
+        return next
+      })
+
+      // Delayed real refresh as safety net (gives indexer time to sync)
+      setTimeout(refreshOffers, 3_000)
+    },
+  })
 
   if (!isConnected || !address) {
     return (

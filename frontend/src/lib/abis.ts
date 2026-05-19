@@ -45,6 +45,32 @@ export const ESCROW_ABI = [
     stateMutability: 'view',
     type: 'function',
   },
+  // ── Events ─────────────────────────────────────────────────────────────────
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true,  internalType: 'uint256', name: 'offerId',   type: 'uint256' },
+      { indexed: true,  internalType: 'address', name: 'placer',    type: 'address' },
+      { indexed: false, internalType: 'string',  name: 'eventId',   type: 'string'  },
+      { indexed: false, internalType: 'uint8',   name: 'outcome',   type: 'uint8'   },
+      { indexed: false, internalType: 'uint256', name: 'odds',      type: 'uint256' },
+      { indexed: false, internalType: 'uint256', name: 'liability', type: 'uint256' },
+    ],
+    name: 'OfferCreated',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true,  internalType: 'uint256', name: 'matchId',          type: 'uint256' },
+      { indexed: true,  internalType: 'uint256', name: 'offerId',          type: 'uint256' },
+      { indexed: true,  internalType: 'address', name: 'bettor',           type: 'address' },
+      { indexed: false, internalType: 'uint256', name: 'bettorStake',      type: 'uint256' },
+      { indexed: false, internalType: 'uint256', name: 'placerLiability',  type: 'uint256' },
+    ],
+    name: 'OfferMatched',
+    type: 'event',
+  },
 ] as const
 
 export const ERC20_ABI = [
