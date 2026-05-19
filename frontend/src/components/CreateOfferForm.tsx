@@ -50,6 +50,13 @@ export default function CreateOfferForm({ eventId, eventName, sport, teams }: Pr
   const [aiResult,   setAiResult]   = useState<Record<string, number> | null>(null)
   const [aiSource,   setAiSource]   = useState<string>('')
 
+  // Auto-reset to idle 2s after successful offer creation so the form is immediately reusable
+  useEffect(() => {
+    if (status !== 'done') return
+    const t = setTimeout(() => setStatus('idle'), 2000)
+    return () => clearTimeout(t)
+  }, [status])
+
   // ── Task 2: Real-time recalculation on strategy / outcome change ──────────
   useEffect(() => {
     if (!trueBase) return
@@ -361,7 +368,18 @@ export default function CreateOfferForm({ eventId, eventName, sport, teams }: Pr
       )}
 
       {status === 'done' ? (
-        <div className="text-center text-emerald-400 text-sm font-bold py-1">✓ Offer created!</div>
+        <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/25 rounded-lg px-4 py-3">
+          <div className="flex items-center gap-2">
+            <span className="text-emerald-400">✓</span>
+            <span className="text-sm font-bold text-emerald-400">Offer created!</span>
+          </div>
+          <button
+            onClick={() => setStatus('idle')}
+            className="text-xs font-semibold text-emerald-400/70 hover:text-emerald-300 transition-colors"
+          >
+            + New Offer
+          </button>
+        </div>
       ) : (
         <button
           onClick={handleCreate}

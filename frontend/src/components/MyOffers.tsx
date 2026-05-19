@@ -133,79 +133,112 @@ export default function MyOffers({ offers: externalOffers, onRefresh }: Props) {
           </Link>
         </div>
 
-      /* ── Offer cards ── */
+      /* ── Offer cards grouped by event ── */
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-          {offers.map((o) => {
-            const eventName = MOCK_EVENTS.find(e => e.eventId === o.eventId)?.name ?? o.eventId
-            return (
-              <div
-                key={o.offerId}
-                className="rounded-xl bg-slate-950/70 border border-slate-700/60 hover:border-slate-600/80 transition-colors overflow-hidden"
-              >
-                {/* Card header — event identity */}
-                <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-800">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-xs font-mono text-slate-600">#{o.offerId}</span>
-                    <span className="text-sm font-semibold text-slate-200 truncate">{eventName}</span>
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 shrink-0 ml-2">
-                    ACTIVE
-                  </span>
-                </div>
+        <div className="space-y-5">
+          {(() => {
+            // Group offers by eventId to show multi-outcome positions clustered together
+            const grouped = offers.reduce((acc, o) => {
+              if (!acc.has(o.eventId)) acc.set(o.eventId, [])
+              acc.get(o.eventId)!.push(o)
+              return acc
+            }, new Map<string, Offer[]>())
 
-                {/* Card body — 3 key metrics + cancel */}
-                <div className="px-4 py-3 flex items-center gap-4 flex-wrap">
+            return [...grouped.entries()].map(([eventId, eventOffers]) => {
+              const event = MOCK_EVENTS.find(e => e.eventId === eventId)
+              const multiPosition = eventOffers.length > 1
 
-                  {/* Outcome */}
-                  <div className="space-y-0.5">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">Outcome</p>
-                    <p className="text-sm font-semibold text-slate-300">{OUTCOMES[o.outcome] ?? o.outcome}</p>
-                  </div>
-
-                  <div className="w-px h-9 bg-slate-800 self-stretch" />
-
-                  {/* Odds — hero metric */}
-                  <div className="space-y-0.5">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">Odds</p>
-                    <p className="text-xl font-bold font-mono text-[#FFB01F] leading-none">
-                      {o.oddsDecimal.toFixed(2)}<span className="text-sm text-[#FFB01F]/60">x</span>
-                    </p>
-                  </div>
-
-                  <div className="w-px h-9 bg-slate-800 self-stretch" />
-
-                  {/* Liability */}
-                  <div className="space-y-0.5">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">Liability</p>
-                    <p className="text-lg font-bold font-mono text-slate-200 leading-none">
-                      {o.remainingLiabilityUsdt}
-                      <span className="text-xs text-slate-500 ml-1">USDT</span>
-                    </p>
-                  </div>
-
-                  <div className="flex-1" />
-
-                  {/* Cancel */}
-                  <button
-                    onClick={() => handleCancel(o.offerId)}
-                    disabled={cancelling === o.offerId}
-                    className="shrink-0 px-4 py-2 text-xs font-bold rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 hover:border-red-500/50 hover:text-red-300 disabled:opacity-50 transition-all whitespace-nowrap"
-                  >
-                    {cancelling === o.offerId ? (
-                      <span className="flex items-center gap-1.5">
-                        <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                        </svg>
-                        Cancelling…
+              return (
+                <div key={eventId} className="space-y-2">
+                  {/* Group header — shown only when placer has multiple outcomes on the same event */}
+                  {multiPosition && (
+                    <div className="flex items-center gap-2 px-1 pb-2 border-b border-slate-800">
+                      {event?.icon && <span className="text-base">{event.icon}</span>}
+                      <span className="text-xs font-bold text-slate-300 truncate">{event?.name ?? eventId}</span>
+                      <span className="ml-auto shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-500">
+                        {eventOffers.length} positions
                       </span>
-                    ) : 'Cancel Offer'}
-                  </button>
+                    </div>
+                  )}
+
+                  {/* Cards — 2-col on lg+ when multiple positions, full-width otherwise */}
+                  <div className={`grid gap-3 ${multiPosition ? 'grid-cols-1 lg:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>
+                    {eventOffers.map((o) => (
+                      <div
+                        key={o.offerId}
+                        className="rounded-xl bg-slate-950/70 border border-slate-700/60 hover:border-slate-600/80 transition-colors overflow-hidden"
+                      >
+                        {/* Card header */}
+                        <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-800">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-xs font-mono text-slate-600">#{o.offerId}</span>
+                            {!multiPosition && (
+                              <span className="text-sm font-semibold text-slate-200 truncate">
+                                {event?.name ?? o.eventId}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 shrink-0 ml-2">
+                            ACTIVE
+                          </span>
+                        </div>
+
+                        {/* Card body — 3 key metrics + cancel */}
+                        <div className="px-4 py-3 flex items-center gap-4 flex-wrap">
+
+                          {/* Outcome */}
+                          <div className="space-y-0.5">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">Outcome</p>
+                            <p className="text-sm font-semibold text-slate-300">{OUTCOMES[o.outcome] ?? o.outcome}</p>
+                          </div>
+
+                          <div className="w-px h-9 bg-slate-800 self-stretch" />
+
+                          {/* Odds — hero metric */}
+                          <div className="space-y-0.5">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">Odds</p>
+                            <p className="text-xl font-bold font-mono text-[#FFB01F] leading-none">
+                              {o.oddsDecimal.toFixed(2)}<span className="text-sm text-[#FFB01F]/60">x</span>
+                            </p>
+                          </div>
+
+                          <div className="w-px h-9 bg-slate-800 self-stretch" />
+
+                          {/* Liability */}
+                          <div className="space-y-0.5">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">Liability</p>
+                            <p className="text-lg font-bold font-mono text-slate-200 leading-none">
+                              {o.remainingLiabilityUsdt}
+                              <span className="text-xs text-slate-500 ml-1">USDT</span>
+                            </p>
+                          </div>
+
+                          <div className="flex-1" />
+
+                          {/* Cancel */}
+                          <button
+                            onClick={() => handleCancel(o.offerId)}
+                            disabled={cancelling === o.offerId}
+                            className="shrink-0 px-4 py-2 text-xs font-bold rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 hover:border-red-500/50 hover:text-red-300 disabled:opacity-50 transition-all whitespace-nowrap"
+                          >
+                            {cancelling === o.offerId ? (
+                              <span className="flex items-center gap-1.5">
+                                <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                                </svg>
+                                Cancelling…
+                              </span>
+                            ) : 'Cancel Offer'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )
-          })}
+              )
+            })
+          })()}
         </div>
       )}
     </div>

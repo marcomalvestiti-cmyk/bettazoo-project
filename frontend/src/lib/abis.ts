@@ -118,6 +118,15 @@ export const MOCK_USDT_ABI = [
   },
 ] as const
 
+// ── Market types — extensible for Over/Under, Asian Handicap, BTTS, etc. ──────
+export type MarketType = 'match_winner' | 'over_under' | 'asian_handicap' | 'btts'
+
+export type Market = {
+  type: MarketType
+  label: string
+  outcomes: Record<number, string>
+}
+
 export type MockEvent = {
   eventId: string
   name: string
@@ -129,6 +138,7 @@ export type MockEvent = {
   icon: string
   teams: string[]
   startTime: string
+  markets?: Market[]  // if absent, getEventMarkets() defaults to MATCH_WINNER_MARKET (1X2)
 }
 
 const t = (h: number) => new Date(Date.now() + h * 3_600_000).toISOString()
@@ -163,4 +173,15 @@ export const OUTCOMES: Record<number, string> = {
   0: 'Home Win',
   1: 'Draw',
   2: 'Away Win',
+}
+
+export const MATCH_WINNER_MARKET: Market = {
+  type: 'match_winner',
+  label: 'Match Winner',
+  outcomes: { 0: 'Home Win', 1: 'Draw', 2: 'Away Win' },
+}
+
+/** Returns the available markets for an event, defaulting to 1X2 Match Winner if none defined. */
+export function getEventMarkets(event: MockEvent): Market[] {
+  return event.markets?.length ? event.markets : [MATCH_WINNER_MARKET]
 }
