@@ -1,7 +1,7 @@
 'use client'
 
 import { useAccount, useWatchContractEvent } from 'wagmi'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 
 import CreateOfferForm, { type NewOfferData } from '@/components/CreateOfferForm'
@@ -78,13 +78,20 @@ export default function PlacerDashboard() {
     setTimeout(refreshOffers, 4000)
   }, [address, refreshOffers])
 
+  // Refs that always hold the latest values — prevents stale closures in the
+  // wagmi event callback which may be registered once and never re-created.
+  const addressRef  = useRef(address)
+  const refreshRef  = useRef(refreshOffers)
+  useEffect(() => { addressRef.current = address },        [address])
+  useEffect(() => { refreshRef.current = refreshOffers }, [refreshOffers])
+
   // ── On-chain event listener ────────────────────────────────────────────────
-  // Watches OfferCreated directly from the RPC (eth_getLogs polling, ~2s interval).
-  // When an event from our wallet arrives:
-  //   • Decodes args from the chain — no indexer round-trip, zero lag.
-  //   • Replaces any optimistic placeholder (Date.now() IDs > 1e12) with the
-  //     real offerId assigned by the smart contract.
-  //   • Still schedules a delayed refreshOffers() to catch edge cases.
+  // Polls Arbitrum Sepolia via eth_getLogs every 2s.
+  // Strategy:
+  //   1. Read address/refresh from refs (never stale).
+  //   2. Build Offer directly from event args — zero indexer dependency.
+  //   3. Replace any optimistic placeholder, add real offer → instant UI update.
+  //   4. Delayed refreshOffers() as backend safety net.
   useWatchContractEvent({
     address:         ESCROW_ADDRESS,
     abi:             ESCROW_ABI,
@@ -92,46 +99,56 @@ export default function PlacerDashboard() {
     pollingInterval: 2_000,
     onLogs(logs) {
       console.log('EVENTO BLOCKCHAIN CAPTATO:', logs)
-      if (!address) return
 
-      const mine = logs.filter(
-        log => log.args.placer?.toLowerCase() === address.toLowerCase()
-      )
-      if (mine.length === 0) return
+      const addr = addressRef.current
+      console.log('[bettazoo] address at event time:', addr)
+      if (!addr) return
 
-      setOffers(prev => {
-        let next = [...prev]
-        for (const log of mine) {
-          const { offerId, placer, eventId: evId, outcome, odds, liability } = log.args
-          if (!offerId || !placer || evId === undefined || outcome === undefined || !odds || !liability) continue
+      for (const log of logs) {
+        const { offerId, placer, eventId: evId, outcome, odds, liability } = log.args
+        console.log('[bettazoo] event args:', { offerId, placer, evId, outcome, odds, liability })
 
-          const oddsDecimal   = Number(odds) / 10_000
-          const liabilityUsdt = Number(liability) / 1_000_000
-          const real: Offer = {
-            offerId:                Number(offerId),
-            placer,
-            eventId:                evId,
-            outcome:                Number(outcome),
-            oddsDecimal,
-            remainingLiabilityUsdt: liabilityUsdt.toFixed(6),
-            maxBettorStakeUsdt:     (liabilityUsdt / (oddsDecimal - 1)).toFixed(6),
+        if (!offerId || !placer || evId === undefined || outcome === undefined || !odds || !liability) {
+          console.warn('[bettazoo] skipping log — incomplete args')
+          continue
+        }
+        if (placer.toLowerCase() !== addr.toLowerCase()) {
+          console.log('[bettazoo] skipping — not our offer (placer:', placer, ')')
+          continue
+        }
+
+        const oddsDecimal   = Number(odds) / 10_000
+        const liabilityUsdt = Number(liability) / 1_000_000
+        const real: Offer = {
+          offerId:                Number(offerId),
+          placer,
+          eventId:                evId,
+          outcome:                Number(outcome),
+          oddsDecimal,
+          remainingLiabilityUsdt: liabilityUsdt.toFixed(6),
+          maxBettorStakeUsdt:     (liabilityUsdt / (oddsDecimal - 1)).toFixed(6),
+        }
+        console.log('[bettazoo] injecting offer into state:', real)
+
+        // Step 2 — direct state update (no backend round-trip)
+        setOffers(prev => {
+          if (prev.some(o => o.offerId === real.offerId)) {
+            console.log('[bettazoo] offer already in state, skipping')
+            return prev
           }
-
-          // Skip if already present with the real ID
-          if (next.some(o => o.offerId === real.offerId)) continue
-
-          // Replace optimistic placeholder for this event+outcome if one exists
-          // (optimistic IDs use Date.now() ≈ 1.75e12; real sequential IDs are tiny)
-          next = next.filter(o =>
+          // Remove optimistic placeholder for this event+outcome if present
+          // (optimistic IDs are Date.now() ≈ 1.75e12; real IDs are sequential ints)
+          const filtered = prev.filter(o =>
             !(o.offerId > 1_000_000_000 && o.eventId === evId && o.outcome === real.outcome)
           )
-          next = [...next, real]
-        }
-        return next
-      })
+          const next = [...filtered, real]
+          console.log('[bettazoo] setOffers →', next.length, 'offers')
+          return next
+        })
+      }
 
-      // Delayed real refresh as safety net (gives indexer time to sync)
-      setTimeout(refreshOffers, 3_000)
+      // Step 3 — delayed backend sync once Railway indexer has caught up
+      setTimeout(() => refreshRef.current(), 3_000)
     },
   })
 
