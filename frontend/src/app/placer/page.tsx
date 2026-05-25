@@ -105,6 +105,7 @@ function InfluenceRewards({ challengers, address }: { challengers: number; addre
 export default function PlacerDashboard() {
   const { address, isConnected } = useAccount()
 
+  const [activeTab,         setActiveTab]         = useState<'dashboard' | 'offers'>('dashboard')
   const [selectedEventId,   setSelectedEventId]   = useState(MOCK_EVENTS[0].eventId)
   const [offers,            setOffers]            = useState<Offer[]>([])
   const [profileOpen,       setProfileOpen]       = useState(false)
@@ -251,19 +252,15 @@ export default function PlacerDashboard() {
   }
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 py-6 space-y-5">
+    <div className="max-w-[1400px] mx-auto px-4 py-6 space-y-4">
 
       {/* ── Header ── */}
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1 min-w-0">
-          <p className="text-xs font-bold text-[#FFB01F] uppercase tracking-widest">
-            ✦ Placer Area
-          </p>
+          <p className="text-xs font-bold text-[#FFB01F] uppercase tracking-widest">✦ Placer Area</p>
           <h1 className="text-3xl font-bold text-white leading-none">Control Station</h1>
           <p className="text-xs text-slate-500 font-mono truncate">{address}</p>
         </div>
-
-        {/* Header actions */}
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => setProfileOpen(true)}
@@ -294,49 +291,91 @@ export default function PlacerDashboard() {
         uniqueChallengers={uniqueChallengers}
       />
 
-      {/* ── Main Grid ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5">
-
-        {/* LEFT COLUMN — controls */}
-        <div className="space-y-4">
-          <EventSelector value={selectedEventId} onSelect={setSelectedEventId} />
-          <CreateOfferForm
-            eventId={selectedEventId}
-            eventName={selectedEvent.name}
-            sport={selectedEvent.sport}
-            teams={selectedEvent.teams}
-            onOfferCreated={handleOfferCreated}
-          />
-          <RiskWidget address={address} />
-        </div>
-
-        {/* RIGHT COLUMN — order book */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-xl">{selectedEvent.icon}</span>
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-[#FFB01F] uppercase tracking-widest">
-                {selectedEvent.sportLabel} · {selectedEvent.leagueLabel}
-              </p>
-              <h2 className="text-lg font-bold text-white leading-tight">{selectedEvent.name}</h2>
-            </div>
-            <div className="ml-auto flex items-center gap-2 shrink-0">
-              {selectedEvent.teams.map(t => (
-                <span key={t} className="text-xs font-medium bg-slate-900 border border-slate-700 px-2 py-1 rounded">
-                  {t}
-                </span>
-              ))}
-            </div>
-          </div>
-          <OrderBook eventId={selectedEventId} />
-        </div>
+      {/* ── Tab Navigation ── */}
+      <div className="flex items-center gap-1 border-b border-slate-800">
+        {([
+          { id: 'dashboard', label: 'Dashboard' },
+          { id: 'offers',    label: 'My Offers', badge: offers.length },
+        ] as const).map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
+              activeTab === tab.id
+                ? 'border-[#FFB01F] text-[#FFB01F]'
+                : 'border-transparent text-slate-500 hover:text-slate-300 hover:border-slate-600'
+            }`}
+          >
+            {tab.label}
+            {'badge' in tab && tab.badge > 0 && (
+              <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
+                activeTab === tab.id
+                  ? 'bg-[#FFB01F]/20 text-[#FFB01F]'
+                  : 'bg-slate-800 text-slate-500'
+              }`}>
+                {tab.badge}
+              </span>
+            )}
+          </button>
+        ))}
       </div>
 
-      {/* ── My Active Offers ── */}
-      <MyOffers offers={offers} onRefresh={loadOffers} />
+      {/* ══════════════════ TAB: DASHBOARD ══════════════════ */}
+      {activeTab === 'dashboard' && (
+        <div className="space-y-4">
 
-      {/* ── Influence Rewards (mock-up) ── */}
-      <InfluenceRewards challengers={uniqueChallengers} address={address} />
+          {/* Main grid — create offer + live order book */}
+          <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5">
+            <div className="space-y-4">
+              <EventSelector value={selectedEventId} onSelect={setSelectedEventId} />
+              <CreateOfferForm
+                eventId={selectedEventId}
+                eventName={selectedEvent.name}
+                sport={selectedEvent.sport}
+                teams={selectedEvent.teams}
+                onOfferCreated={handleOfferCreated}
+              />
+              <RiskWidget address={address} />
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-xl">{selectedEvent.icon}</span>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-[#FFB01F] uppercase tracking-widest">
+                    {selectedEvent.sportLabel} · {selectedEvent.leagueLabel}
+                  </p>
+                  <h2 className="text-lg font-bold text-white leading-tight">{selectedEvent.name}</h2>
+                </div>
+                <div className="ml-auto flex items-center gap-2 shrink-0">
+                  {selectedEvent.teams.map(t => (
+                    <span key={t} className="text-xs font-medium bg-slate-900 border border-slate-700 px-2 py-1 rounded">
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <OrderBook eventId={selectedEventId} />
+            </div>
+          </div>
+
+          {/* Compact offers widget */}
+          <MyOffers
+            offers={offers}
+            onRefresh={loadOffers}
+            compact
+            onViewAll={() => setActiveTab('offers')}
+          />
+
+          {/* Influence Rewards */}
+          <InfluenceRewards challengers={uniqueChallengers} address={address} />
+        </div>
+      )}
+
+      {/* ══════════════════ TAB: MY OFFERS ══════════════════ */}
+      {activeTab === 'offers' && (
+        <MyOffers offers={offers} onRefresh={loadOffers} />
+      )}
 
       {/* ── Profile Modal ── */}
       {profileOpen && (
