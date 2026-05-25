@@ -3,6 +3,7 @@
 import { useReadContract } from 'wagmi'
 import { formatUnits } from 'viem'
 import { ERC20_ABI, MOCK_EVENTS } from '@/lib/abis'
+import PlacerBadge from './PlacerBadge'
 
 const USDT_ADDRESS = (process.env.NEXT_PUBLIC_USDT_ADDRESS ?? '0x0') as `0x${string}`
 
@@ -19,6 +20,7 @@ interface Props {
   address: `0x${string}`
   offers: Offer[]
   pnlSeed?: string
+  uniqueChallengers?: number
 }
 
 function deterministicPnL(seed: string): number {
@@ -54,7 +56,7 @@ function StatCard({
   )
 }
 
-export default function PlacerStatsBar({ address, offers, pnlSeed }: Props) {
+export default function PlacerStatsBar({ address, offers, pnlSeed, uniqueChallengers = 0 }: Props) {
   const { data: rawBalance } = useReadContract({
     address: USDT_ADDRESS,
     abi: ERC20_ABI,
@@ -74,7 +76,7 @@ export default function PlacerStatsBar({ address, offers, pnlSeed }: Props) {
     : '—'
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
       <StatCard
         label="Available Liquidity"
         value={liquidityStr}
@@ -101,6 +103,14 @@ export default function PlacerStatsBar({ address, offers, pnlSeed }: Props) {
         sub="simulated · connect oracle for live"
         positive={pnlPositive}
       />
+      <div className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 space-y-1.5 min-w-0">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 truncate">Unique Challengers</p>
+        <p className="text-xl font-bold font-mono tabular-nums truncate text-white">{uniqueChallengers}</p>
+        <PlacerBadge count={uniqueChallengers} size="sm" />
+        {uniqueChallengers === 0 && (
+          <p className="text-[10px] text-slate-600 font-mono">Share offers to gain challengers</p>
+        )}
+      </div>
     </div>
   )
 }

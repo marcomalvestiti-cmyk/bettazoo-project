@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { fetchOrderBook } from '@/lib/api'
+import { fetchOrderBook, fetchChallengers } from '@/lib/api'
 import { OUTCOMES } from '@/lib/abis'
 import { displayMakerName, isKnownMaker } from '@/lib/formatAddress'
+import PlacerBadge from './PlacerBadge'
 
 export type Offer = {
   offerId: number
@@ -66,6 +67,7 @@ export default function OrderBook({ eventId, onBet }: Props) {
   const [loading, setLoading]         = useState(true)
   const [error, setError]             = useState<string | null>(null)
   const [selectedOutcome, setSelectedOutcome] = useState<number | undefined>()
+  const [challengersMap, setChallengersMap]   = useState<Map<string, number>>(new Map())
 
   useEffect(() => {
     let cancelled = false
@@ -88,6 +90,16 @@ export default function OrderBook({ eventId, onBet }: Props) {
     load()
     return () => { cancelled = true }
   }, [eventId])
+
+  useEffect(() => {
+    if (!data?.orders.length) return
+    const uniquePlacers = [...new Set(data.orders.map(o => o.placer))]
+    Promise.all(
+      uniquePlacers.map(p => fetchChallengers(p).then(r => [p, r.uniqueChallengers] as const))
+    )
+      .then(results => setChallengersMap(new Map(results)))
+      .catch(() => {})
+  }, [data])
 
   const displayOrders = data
     ? selectedOutcome !== undefined
@@ -326,6 +338,7 @@ export default function OrderBook({ eventId, onBet }: Props) {
                             ⭐ Best
                           </span>
                         )}
+                        <PlacerBadge count={challengersMap.get(o.placer) ?? 0} size="sm" />
                       </div>
                     </td>
                   </tr>

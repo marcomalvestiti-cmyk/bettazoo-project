@@ -31,6 +31,7 @@ export default function MyOffers({ offers: externalOffers, onRefresh }: Props) {
   const [internalOffers, setInternalOffers] = useState<Offer[]>([])
   const [loading,    setLoading]    = useState(!externalOffers)
   const [cancelling, setCancelling] = useState<number | null>(null)
+  const [copiedId,   setCopiedId]   = useState<number | null>(null)
   const [error,      setError]      = useState('')
 
   const offers = externalOffers ?? internalOffers
@@ -76,6 +77,13 @@ export default function MyOffers({ offers: externalOffers, onRefresh }: Props) {
     } finally {
       setCancelling(null)
     }
+  }
+
+  function handleShare(o: Offer) {
+    const url = `${window.location.origin}/event/${o.eventId}?ref=${o.placer}`
+    navigator.clipboard.writeText(url).catch(() => {})
+    setCopiedId(o.offerId)
+    setTimeout(() => setCopiedId(null), 2000)
   }
 
   if (!address) return null
@@ -214,6 +222,15 @@ export default function MyOffers({ offers: externalOffers, onRefresh }: Props) {
                           </div>
 
                           <div className="flex-1" />
+
+                          {/* Share */}
+                          <button
+                            onClick={() => handleShare(o)}
+                            className="shrink-0 px-3 py-2 text-xs font-bold rounded-lg bg-[#FFB01F]/10 border border-[#FFB01F]/30 text-[#FFB01F] hover:bg-[#FFB01F]/20 hover:border-[#FFB01F]/50 transition-all whitespace-nowrap"
+                            title="Copy challenge link"
+                          >
+                            {copiedId === o.offerId ? '✓ Copied!' : '🔗 Share Offer'}
+                          </button>
 
                           {/* Cancel */}
                           <button

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { use } from 'react'
 import { useAccount } from 'wagmi'
+import { useSearchParams } from 'next/navigation'
 import OrderBook, { type Offer } from '@/components/OrderBook'
 import BetSlip from '@/components/BetSlip'
 import { MOCK_EVENTS } from '@/lib/abis'
@@ -11,8 +12,10 @@ import Link from 'next/link'
 type BetSlipState = { outcome: number; offers: Offer[] }
 
 export default function EventPage({ params }: { params: Promise<{ eventId: string }> }) {
-  const { eventId }     = use(params)
-  const { isConnected } = useAccount()
+  const { eventId }       = use(params)
+  const { isConnected }   = useAccount()
+  const searchParams      = useSearchParams()
+  const referrerAddress   = searchParams.get('ref') ?? undefined
   const [betSlip, setBetSlip] = useState<BetSlipState | null>(null)
 
   const event = MOCK_EVENTS.find((e) => e.eventId === eventId)
@@ -92,6 +95,15 @@ export default function EventPage({ params }: { params: Promise<{ eventId: strin
         </div>
       </div>
 
+      {referrerAddress && (
+        <div className="flex items-center gap-2.5 rounded-lg bg-[#FFB01F]/8 border border-[#FFB01F]/30 px-4 py-3 text-sm">
+          <span className="text-[#FFB01F] text-base select-none">🔗</span>
+          <span className="text-[#FFB01F] font-semibold">Challenge the Bookie</span>
+          <span className="text-slate-400">— You were invited by</span>
+          <span className="font-mono text-xs text-slate-300">{referrerAddress.slice(0, 6)}…{referrerAddress.slice(-4)}</span>
+        </div>
+      )}
+
       {!isConnected && (
         <div className="flex items-center gap-2 rounded-lg bg-slate-900 border border-slate-800 px-4 py-3 text-sm text-slate-400">
           <span className="text-yellow-400">⚠</span>
@@ -109,6 +121,7 @@ export default function EventPage({ params }: { params: Promise<{ eventId: strin
           outcome={betSlip.outcome}
           offers={betSlip.offers}
           eventName={event?.name ?? eventId}
+          referrerAddress={referrerAddress}
           onClose={() => setBetSlip(null)}
         />
       )}

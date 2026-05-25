@@ -141,4 +141,30 @@ export async function updateProfile(
   }
 }
 
+export async function postReferral(body: {
+  placer: string
+  bettor: string
+  offerId: number
+  eventId: string
+}): Promise<void> {
+  try {
+    await apiFetch('referral POST', `${BASE}/api/social/referral`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  } catch {
+    // non-critical, silent fail
+  }
+}
+
+export async function fetchChallengers(address: string): Promise<{ uniqueChallengers: number; challengers: string[] }> {
+  try {
+    const res = await apiFetch('challengers', `${BASE}/api/social/challengers/${address}`)
+    return res.json()
+  } catch {
+    return { uniqueChallengers: 0, challengers: [] }
+  }
+}
+
 export const SOCKET_URL = BASE

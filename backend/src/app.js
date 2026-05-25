@@ -29,6 +29,7 @@ app.use('/api/ai',        require('./routes/ai'));
 app.use('/api/oracle',    require('./routes/oracle'));
 app.use('/api/profile',   require('./routes/profile'));
 app.use('/api/admin',     require('./routes/admin'));
+app.use('/api/social',    require('./routes/social'));
 
 // 404 — always JSON (never HTML)
 app.use((_req, res) => {

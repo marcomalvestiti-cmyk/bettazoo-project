@@ -7,6 +7,7 @@ import { waitForTransactionReceipt } from 'viem/actions'
 import { ESCROW_ABI, ERC20_ABI, OUTCOMES } from '@/lib/abis'
 import { withGasBuffer } from '@/lib/gasUtils'
 import { saveBet } from '@/lib/betHistory'
+import { postReferral } from '@/lib/api'
 import type { Offer } from './OrderBook'
 import { displayMakerName, isKnownMaker } from '@/lib/formatAddress'
 
@@ -14,6 +15,7 @@ type Props = {
   outcome: number
   offers: Offer[]
   eventName: string
+  referrerAddress?: string
   onClose: () => void
 }
 
@@ -39,7 +41,7 @@ function computeMatch(offers: Offer[], stakeUsdt: number) {
   return matched
 }
 
-export default function BetSlip({ outcome, offers, eventName, onClose }: Props) {
+export default function BetSlip({ outcome, offers, eventName, referrerAddress, onClose }: Props) {
   const [visible, setVisible]   = useState(false)
   const [stake, setStake]       = useState('')
   const [status, setStatus]     = useState<'idle' | 'approving' | 'betting' | 'done' | 'error'>('idle')
@@ -114,6 +116,14 @@ export default function BetSlip({ outcome, offers, eventName, onClose }: Props) 
         potentialWinUsdt: potentialWin,
         placedAt: new Date().toISOString(),
       })
+      if (referrerAddress && referrerAddress.toLowerCase() !== address.toLowerCase()) {
+        postReferral({
+          placer:  referrerAddress,
+          bettor:  address,
+          offerId: matchedOffers[0].offerId,
+          eventId: matchedOffers[0].eventId,
+        })
+      }
     } catch (err: unknown) {
       setStatus('error')
       setErrorMsg(err instanceof Error ? err.message : 'Transaction failed')

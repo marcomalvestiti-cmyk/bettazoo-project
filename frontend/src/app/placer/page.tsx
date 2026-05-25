@@ -7,22 +7,108 @@ import Link from 'next/link'
 import CreateOfferForm, { type NewOfferData } from '@/components/CreateOfferForm'
 import RiskWidget       from '@/components/RiskWidget'
 import OrderBook        from '@/components/OrderBook'
-import { type Offer }   from '@/components/MyOffers'
+import MyOffers, { type Offer } from '@/components/MyOffers'
 import ProfileEditor    from '@/components/ProfileEditor'
 import PlacerStatsBar   from '@/components/PlacerStatsBar'
 import EventSelector    from '@/components/EventSelector'
+import PlacerBadge      from '@/components/PlacerBadge'
 
 import { MOCK_EVENTS, ESCROW_ABI } from '@/lib/abis'
-import { fetchOrderBook, fetchProfile } from '@/lib/api'
+import { fetchOrderBook, fetchProfile, fetchChallengers } from '@/lib/api'
 
 const ESCROW_ADDRESS = (process.env.NEXT_PUBLIC_ESCROW_ADDRESS ?? '0x0') as `0x${string}`
+
+// ── Influence Rewards mock-up ─────────────────────────────────────────────────
+// Shows the placer an estimate of community earnings to illustrate mainnet value.
+function InfluenceRewards({ challengers, address }: { challengers: number; address: string }) {
+  const monthlyVolume   = challengers * 50          // $50/month assumed per challenger
+  const placerShare     = monthlyVolume * 0.005      // 0.5% of volume (mock share)
+  const annualEstimate  = placerShare * 12
+
+  const tiers = [
+    { label: 'Rookie Placer',  threshold: 1,  icon: '🥉', color: 'text-amber-500',  border: 'border-amber-700/30',  bg: 'bg-amber-700/8'  },
+    { label: 'Pro Bookie',     threshold: 11, icon: '🥈', color: 'text-slate-300',  border: 'border-slate-400/30',  bg: 'bg-slate-400/8'  },
+    { label: 'Whale Maker',    threshold: 51, icon: '🥇', color: 'text-yellow-400', border: 'border-yellow-500/30', bg: 'bg-yellow-500/8' },
+  ]
+
+  return (
+    <div className="bg-slate-900/60 border border-[#FFB01F]/20 shadow-md shadow-amber-900/10 rounded-xl p-5 space-y-5">
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded-lg bg-[#FFB01F]/15 border border-[#FFB01F]/30 flex items-center justify-center text-base select-none">
+          💰
+        </div>
+        <div>
+          <h2 className="text-lg font-bold text-white leading-none">Influence Rewards</h2>
+          <p className="text-xs text-slate-500 mt-0.5">Estimated earnings from your challenger community</p>
+        </div>
+        <span className="ml-auto text-[10px] font-bold px-2 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-500 uppercase tracking-widest">
+          Mainnet preview
+        </span>
+      </div>
+
+      {/* Metrics row */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="bg-slate-950/60 border border-slate-800 rounded-lg px-4 py-3 space-y-1">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">Challengers</p>
+          <p className="text-2xl font-bold font-mono text-white">{challengers}</p>
+          <PlacerBadge count={challengers} size="sm" />
+        </div>
+        <div className="bg-slate-950/60 border border-slate-800 rounded-lg px-4 py-3 space-y-1">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">Est. Monthly Volume</p>
+          <p className="text-2xl font-bold font-mono text-slate-300">${monthlyVolume.toFixed(0)}</p>
+          <p className="text-[10px] text-slate-600 font-mono">$50/challenger assumed</p>
+        </div>
+        <div className="bg-slate-950/60 border border-[#FFB01F]/20 rounded-lg px-4 py-3 space-y-1">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">Est. Monthly Share</p>
+          <p className="text-2xl font-bold font-mono text-[#FFB01F]">${placerShare.toFixed(2)}</p>
+          <p className="text-[10px] text-slate-600 font-mono">0.5% of volume</p>
+        </div>
+        <div className="bg-slate-950/60 border border-emerald-500/20 rounded-lg px-4 py-3 space-y-1">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">Est. Annual</p>
+          <p className="text-2xl font-bold font-mono text-emerald-400">${annualEstimate.toFixed(2)}</p>
+          <p className="text-[10px] text-slate-600 font-mono">projected · mock data</p>
+        </div>
+      </div>
+
+      {/* Badge progression */}
+      <div className="space-y-2">
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Badge Progression</p>
+        <div className="grid grid-cols-3 gap-2">
+          {tiers.map(t => {
+            const reached = challengers >= t.threshold
+            return (
+              <div key={t.label} className={`rounded-lg border px-3 py-2.5 flex items-center gap-2.5 transition-all ${reached ? `${t.bg} ${t.border}` : 'bg-slate-950/40 border-slate-800 opacity-50'}`}>
+                <span className="text-xl select-none">{t.icon}</span>
+                <div className="min-w-0">
+                  <p className={`text-xs font-bold ${reached ? t.color : 'text-slate-600'} truncate`}>{t.label}</p>
+                  <p className="text-[10px] text-slate-600 font-mono">{t.threshold}+ challengers</p>
+                </div>
+                {reached && <span className={`ml-auto text-base ${t.color}`}>✓</span>}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* CTA */}
+      <div className="flex items-center gap-3 rounded-lg bg-slate-950/40 border border-slate-800 px-4 py-3">
+        <span className="text-slate-500 text-sm select-none">📣</span>
+        <p className="text-xs text-slate-500 flex-1">
+          Share your offers to attract challengers. Rewards activate on Mainnet launch.
+        </p>
+        <span className="text-[10px] font-mono text-slate-600 shrink-0">{address.slice(0, 6)}…{address.slice(-4)}</span>
+      </div>
+    </div>
+  )
+}
 
 export default function PlacerDashboard() {
   const { address, isConnected } = useAccount()
 
-  const [selectedEventId, setSelectedEventId] = useState(MOCK_EVENTS[0].eventId)
-  const [offers,          setOffers]          = useState<Offer[]>([])
-  const [profileOpen,     setProfileOpen]     = useState(false)
+  const [selectedEventId,   setSelectedEventId]   = useState(MOCK_EVENTS[0].eventId)
+  const [offers,            setOffers]            = useState<Offer[]>([])
+  const [profileOpen,       setProfileOpen]       = useState(false)
+  const [uniqueChallengers, setUniqueChallengers] = useState(0)
 
   const selectedEvent = MOCK_EVENTS.find(e => e.eventId === selectedEventId) ?? MOCK_EVENTS[0]
 
@@ -61,6 +147,13 @@ export default function PlacerDashboard() {
   }, [address])
 
   useEffect(() => { loadOffers() }, [loadOffers])
+
+  useEffect(() => {
+    if (!address) return
+    fetchChallengers(address)
+      .then(d => setUniqueChallengers(d.uniqueChallengers))
+      .catch(() => {})
+  }, [address])
 
   // ── Post-tx: optimistic inject, no backend refetch ────────────────────────────
   // Injects the offer directly into local state the moment the tx is mined.
@@ -198,6 +291,7 @@ export default function PlacerDashboard() {
         address={address as `0x${string}`}
         offers={offers}
         pnlSeed={address}
+        uniqueChallengers={uniqueChallengers}
       />
 
       {/* ── Main Grid ── */}
@@ -237,6 +331,12 @@ export default function PlacerDashboard() {
           <OrderBook eventId={selectedEventId} />
         </div>
       </div>
+
+      {/* ── My Active Offers ── */}
+      <MyOffers offers={offers} onRefresh={loadOffers} />
+
+      {/* ── Influence Rewards (mock-up) ── */}
+      <InfluenceRewards challengers={uniqueChallengers} address={address} />
 
       {/* ── Profile Modal ── */}
       {profileOpen && (
