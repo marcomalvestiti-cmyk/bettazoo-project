@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bettazoo — Genesis Testnet</title>
+  <meta name="description" content="P2P Betting Exchange. On-chain. Non-custodial. The first 500 get in. Everyone else waits." />
+  <meta property="og:title" content="Bettazoo — Genesis Testnet" />
+  <meta property="og:description" content="The house doesn't play here. 500 spots. No exceptions." />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="theme-color" content="#020617" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ─── Reset ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ─── Tailwind-equivalent token map ─────────────────── */
+    :root {
+      /* slate palette (exact Tailwind v3 values) */
+      --slate-950: #020617;
+      --slate-900: #0f172a;
+      --slate-800: #1e293b;
+      --slate-700: #334155;
+      --slate-600: #475569;
+      --slate-500: #64748b;
+      --slate-400: #94a3b8;
+      --slate-300: #cbd5e1;
+      --slate-100: #f1f5f9;
+
+      --red-500:   #ef4444;
+      --red-600:   #dc2626;
+      --brand:     #B31A1A;   /* site primary accent */
+      --brand-dim: rgba(179,26,26,0.12);
+      --brand-border: rgba(179,26,26,0.25);
+
+      --amber-500: #f59e0b;
+      --amber-400: #fbbf24;
+
+      --green-400: #4ade80;
+      --green-500: #22c55e;
+
+      --mono: 'Space Mono', monospace;
+      --sans: 'Inter', system-ui, sans-serif;
+    }
+
+    html  { scroll-behavior: smooth; }
+
+    body {
+      background: var(--slate-950);
+      color: var(--slate-100);
+      font-family: var(--sans);
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Subtle grid — same "feel" as the app's dark dashboard pages */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+      background-size: 56px 56px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Red radial glow from the top — matches the brand colour */
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background: radial-gradient(ellipse 80% 50% at 50% -8%, rgba(179,26,26,0.16), transparent 65%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── NAVBAR ─────────────────────────────────────────── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      border-bottom: 1px solid var(--slate-800);
+      background: rgba(2,6,23,0.95);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .nav-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .nav-logo img {
+      height: 32px;
+      width: auto;
+      object-fit: contain;
+      display: block;
+    }
+
+    /* text fallback if image doesn't load */
+    .nav-logo-text {
+      font-family: var(--mono);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--slate-100);
+      text-decoration: none;
+      letter-spacing: -0.02em;
+    }
+    .nav-logo-text span { color: var(--brand); }
+
+    /* Amber badge — matches "✦ Placer Area" style in Navbar.tsx */
+    .nav-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: 6px;
+      border: 1px solid rgba(245,158,11,0.5);
+      color: var(--amber-500);
+      background: rgba(245,158,11,0.08);
+      font-size: 0.75rem;
+      font-weight: 600;
+      font-family: var(--sans);
+      white-space: nowrap;
+    }
+
+    .pulse-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--amber-400);
+      box-shadow: 0 0 6px var(--amber-500);
+      animation: blink 2s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
+    /* ─── HERO ───────────────────────────────────────────── */
+    .hero {
+      position: relative;
+      z-index: 1;
+      min-height: calc(100vh - 64px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 80px 1.5rem 80px;
+    }
+
+    /* "Limited Access Program" kicker — matches how-to-play kicker style */
+    .kicker {
+      display: inline-block;
+      margin-bottom: 1.75rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--red-500);
+    }
+
+    .hero h1 {
+      font-size: clamp(3rem, 9vw, 6rem);
+      font-weight: 900;
+      line-height: 0.97;
+      letter-spacing: -0.045em;
+      color: white;
+      margin-bottom: 1.5rem;
+    }
+
+    .hero h1 .accent { color: var(--brand); }
+
+    .hero-sub {
+      max-width: 500px;
+      font-size: clamp(0.9rem, 2.2vw, 1.05rem);
+      color: var(--slate-400);
+      line-height: 1.75;
+      margin-bottom: 0.4rem;
+    }
+
+    .hero-sub strong { color: var(--slate-100); font-weight: 600; }
+
+    .hero-tagline {
+      font-size: clamp(0.9rem, 2.2vw, 1.05rem);
+      font-weight: 700;
+      color: white;
+      margin-bottom: 3rem;
+    }
+
+    /* ─── COUNTER CARD ───────────────────────────────────── */
+    /* Uses the same card language as the app:
+       bg-slate-900 border border-slate-800 rounded-xl */
+    .counter-card {
+      background: var(--slate-900);
+      border: 1px solid var(--slate-800);
+      border-radius: 12px;          /* rounded-xl */
+      padding: 2rem 2.5rem 1.75rem;
+      margin-bottom: 1.75rem;
+      width: 100%;
+      max-width: 380px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-bottom: 1.25rem;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--slate-500);
+    }
+
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green-500);
+      box-shadow: 0 0 6px var(--green-400);
+      animation: blink 1.8s ease-in-out infinite;
+    }
+
+    .counter-number {
+      display: block;
+      font-family: var(--mono);
+      font-size: clamp(4.5rem, 16vw, 7.5rem);
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: -0.06em;
+      color: white;
+      transition: color 0.3s ease;
+    }
+
+    /* Goes red when < 100 spots left */
+    .counter-number.critical { color: var(--brand); }
+
+    /* Flash animation on decrement */
+    @keyframes flash { 0%,100%{opacity:1} 40%{opacity:0.3} }
+    .counter-number.flash { animation: flash 0.45s ease; }
+
+    .counter-label {
+      margin-top: 0.3rem;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--slate-500);
+    }
+
+    /* Progress bar — red fill like scrollbar in globals.css */
+    .progress-wrap {
+      width: 100%;
+      margin-top: 1.5rem;
+    }
+
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.6rem;
+      font-family: var(--mono);
+      color: var(--slate-600);
+      letter-spacing: 0.06em;
+      margin-bottom: 0.4rem;
+    }
+
+    .progress-track {
+      height: 3px;
+      background: var(--slate-800);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--brand);
+      border-radius: 99px;
+      box-shadow: 0 0 8px rgba(179,26,26,0.5);
+      transition: width 1.2s cubic-bezier(0.22,1,0.36,1);
+    }
+
+    /* ─── FORM ───────────────────────────────────────────── */
+    .form-wrap {
+      width: 100%;
+      max-width: 460px;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 0.6rem;
+      margin-bottom: 0.75rem;
+    }
+
+    /* Input — matches the dark inputs throughout the app */
+    .form-input {
+      flex: 1;
+      min-width: 0;
+      height: 44px;
+      padding: 0 1rem;
+      background: var(--slate-900);
+      border: 1px solid var(--slate-700);
+      border-radius: 8px;           /* rounded-lg */
+      color: var(--slate-100);
+      font-size: 0.9rem;
+      font-family: var(--sans);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .form-input::placeholder { color: var(--slate-600); }
+
+    .form-input:focus {
+      border-color: var(--brand);
+    }
+
+    .form-input.error {
+      border-color: var(--brand);
+      animation: shake 0.35s ease;
+    }
+
+    @keyframes shake {
+      0%,100%{ transform: translateX(0); }
+      25%    { transform: translateX(-4px); }
+      75%    { transform: translateX(4px); }
+    }
+
+    .form-input:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Primary CTA — exact match: bg-[#B31A1A] hover:bg-red-600 */
+    .form-btn {
+      height: 44px;
+      padding: 0 1.5rem;
+      background: var(--brand);
+      border: none;
+      border-radius: 8px;           /* rounded-lg */
+      color: white;
+      font-size: 0.85rem;
+      font-weight: 700;
+      font-family: var(--sans);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4), 0 0 20px rgba(179,26,26,0.3);
+    }
+
+    .form-btn:hover:not(:disabled) {
+      background: var(--red-600);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5), 0 0 28px rgba(220,38,38,0.4);
+    }
+
+    .form-btn:active:not(:disabled) { transform: scale(0.97); }
+    .form-btn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+
+    /* Hint text — text-xs text-slate-500 */
+    .form-hint {
+      font-size: 0.72rem;
+      color: var(--slate-500);
+      font-family: var(--mono);
+      letter-spacing: 0.04em;
+    }
+
+    /* Success / full states */
+    .form-success,
+    .form-full {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      height: 44px;
+      padding: 0 1rem;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+    }
+
+    .form-success {
+      background: rgba(34,197,94,0.08);
+      border: 1px solid rgba(34,197,94,0.25);
+      color: var(--green-500);
+    }
+
+    .form-full {
+      background: var(--brand-dim);
+      border: 1px solid var(--brand-border);
+      color: var(--red-500);
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+    }
+
+    /* ─── PAGE SECTIONS ──────────────────────────────────── */
+    .section {
+      position: relative;
+      z-index: 1;
+      max-width: 1024px;
+      margin: 0 auto;
+      padding: 96px 1.5rem;
+    }
+
+    hr.sep {
+      position: relative;
+      z-index: 1;
+      border: none;
+      border-top: 1px solid var(--slate-800);
+    }
+
+    /* Section kicker — text-xs font-bold uppercase tracking-widest text-red-500 */
+    .sec-kicker {
+      display: block;
+      margin-bottom: 0.75rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--red-500);
+    }
+
+    /* Section title — text-4xl font-bold text-white */
+    .sec-title {
+      font-size: clamp(1.75rem, 4.5vw, 2.8rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.08;
+      color: white;
+      margin-bottom: 2.5rem;
+    }
+
+    /* ─── STEPS (from how-to-play StepCard pattern) ──────── */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+    }
+
+    /* bg-slate-900 border border-slate-800 rounded-xl */
+    .step-card {
+      background: var(--slate-900);
+      border: 1px solid var(--slate-800);
+      border-radius: 12px;
+      padding: 1.75rem 1.5rem;
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .step-card:hover {
+      background: var(--slate-800);
+      border-color: var(--slate-700);
+    }
+
+    /* w-8 h-8 rounded-full border flex items-center justify-center
+       text-xs font-bold text-[#B31A1A] bg-[#B31A1A]/10 border-[#B31A1A]/20 */
+    .step-num {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1px solid var(--brand-border);
+      background: var(--brand-dim);
+      color: var(--brand);
+      font-size: 0.72rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .step-body h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: white;
+      margin-bottom: 0.35rem;
+      letter-spacing: -0.01em;
+    }
+
+    .step-body p {
+      font-size: 0.82rem;
+      color: var(--slate-400);
+      line-height: 1.6;
+    }
+
+    /* ─── FEATURES (same card treatment) ────────────────── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+    }
+
+    .feature-card {
+      background: var(--slate-900);
+      border: 1px solid var(--slate-800);
+      border-radius: 12px;
+      padding: 1.75rem 1.5rem;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .feature-card:hover {
+      background: var(--slate-800);
+      border-color: var(--slate-700);
+    }
+
+    .feature-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      background: var(--brand-dim);
+      border: 1px solid var(--brand-border);
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+    }
+
+    .feature-card h3 {
+      font-size: 0.98rem;
+      font-weight: 700;
+      color: white;
+      letter-spacing: -0.01em;
+      margin-bottom: 0.4rem;
+    }
+
+    .feature-card p {
+      font-size: 0.82rem;
+      color: var(--slate-400);
+      line-height: 1.65;
+    }
+
+    /* ─── FOOTER ─────────────────────────────────────────── */
+    footer {
+      position: relative;
+      z-index: 1;
+      border-top: 1px solid var(--slate-800);
+      padding: 1.75rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    footer p {
+      font-size: 0.72rem;
+      color: var(--slate-500);
+      font-family: var(--mono);
+      letter-spacing: 0.04em;
+    }
+
+    /* red scrollbar — matches globals.css */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--slate-900); }
+    ::-webkit-scrollbar-thumb { background: var(--brand); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--red-500); }
+
+    /* ─── SCROLL ANIMATIONS ──────────────────────────────── */
+    .fade-up {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .fade-up.visible { opacity: 1; transform: none; }
+
+    /* ─── RESPONSIVE ─────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .steps-grid    { grid-template-columns: 1fr; gap: 1rem; }
+      .features-grid { grid-template-columns: 1fr; gap: 1rem; }
+    }
+
+    @media (max-width: 500px) {
+      .form-row { flex-direction: column; }
+      .form-btn { width: 100%; }
+      .counter-card { padding: 1.5rem 1.25rem 1.25rem; }
+      footer { flex-direction: column; text-align: center; gap: 0.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ══════════ NAVBAR ══════════ -->
+  <header>
+    <div class="nav-inner">
+
+      <!-- Logo: tries the live site image; falls back to text -->
+      <a href="https://bettazoo-project.vercel.app" target="_blank" rel="noopener" class="nav-logo" id="logo-link">
+        <img
+          src="https://bettazoo-project.vercel.app/Logo-Bettazoo.png"
+          alt="Bettazoo"
+          id="nav-img"
+          onerror="this.style.display='none'; document.getElementById('logo-text').style.display='block';"
+        />
+        <span class="nav-logo-text" id="logo-text" style="display:none;">betta<span>zoo</span></span>
+      </a>
+
+      <div class="nav-badge">
+        <span class="pulse-dot"></span>
+        ✦ Genesis Testnet
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ══════════ HERO ══════════ -->
+  <section class="hero">
+
+    <span class="kicker">Limited Access Program · Testnet Phase</span>
+
+    <h1>
+      The bookmaker always wins.<br />
+      <span class="accent">Now you can be the bookmaker.</span>
+    </h1>
+
+    <p class="hero-sub">
+      <strong>P2P Betting Exchange. On-chain. Non-custodial.</strong><br />
+      No limits. No middlemen. Your funds, always yours.
+    </p>
+    <p class="hero-tagline">The first 500 get in. Everyone else waits.</p>
+
+    <!-- COUNTER -->
+    <div class="counter-card">
+
+      <div class="live-badge">
+        <span class="live-dot"></span>
+        Live · updating now
+      </div>
+
+      <span class="counter-number" id="counter-number">—</span>
+      <span class="counter-label">Spots Remaining</span>
+
+      <div class="progress-wrap">
+        <div class="progress-meta">
+          <span>0</span>
+          <span id="counter-claimed">— claimed</span>
+          <span>500</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- FORM -->
+    <div class="form-wrap">
+      <div class="form-row" id="form-row">
+        <input
+          type="email"
+          class="form-input"
+          id="email-input"
+          placeholder="your@email.com"
+          autocomplete="email"
+        />
+        <button class="form-btn" id="submit-btn" onclick="handleSubmit()">
+          Request Access →
+        </button>
+      </div>
+
+      <div class="form-success" id="form-success">
+        ✓ You're on the list. Your invite is coming.
+      </div>
+      <div class="form-full" id="form-full">
+        The Arena is full. — No more spots.
+      </div>
+
+      <p class="form-hint" id="form-hint">500 spots. No exceptions. No extensions.</p>
+    </div>
+
+  </section>
+
+  <hr class="sep" />
+
+  <!-- ══════════ THE GATED ARENA ══════════ -->
+  <div class="section fade-up">
+    <span class="sec-kicker">How it works</span>
+    <h2 class="sec-title">The Gated Arena</h2>
+
+    <div class="steps-grid">
+
+      <div class="step-card">
+        <div class="step-num">01</div>
+        <div class="step-body">
+          <h3>Join the waitlist.</h3>
+          <p>Position locked by signup timestamp.</p>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-num">02</div>
+        <div class="step-body">
+          <h3>Receive your invite link.</h3>
+          <p>Personal. Non-transferable.</p>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-num">03</div>
+        <div class="step-body">
+          <h3>Enter the Arena.</h3>
+          <p>Test. Break things. Earn Genesis status.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <hr class="sep" />
+
+  <!-- ══════════ FEATURES ══════════ -->
+  <div class="section fade-up" style="padding-top: 96px;">
+    <span class="sec-kicker">Why Bettazoo</span>
+    <h2 class="sec-title">Built different.</h2>
+
+    <div class="features-grid">
+
+      <div class="feature-card">
+        <div class="feature-icon">⚡️</div>
+        <h3>Zero Lag</h3>
+        <p>React frontend. Sub-second execution. No waiting room bullshit.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🔒</div>
+        <h3>Non-Custodial</h3>
+        <p>Smart contract escrow on Arbitrum. Your funds never touch our hands.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🎲</div>
+        <h3>P2P Pure</h3>
+        <p>No house edge. Placers vs Bettors. The market sets the odds.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════ FOOTER ══════════ -->
+  <footer>
+    <p>© 2026 Bettazoo · The house doesn't play here.</p>
+    <p>
+      <a href="https://bettazoo-project.vercel.app" target="_blank" rel="noopener"
+         style="color: var(--slate-500); text-decoration: none;">
+        bettazoo-project.vercel.app →
+      </a>
+    </p>
+  </footer>
+
+
+  <script>
+    // ──────────────────────────────────────────────────────────
+    // CONFIG
+    // ──────────────────────────────────────────────────────────
+    const WEB3FORMS_KEY = 'f6de2ed1-826e-4866-9e04-dc130726a06a';
+
+    const TOTAL_SPOTS          = 500;
+    const SEED_TAKEN           = 143;   // starting "already claimed" (~29 %)
+    const SIMULATE_INTERVAL_S  = 720;   // 1 new signup every 12 min ≈ 5/hour
+
+    // ──────────────────────────────────────────────────────────
+    // COUNTER — localStorage simulation
+    // ──────────────────────────────────────────────────────────
+    function loadState() {
+      try {
+        const d = JSON.parse(localStorage.getItem('bz_g_counter') || '{}');
+        if (d.base && d.ts) return d;
+      } catch (_) {}
+      const fresh = { base: SEED_TAKEN, ts: Date.now() };
+      localStorage.setItem('bz_g_counter', JSON.stringify(fresh));
+      return fresh;
+    }
+
+    function getTaken() {
+      const d      = loadState();
+      const extra  = Math.floor((Date.now() - d.ts) / 1000 / SIMULATE_INTERVAL_S);
+      if (extra > 0) {
+        d.base = Math.min(d.base + extra, TOTAL_SPOTS);
+        d.ts   = Date.now();
+        localStorage.setItem('bz_g_counter', JSON.stringify(d));
+      }
+      return d.base;
+    }
+
+    function addOne() {
+      const d = loadState();
+      d.base  = Math.min(d.base + 1, TOTAL_SPOTS);
+      d.ts    = Date.now();
+      localStorage.setItem('bz_g_counter', JSON.stringify(d));
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // RENDER
+    // ──────────────────────────────────────────────────────────
+    let _prev = null;
+
+    function render(animate) {
+      const taken     = getTaken();
+      const remaining = Math.max(TOTAL_SPOTS - taken, 0);
+      const pct       = (taken / TOTAL_SPOTS) * 100;
+
+      const numEl     = document.getElementById('counter-number');
+      const fillEl    = document.getElementById('progress-fill');
+      const claimedEl = document.getElementById('counter-claimed');
+
+      if (animate && _prev !== null && remaining !== _prev) {
+        numEl.classList.remove('flash');
+        void numEl.offsetWidth; // reflow to restart animation
+        numEl.classList.add('flash');
+        setTimeout(() => numEl.classList.remove('flash'), 500);
+      }
+      _prev = remaining;
+
+      numEl.textContent     = remaining;
+      fillEl.style.width    = pct + '%';
+      claimedEl.textContent = taken + ' claimed';
+
+      numEl.classList.toggle('critical', remaining <= 100);
+
+      if (remaining === 0) lockFull();
+    }
+
+    function lockFull() {
+      hide('form-row');
+      hide('form-success');
+      hide('form-hint');
+      document.getElementById('form-full').style.display = 'flex';
+    }
+
+    function hide(id) {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // FORM
+    // ──────────────────────────────────────────────────────────
+    async function handleSubmit() {
+      const input = document.getElementById('email-input');
+      const btn   = document.getElementById('submit-btn');
+      const email = input.value.trim();
+
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        input.classList.add('error');
+        input.focus();
+        setTimeout(() => input.classList.remove('error'), 600);
+        return;
+      }
+
+      btn.disabled    = true;
+      btn.textContent = 'Sending...';
+      input.disabled  = true;
+
+      try {
+        const res = await fetch('https://api.web3forms.com/submit', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({
+            access_key: WEB3FORMS_KEY,
+            email,
+            subject:    '[Bettazoo] Genesis Testnet — New Waitlist Signup',
+            message:    'Email: ' + email + '\nTimestamp: ' + new Date().toISOString() + '\nSource: Genesis Testnet Landing Page',
+            from_name:  'Bettazoo Waitlist'
+          })
+        });
+
+        const data = await res.json();
+        if (!data.success) throw new Error('Web3Forms: ' + (data.message || 'unknown error'));
+
+        addOne();
+        render(true);
+        hide('form-row');
+        hide('form-hint');
+        document.getElementById('form-success').style.display = 'flex';
+
+      } catch (err) {
+        console.error('[Bettazoo Waitlist]', err);
+        btn.disabled    = false;
+        btn.textContent = 'Request Access →';
+        input.disabled  = false;
+        input.classList.add('error');
+        setTimeout(() => input.classList.remove('error'), 600);
+      }
+    }
+
+    document.getElementById('email-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') handleSubmit();
+    });
+
+    // ──────────────────────────────────────────────────────────
+    // INIT
+    // ──────────────────────────────────────────────────────────
+    render(false);
+    setInterval(() => render(true), 60000);
+
+    const observer = new IntersectionObserver(
+      entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); }),
+      { threshold: 0.12 }
+    );
+    document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+  </script>
+
+</body>
+</html>
