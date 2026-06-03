@@ -263,9 +263,10 @@
       margin-top: 0.3rem;
       font-size: 0.65rem;
       font-weight: 700;
-      letter-spacing: 0.18em;
+      letter-spacing: 0.07em;
       text-transform: uppercase;
       color: var(--slate-500);
+      text-align: center;
     }
 
     /* Progress bar — red fill like scrollbar in globals.css */
@@ -317,8 +318,8 @@
       min-width: 0;
       height: 44px;
       padding: 0 1rem;
-      background: var(--slate-900);
-      border: 1px solid var(--slate-700);
+      background: var(--slate-800);
+      border: 1px solid var(--slate-600);
       border-radius: 8px;           /* rounded-lg */
       color: var(--slate-100);
       font-size: 0.9rem;
@@ -327,7 +328,7 @@
       transition: border-color 0.15s;
     }
 
-    .form-input::placeholder { color: var(--slate-600); }
+    .form-input::placeholder { color: var(--slate-500); }
 
     .form-input:focus {
       border-color: var(--brand);
@@ -591,6 +592,7 @@
     @media (max-width: 500px) {
       .form-row { flex-direction: column; }
       .form-btn { width: 100%; }
+      .form-input { font-size: 1rem; padding: 0 1.25rem; }
       .counter-card { padding: 1.5rem 1.25rem 1.25rem; }
       footer { flex-direction: column; text-align: center; gap: 0.5rem; }
     }
@@ -646,13 +648,13 @@
       </div>
 
       <span class="counter-number" id="counter-number">—</span>
-      <span class="counter-label">Spots Remaining</span>
+      <span class="counter-label">/ 300 public spots remaining</span>
 
       <div class="progress-wrap">
         <div class="progress-meta">
           <span>0</span>
-          <span id="counter-claimed">— claimed</span>
-          <span>500</span>
+          <span id="counter-claimed">— signups</span>
+          <span>300</span>
         </div>
         <div class="progress-track">
           <div class="progress-fill" id="progress-fill" style="width:0%"></div>
@@ -680,7 +682,7 @@
         ✓ You're on the list. Your invite is coming.
       </div>
       <div class="form-full" id="form-full">
-        The Arena is full. — No more spots.
+        The Arena is full. Invite only from here.
       </div>
 
       <p class="form-hint" id="form-hint">500 spots. No exceptions. No extensions.</p>
@@ -757,85 +759,47 @@
   <!-- ══════════ FOOTER ══════════ -->
   <footer>
     <p>© 2026 Bettazoo · The house doesn't play here.</p>
-    <p>
-      <a href="https://bettazoo-project.vercel.app" target="_blank" rel="noopener"
-         style="color: var(--slate-500); text-decoration: none;">
-        bettazoo-project.vercel.app →
-      </a>
-    </p>
   </footer>
 
 
   <script>
-    // ──────────────────────────────────────────────────────────
-    // CONFIG
-    // ──────────────────────────────────────────────────────────
+    const PUBLIC_SLOTS = 300;
     const WEB3FORMS_KEY = 'f6de2ed1-826e-4866-9e04-dc130726a06a';
 
-    const TOTAL_SPOTS          = 500;
-    const SEED_TAKEN           = 143;   // starting "already claimed" (~29 %)
-    const SIMULATE_INTERVAL_S  = 720;   // 1 new signup every 12 min ≈ 5/hour
-
-    // ──────────────────────────────────────────────────────────
-    // COUNTER — localStorage simulation
-    // ──────────────────────────────────────────────────────────
-    function loadState() {
-      try {
-        const d = JSON.parse(localStorage.getItem('bz_g_counter') || '{}');
-        if (d.base && d.ts) return d;
-      } catch (_) {}
-      const fresh = { base: SEED_TAKEN, ts: Date.now() };
-      localStorage.setItem('bz_g_counter', JSON.stringify(fresh));
-      return fresh;
-    }
-
-    function getTaken() {
-      const d      = loadState();
-      const extra  = Math.floor((Date.now() - d.ts) / 1000 / SIMULATE_INTERVAL_S);
-      if (extra > 0) {
-        d.base = Math.min(d.base + extra, TOTAL_SPOTS);
-        d.ts   = Date.now();
-        localStorage.setItem('bz_g_counter', JSON.stringify(d));
-      }
-      return d.base;
-    }
-
-    function addOne() {
-      const d = loadState();
-      d.base  = Math.min(d.base + 1, TOTAL_SPOTS);
-      d.ts    = Date.now();
-      localStorage.setItem('bz_g_counter', JSON.stringify(d));
-    }
+    let _prevRemaining = null;
 
     // ──────────────────────────────────────────────────────────
     // RENDER
     // ──────────────────────────────────────────────────────────
-    let _prev = null;
-
-    function render(animate) {
-      const taken     = getTaken();
-      const remaining = Math.max(TOTAL_SPOTS - taken, 0);
-      const pct       = (taken / TOTAL_SPOTS) * 100;
-
+    function render(data) {
       const numEl     = document.getElementById('counter-number');
       const fillEl    = document.getElementById('progress-fill');
       const claimedEl = document.getElementById('counter-claimed');
 
-      if (animate && _prev !== null && remaining !== _prev) {
+      if (data === null) {
+        numEl.textContent     = '—';
+        fillEl.style.width    = '0%';
+        claimedEl.textContent = 'Limited spots. Invite only.';
+        return;
+      }
+
+      const { signups, publicRemaining } = data;
+
+      if (_prevRemaining !== null && publicRemaining !== _prevRemaining) {
         numEl.classList.remove('flash');
-        void numEl.offsetWidth; // reflow to restart animation
+        void numEl.offsetWidth;
         numEl.classList.add('flash');
         setTimeout(() => numEl.classList.remove('flash'), 500);
       }
-      _prev = remaining;
+      _prevRemaining = publicRemaining;
 
-      numEl.textContent     = remaining;
-      fillEl.style.width    = pct + '%';
-      claimedEl.textContent = taken + ' claimed';
+      numEl.textContent     = publicRemaining;
+      fillEl.style.width    = Math.min((signups / PUBLIC_SLOTS) * 100, 100) + '%';
+      claimedEl.textContent = signups + ' signups';
 
-      numEl.classList.toggle('critical', remaining <= 100);
+      numEl.classList.toggle('critical', publicRemaining <= 50);
 
-      if (remaining === 0) lockFull();
+      if (publicRemaining <= 0) lockFull();
     }
 
     function lockFull() {
@@ -848,6 +812,19 @@
     function hide(id) {
       const el = document.getElementById(id);
       if (el) el.style.display = 'none';
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // COUNT API
+    // ──────────────────────────────────────────────────────────
+    async function loadCount() {
+      try {
+        const res = await fetch('/api/waitlist/count');
+        if (!res.ok) throw new Error('Non-OK response');
+        return await res.json();
+      } catch (_) {
+        return null;
+      }
     }
 
     // ──────────────────────────────────────────────────────────
@@ -870,26 +847,41 @@
       input.disabled  = true;
 
       try {
-        const res = await fetch('https://api.web3forms.com/submit', {
+        const res = await fetch('/api/waitlist/submit', {
           method:  'POST',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify({
-            access_key: WEB3FORMS_KEY,
-            email,
-            subject:    '[Bettazoo] Genesis Testnet — New Waitlist Signup',
-            message:    'Email: ' + email + '\nTimestamp: ' + new Date().toISOString() + '\nSource: Genesis Testnet Landing Page',
-            from_name:  'Bettazoo Waitlist'
-          })
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ email })
         });
 
         const data = await res.json();
-        if (!data.success) throw new Error('Web3Forms: ' + (data.message || 'unknown error'));
 
-        addOne();
-        render(true);
+        if (!res.ok) {
+          if (res.status === 409 && data.publicRemaining === 0) {
+            lockFull();
+            return;
+          }
+          throw new Error(data.error || 'Unknown error');
+        }
+
+        render({ signups: data.signups, publicRemaining: data.publicRemaining });
         hide('form-row');
         hide('form-hint');
         document.getElementById('form-success').style.display = 'flex';
+
+        if (data.isNew) {
+          fetch('https://api.web3forms.com/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({
+              access_key: WEB3FORMS_KEY,
+              email,
+              subject: '[Bettazoo] Genesis Testnet — New Waitlist Signup',
+              message: 'Email: ' + email + '\nTimestamp: ' + new Date().toISOString() + '\nSource: Genesis Testnet Landing Page\nPosition: #' + data.signups,
+              from_name: 'Bettazoo Waitlist',
+            }),
+          }).catch(err => console.error('[web3forms]', err));
+        }
+
 
       } catch (err) {
         console.error('[Bettazoo Waitlist]', err);
@@ -908,8 +900,7 @@
     // ──────────────────────────────────────────────────────────
     // INIT
     // ──────────────────────────────────────────────────────────
-    render(false);
-    setInterval(() => render(true), 60000);
+    loadCount().then(data => render(data));
 
     const observer = new IntersectionObserver(
       entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); }),
