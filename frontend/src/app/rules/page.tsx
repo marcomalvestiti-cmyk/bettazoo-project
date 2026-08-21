@@ -24,7 +24,7 @@ const RULES = [
     Icon: Percent,
     title: 'Transparent Fees',
     tag: 'Fees',
-    body: 'A flat 2% rake is applied only on the net winning pot. There are no deposit fees, no withdrawal fees, and no hidden charges. The fee is deducted automatically by the smart contract before distributing winnings.',
+    body: 'A flat 5% rake is applied only on the net winning pot. There are no deposit fees, no withdrawal fees, and no hidden charges. The fee is deducted automatically by the smart contract before distributing winnings.',
   },
   {
     Icon: RotateCcw,

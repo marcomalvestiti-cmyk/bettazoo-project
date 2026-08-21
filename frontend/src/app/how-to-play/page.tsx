@@ -4,7 +4,7 @@ import { Wallet, BookOpen, Lock, Trophy, Brain, Users } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'How to Play — Bettazoo',
-  description: 'Learn how to bet P2P on Bettazoo as a Bettor or become a Placer and act as the bookmaker.',
+  description: 'Learn how to bet P2P on Bettazoo as a Bettor or become a Placer and set the market.',
 }
 
 const BETTOR_STEPS = [
@@ -33,7 +33,7 @@ const PLACER_STEPS = [
     step: 1,
     Icon: Trophy,
     title: 'Access the Placer Area',
-    desc: 'Connect your wallet and open the Placer Dashboard. You act as the bookmaker — you set the odds and provide liquidity for bettors to match against.',
+    desc: 'Connect your wallet and open the Placer Dashboard. You provide the liquidity and set the odds for bettors to match against.',
   },
   {
     step: 2,
@@ -127,7 +127,7 @@ export default function HowToPlayPage() {
         <div className="bg-slate-900 border border-amber-500/20 rounded-xl p-6 space-y-6">
           <div className="space-y-1">
             <span className="text-xs font-bold uppercase tracking-widest text-amber-500">For Placers</span>
-            <h2 className="text-2xl font-bold text-white">Be the Bookmaker</h2>
+            <h2 className="text-2xl font-bold text-white">Be the Market</h2>
             <p className="text-sm text-slate-500">You lay an outcome and offer odds to bettors.</p>
           </div>
           <div>
@@ -150,7 +150,7 @@ export default function HowToPlayPage() {
         <div className="space-y-1">
           <p className="text-sm font-semibold text-white">What is a Placer?</p>
           <p className="text-sm text-slate-400 leading-relaxed">
-            A Placer is the P2P equivalent of a bookmaker. Instead of backing an outcome to win, a Placer <em>lays</em> an outcome — meaning they profit if that outcome does NOT happen. Placers lock collateral (their maximum liability) in the Escrow to guarantee the payout to bettors.
+            A Placer takes the other side of the market. Instead of backing an outcome to win, a Placer <em>lays</em> an outcome — meaning they profit if that outcome does NOT happen. Placers lock collateral (their maximum liability) in the Escrow to guarantee the payout to bettors.
           </p>
         </div>
       </div>

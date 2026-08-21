@@ -27,7 +27,7 @@ createOffer: Il Placer blocca fondi fornendo eventId, outcome, quota e importo.
 
 acceptOffers: Il Bettor fornisce un array di ID offerta per coprire la sua puntata (Multi-matching). Il contratto blocca i fondi del Bettor e aggiorna le rimanenze delle offerte dei Placer.
 
-resolveEvent: Richiamabile solo dall'Admin/Oracolo. Sblocca i fondi al vincitore e invia una trattenuta del 2% (Rake) al wallet aziendale (Treasury).
+resolveEvent: Richiamabile solo dall'Admin/Oracolo. Sblocca i fondi al vincitore e invia una trattenuta del 5% (Rake) al wallet aziendale (Treasury).
 
 4. Modulo 2: Backend e Matching Engine (Node.js)
 Aggregatore dati off-chain per garantire velocità e usabilità.
