@@ -188,7 +188,7 @@ export default function PlacerDashboard() {
     address:         ESCROW_ADDRESS,
     abi:             ESCROW_ABI,
     eventName:       'OfferCreated',
-    pollingInterval: 2_000,
+    pollingInterval: 15_000,
     onLogs(logs) {
       console.log('EVENTO BLOCKCHAIN CAPTATO:', logs)
 
