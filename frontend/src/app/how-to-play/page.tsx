@@ -128,7 +128,7 @@ export default function HowToPlayPage() {
           <div className="space-y-1">
             <span className="text-xs font-bold uppercase tracking-widest text-amber-500">For Placers</span>
             <h2 className="text-2xl font-bold text-white">Be the Market</h2>
-            <p className="text-sm text-slate-500">You lay an outcome and offer odds to bettors.</p>
+            <p className="text-sm text-slate-500">You don&apos;t place bets by hand. You set your rules — which outcomes to back, your odds, your max exposure — and your on-chain book takes the action automatically.</p>
           </div>
           <div>
             {PLACER_STEPS.map(s => (
@@ -150,7 +150,7 @@ export default function HowToPlayPage() {
         <div className="space-y-1">
           <p className="text-sm font-semibold text-white">What is a Placer?</p>
           <p className="text-sm text-slate-400 leading-relaxed">
-            A Placer takes the other side of the market. Instead of backing an outcome to win, a Placer <em>lays</em> an outcome — meaning they profit if that outcome does NOT happen. Placers lock collateral (their maximum liability) in the Escrow to guarantee the payout to bettors.
+            A Placer runs their own book. You set the strategy and the risk limits; your vault takes the other side of bettors&apos; action on-chain, within the rules you set.
           </p>
         </div>
       </div>
