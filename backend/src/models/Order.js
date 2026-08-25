@@ -15,5 +15,6 @@ const orderSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 orderSchema.index({ eventId: 1, active: 1, odds: -1 });
+orderSchema.index({ placer: 1, active: 1 });
 
 module.exports = mongoose.model('Order', orderSchema);

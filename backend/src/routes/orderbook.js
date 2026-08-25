@@ -1,16 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
-
-const ODDS_PRECISION = 10000n;
-
-function computeMaxBettorStake(remainingLiability, odds) {
-  const rem = BigInt(remainingLiability);
-  const o   = BigInt(odds);
-  if (o <= ODDS_PRECISION) return '0.000000';
-  const maxStakeRaw = rem * ODDS_PRECISION / (o - ODDS_PRECISION);
-  return (Number(maxStakeRaw) / 1_000_000).toFixed(6);
-}
+const { computeMaxBettorStake } = require('../utils/oddsMath');
 
 function buildSummary(orders) {
   const summary = {};

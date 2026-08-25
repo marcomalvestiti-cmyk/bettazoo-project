@@ -17,6 +17,8 @@ const { Server } = require('socket.io')
 const app = require('./app')
 const connectDB = require('./config/db')
 const { startListener } = require('./services/web3Listener')
+const { startVaultListener } = require('./services/vaultListener')
+const { startKeeper } = require('./services/keeperService')
 
 const PORT = process.env.PORT || 3001
 
@@ -25,6 +27,9 @@ let web3ReconnectTimer = null
 // Keep a reference to the active provider so we can destroy it before reconnecting,
 // preventing listener leaks and orphaned WebSocket connections in memory.
 let activeProvider = null
+// The keeper's ethers.Wallet is bound to a specific provider — it must be restarted
+// (not left running against a destroyed provider) whenever startWeb3 reconnects.
+let activeKeeperInterval = null
 
 // ── Memory monitor — logs heap usage every 60 s so Railway logs show trends ──
 setInterval(() => {
@@ -141,6 +146,21 @@ function startWeb3(url, contractAddress, io, skipHistoricalSync) {
     console.error(`[${ts()}] [Web3] Listener startup failed: ${err.message}`)
     scheduleReconnect(url, contractAddress, io)
   })
+
+  const vaultFactoryAddress = process.env.VAULT_FACTORY_ADDRESS
+  if (vaultFactoryAddress) {
+    startVaultListener(provider, vaultFactoryAddress, io, skipHistoricalSync).catch((err) => {
+      console.error(`[${ts()}] [VaultListener] Startup failed: ${err.message}`)
+    })
+
+    if (activeKeeperInterval) {
+      clearInterval(activeKeeperInterval)
+      activeKeeperInterval = null
+    }
+    activeKeeperInterval = startKeeper(provider) ?? null
+  } else {
+    console.warn(`[${ts()}] [VaultListener] VAULT_FACTORY_ADDRESS not set — vault listener and keeper disabled`)
+  }
 }
 
 function scheduleReconnect(url, contractAddress, io) {

@@ -2,6 +2,7 @@ const { ethers } = require('ethers')
 const mongoose = require('mongoose')
 const Order = require('../models/Order')
 const Event = require('../models/Event')
+const BetMatch = require('../models/BetMatch')
 
 const ESCROW_ABI = [
   'event OfferCreated(uint256 indexed offerId, address indexed placer, string eventId, uint8 outcome, uint256 odds, uint256 liability)',
@@ -233,6 +234,38 @@ async function syncHistoricalEvents(contract) {
   console.log(`[${ts()}] [Sync] OfferCreated total: ${createdCount} | heap ${heapMB()}MB`)
   await sleep(2_000) // breathe before next pass
 
+  // Pass 2.5: Stream OfferMatched again — a second pass, not merged into Pass 1 above —
+  // because BetMatch needs each offer's placer/eventId/outcome/odds, which only exist in
+  // Mongo once Pass 2 (OfferCreated) has run. Pass 1 stays a lightweight aggregation-only
+  // pass (no DB writes) so its memory footprint doesn't change.
+  const betMatchCount = await processEventsInChunks(
+    contract, 'OfferMatched', fromBlock, toBlock,
+    async (chunk) => {
+      for (const ev of chunk) {
+        const { matchId, offerId, bettor, bettorStake, placerLiability } = ev.args
+        const order = await Order.findOne({ offerId: Number(offerId) }).lean()
+        if (!order) continue // offer not indexed (shouldn't happen after Pass 2, skip defensively)
+        await BetMatch.findOneAndUpdate(
+          { matchId: Number(matchId) },
+          {
+            matchId:         Number(matchId),
+            offerId:         Number(offerId),
+            placer:          order.placer,
+            bettor:          bettor.toLowerCase(),
+            eventId:         order.eventId,
+            outcome:         order.outcome,
+            odds:            order.odds,
+            bettorStake:     bettorStake.toString(),
+            placerLiability: placerLiability.toString(),
+          },
+          { upsert: true, setDefaultsOnInsert: true }
+        )
+      }
+    }
+  )
+  console.log(`[${ts()}] [Sync] BetMatch total: ${betMatchCount} | heap ${heapMB()}MB`)
+  await sleep(2_000) // breathe before next pass
+
   // Pass 3: Stream EventResolved events, update DB per chunk.
   const resolvedCount = await processEventsInChunks(
     contract, 'EventResolved', fromBlock, toBlock,
@@ -245,6 +278,7 @@ async function syncHistoricalEvents(contract) {
           { upsert: true }
         )
         await Order.updateMany({ eventId }, { active: false })
+        await BetMatch.updateMany({ eventId }, { settled: true, settledOutcome: Number(winningOutcome) })
       }
     }
   )
@@ -325,6 +359,38 @@ async function startListener(provider, contractAddress, io, skipHistoricalSync =
         { offerId: id },
         { remainingLiability: onChainRemaining, active: onChainActive }
       )
+
+      // Persist the match itself for realized P&L (used by vault stop-loss). eventId/
+      // outcome/odds come from the offer, not this event — read from Mongo first, and
+      // fall back to an on-chain read in the rare case OfferCreated hasn't landed yet
+      // (e.g. this handler racing a same-block createOffer+acceptOffers).
+      let offerInfo = await Order.findOne({ offerId: id }).lean()
+      if (!offerInfo) {
+        try {
+          const onChain = await contract.offers(id)
+          offerInfo = { placer: onChain.placer.toLowerCase(), eventId: onChain.eventId, outcome: Number(onChain.outcome), odds: Number(onChain.odds) }
+        } catch (err) {
+          console.warn(`[${ts()}] [OfferMatched] could not resolve offer #${id} for BetMatch: ${err.message}`)
+        }
+      }
+      if (offerInfo) {
+        await BetMatch.findOneAndUpdate(
+          { matchId: Number(matchId) },
+          {
+            matchId:         Number(matchId),
+            offerId:         id,
+            placer:          offerInfo.placer,
+            bettor:          bettor.toLowerCase(),
+            eventId:         offerInfo.eventId,
+            outcome:         offerInfo.outcome,
+            odds:            offerInfo.odds,
+            bettorStake:     bettorStake.toString(),
+            placerLiability: placerLiability.toString(),
+          },
+          { upsert: true, setDefaultsOnInsert: true }
+        )
+      }
+
       io?.emit('offer:matched', { matchId: Number(matchId), offerId: id, bettor })
       console.log(`[${ts()}] [OfferMatched] matchId=${matchId} offerId=${offerId} | heap ${heapMB()}MB`)
     } catch (err) {
@@ -339,6 +405,7 @@ async function startListener(provider, contractAddress, io, skipHistoricalSync =
         { resolved: true, winningOutcome: Number(winningOutcome), resolvedAt: new Date() }
       )
       await Order.updateMany({ eventId }, { active: false })
+      await BetMatch.updateMany({ eventId }, { settled: true, settledOutcome: Number(winningOutcome) })
       io?.emit('event:resolved', { eventId, winningOutcome: Number(winningOutcome) })
       console.log(`[${ts()}] [EventResolved] eventId=${eventId} winningOutcome=${winningOutcome}`)
     } catch (err) {
