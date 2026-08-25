@@ -1,0 +1,11 @@
+{
+  "network": "arbitrumSepolia",
+  "chainId": 421614,
+  "escrowAddress": "0xCae37Cf08022bC94CC1cd09555fe130dd10E9923",
+  "usdtAddress": "0x29fA91A7288A2b3De899F4ed1679e288018f69a0",
+  "vaultImplementationAddress": "0x1Aa700e56c21dE273ffC6999a64CfF3BC80c4229",
+  "vaultFactoryAddress": "0x6a38eEE271217C3f50430C1607d7Ea7799aa1B66",
+  "vaultFactoryDeployBlock": 301897638,
+  "keeperAddress": "0x1696631C81D55DA7EB10Ef1feA0DB35644Cd4eF5",
+  "deployedAt": "2026-08-25T15:10:57.537Z"
+}
