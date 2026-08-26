@@ -167,4 +167,94 @@ export async function fetchChallengers(address: string): Promise<{ uniqueChallen
   }
 }
 
+export type VaultScope = { eventId: string; outcomes: number[] }
+
+export type VaultData = {
+  exists:                 boolean
+  ownerAddress?:          string
+  vaultAddress?:          string
+  keeperAddress?:         string
+  onChainPaused?:         boolean
+  status?:                'configuring' | 'active' | 'stopped'
+  strategy?:              { marginStrategyId: 'volume' | 'balanced' | 'safe' | 'custom'; customMargin?: number }
+  scope?:                 VaultScope[]
+  maxExposureUsdt?:       number
+  perMarketExposureUsdt?: number
+  stopLossUsdt?:          number
+  minOdds?:               number
+  maxOdds?:               number
+  liabilityIncrementUsdt?: number
+  createdAtTx?:           string
+  createdAtBlock?:        number
+}
+
+export async function fetchVault(ownerAddress: string): Promise<VaultData> {
+  const res = await apiFetch('vault GET', `${BASE}/api/vaults/${ownerAddress}`, { cache: 'no-store' })
+  return res.json()
+}
+
+// Must match backend/src/routes/vaults.js's buildSignMessage() exactly — the backend
+// recovers the signer from this same string, so any drift breaks every config save.
+// The backend always rebuilds it from req.params.ownerAddress.toLowerCase(), so the
+// address must be lowercased here too — wagmi's useAccount().address is checksummed
+// (mixed-case), which would otherwise sign a different message than the backend verifies.
+export function buildVaultConfigMessage(ownerAddress: string, timestamp: number): string {
+  return `Bettazoo vault config update\nowner:${ownerAddress.toLowerCase()}\ntimestamp:${timestamp}`
+}
+
+export type VaultConfigPatch = {
+  marginStrategyId?:       'volume' | 'balanced' | 'safe' | 'custom'
+  customMargin?:           number
+  scope?:                  VaultScope[]
+  maxExposureUsdt?:        number
+  perMarketExposureUsdt?:  number
+  stopLossUsdt?:           number
+  minOdds?:                number
+  maxOdds?:                number
+  liabilityIncrementUsdt?: number
+  status?:                 'configuring' | 'active'
+}
+
+export async function patchVaultConfig(
+  ownerAddress: string,
+  signature: string,
+  timestamp: number,
+  config: VaultConfigPatch,
+): Promise<VaultData> {
+  const res = await apiFetch('vault PATCH', `${BASE}/api/vaults/${ownerAddress}/config`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ signature, timestamp, config }),
+  })
+  return res.json()
+}
+
+export type VaultOffer = {
+  offerId:                number
+  eventId:                string
+  outcome:                number
+  odds:                   number
+  oddsDecimal:            number
+  remainingLiabilityUsdt: string
+  maxBettorStakeUsdt:     string
+  active:                 boolean
+  txHash?:                string
+}
+
+export async function fetchVaultOffers(ownerAddress: string, activeOnly = false): Promise<{ vaultAddress?: string; orders: VaultOffer[] }> {
+  const params = activeOnly ? '?active=true' : ''
+  const res = await apiFetch('vault offers', `${BASE}/api/vaults/${ownerAddress}/offers${params}`, { cache: 'no-store' })
+  return res.json()
+}
+
+export async function fetchVaultPnl(ownerAddress: string): Promise<{
+  realizedPnlUsdt: number
+  matchesSettled: number
+  stopLossUsdt?: number
+  stopLossTriggered?: boolean
+}> {
+  const res = await apiFetch('vault pnl', `${BASE}/api/vaults/${ownerAddress}/pnl`, { cache: 'no-store' })
+  return res.json()
+}
+
 export const SOCKET_URL = BASE

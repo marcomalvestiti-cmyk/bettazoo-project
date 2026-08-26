@@ -15,12 +15,20 @@ export async function withGasBuffer(publicClient: PublicClientLike | undefined):
   if (!publicClient) return {}
   try {
     const fees = await publicClient.estimateFeesPerGas()
+    // Only override if BOTH fields came back — a partial override (e.g. we set
+    // maxFeePerGas but omit maxPriorityFeePerGas because it estimated to a falsy
+    // 0n) lets the wallet fill the missing field with its own independent
+    // default, which can violate maxFeePerGas >= maxPriorityFeePerGas.
+    if (fees.maxFeePerGas === undefined || fees.maxPriorityFeePerGas === undefined) return {}
     const m = BigInt(120)
     const d = BigInt(100)
-    const result: GasOverrides = {}
-    if (fees.maxFeePerGas)         result.maxFeePerGas         = (fees.maxFeePerGas         * m) / d
-    if (fees.maxPriorityFeePerGas) result.maxPriorityFeePerGas = (fees.maxPriorityFeePerGas * m) / d
-    return result
+    const maxPriorityFeePerGas = (fees.maxPriorityFeePerGas * m) / d
+    // Arbitrum Sepolia's base fee can be near-zero, which makes the raw
+    // estimate put maxFeePerGas below maxPriorityFeePerGas — every EIP-1559
+    // tx reverts unless maxFeePerGas >= maxPriorityFeePerGas.
+    let maxFeePerGas = (fees.maxFeePerGas * m) / d
+    if (maxFeePerGas < maxPriorityFeePerGas) maxFeePerGas = maxPriorityFeePerGas
+    return { maxFeePerGas, maxPriorityFeePerGas }
   } catch {
     return {}
   }

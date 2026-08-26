@@ -1,10 +1,11 @@
 'use client'
 
-import { useAccount, useWatchContractEvent } from 'wagmi'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useAccount } from 'wagmi'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { io, type Socket } from 'socket.io-client'
 
-import CreateOfferForm, { type NewOfferData } from '@/components/CreateOfferForm'
+import VaultPanel        from '@/components/VaultPanel'
 import RiskWidget       from '@/components/RiskWidget'
 import OrderBook        from '@/components/OrderBook'
 import MyOffers, { type Offer } from '@/components/MyOffers'
@@ -13,10 +14,8 @@ import PlacerStatsBar   from '@/components/PlacerStatsBar'
 import EventSelector    from '@/components/EventSelector'
 import PlacerBadge      from '@/components/PlacerBadge'
 
-import { MOCK_EVENTS, ESCROW_ABI } from '@/lib/abis'
-import { fetchOrderBook, fetchProfile, fetchChallengers } from '@/lib/api'
-
-const ESCROW_ADDRESS = (process.env.NEXT_PUBLIC_ESCROW_ADDRESS ?? '0x0') as `0x${string}`
+import { MOCK_EVENTS } from '@/lib/abis'
+import { fetchProfile, fetchChallengers, fetchVaultOffers, SOCKET_URL } from '@/lib/api'
 
 // ── Influence Rewards mock-up ─────────────────────────────────────────────────
 // Shows the placer an estimate of community earnings to illustrate mainnet value.
@@ -110,6 +109,7 @@ export default function PlacerDashboard() {
   const [offers,            setOffers]            = useState<Offer[]>([])
   const [profileOpen,       setProfileOpen]       = useState(false)
   const [uniqueChallengers, setUniqueChallengers] = useState(0)
+  const [vaultAddress,      setVaultAddress]      = useState<string | null>(null)
 
   const selectedEvent = MOCK_EVENTS.find(e => e.eventId === selectedEventId) ?? MOCK_EVENTS[0]
 
@@ -127,25 +127,27 @@ export default function PlacerDashboard() {
       .catch(() => { /* silently ignore */ })
   }, [address])
 
-  // ── Initial load from backend (runs once on mount / address change) ───────────
-  // After this, local state is the source of truth for the session.
-  // No backend refetch is triggered by transactions — only direct state merges.
+  // ── Offers now come from the vault, not the user's wallet ─────────────────────
+  // The keeper places/cancels offers as the vault, so the source of truth is the
+  // backend's vault-offers endpoint, not local optimistic state.
   const loadOffers = useCallback(async () => {
-    if (!address) return
+    if (!vaultAddress) { setOffers([]); return }
     try {
-      const all: Offer[] = []
-      for (const event of MOCK_EVENTS) {
-        const data = await fetchOrderBook(event.eventId)
-        const mine = (data.orders as Offer[]).filter(
-          o => o.placer.toLowerCase() === address.toLowerCase()
-        )
-        all.push(...mine)
-      }
-      setOffers(all)
+      const data = await fetchVaultOffers(vaultAddress, true)
+      const mapped: Offer[] = data.orders.map(o => ({
+        offerId:                o.offerId,
+        placer:                 vaultAddress,
+        eventId:                o.eventId,
+        outcome:                o.outcome,
+        oddsDecimal:            o.oddsDecimal,
+        remainingLiabilityUsdt: o.remainingLiabilityUsdt,
+        maxBettorStakeUsdt:     o.maxBettorStakeUsdt,
+      }))
+      setOffers(mapped)
     } catch {
       setOffers([])
     }
-  }, [address])
+  }, [vaultAddress])
 
   useEffect(() => { loadOffers() }, [loadOffers])
 
@@ -156,88 +158,19 @@ export default function PlacerDashboard() {
       .catch(() => {})
   }, [address])
 
-  // ── Post-tx: optimistic inject, no backend refetch ────────────────────────────
-  // Injects the offer directly into local state the moment the tx is mined.
-  // The on-chain event listener below will later replace the temp ID with the
-  // real offerId once the OfferCreated event is polled from the chain.
-  const handleOfferCreated = useCallback((data: NewOfferData) => {
-    if (!address) return
-    const optimistic: Offer = {
-      offerId:                Date.now(),   // temp ID ≈ 1.75e12; replaced by real on-chain ID
-      placer:                 address,
-      eventId:                data.eventId,
-      outcome:                data.outcome,
-      oddsDecimal:            data.oddsDecimal,
-      remainingLiabilityUsdt: data.liabilityUsdt.toFixed(6),
-      maxBettorStakeUsdt:     (data.liabilityUsdt / (data.oddsDecimal - 1)).toFixed(6),
+  // ── Real-time refresh — the keeper places offers server-side, so we listen for
+  // the backend's global Socket.io broadcasts instead of polling the user's wallet.
+  useEffect(() => {
+    if (!vaultAddress) return
+    const socket: Socket = io(SOCKET_URL)
+    const onCreated = (payload: { placer?: string }) => {
+      if (payload.placer?.toLowerCase() === vaultAddress.toLowerCase()) loadOffers()
     }
-    setOffers(prev => [...prev, optimistic])
-  }, [address])
-
-  // ── Ref: always holds current address — prevents stale closure in wagmi cb ───
-  const addressRef = useRef(address)
-  useEffect(() => { addressRef.current = address }, [address])
-
-  // ── On-chain event listener ────────────────────────────────────────────────────
-  // Polls Arbitrum Sepolia via eth_getLogs every 2s.
-  // On OfferCreated for our address:
-  //   1. Build Offer directly from event args (zero backend dependency).
-  //   2. Replace optimistic placeholder if present (IDs > 1e12 are temps).
-  //   3. No backend refetch — local state is the source of truth.
-  useWatchContractEvent({
-    address:         ESCROW_ADDRESS,
-    abi:             ESCROW_ABI,
-    eventName:       'OfferCreated',
-    pollingInterval: 15_000,
-    onLogs(logs) {
-      console.log('EVENTO BLOCKCHAIN CAPTATO:', logs)
-
-      const addr = addressRef.current
-      console.log('[bettazoo] address at event time:', addr)
-      if (!addr) return
-
-      for (const log of logs) {
-        const { offerId, placer, eventId: evId, outcome, odds, liability } = log.args
-        console.log('[bettazoo] event args:', { offerId, placer, evId, outcome, odds, liability })
-
-        if (!offerId || !placer || evId === undefined || outcome === undefined || !odds || !liability) {
-          console.warn('[bettazoo] skipping log — incomplete args')
-          continue
-        }
-        if (placer.toLowerCase() !== addr.toLowerCase()) {
-          console.log('[bettazoo] skipping — not our offer (placer:', placer, ')')
-          continue
-        }
-
-        const oddsDecimal   = Number(odds) / 10_000
-        const liabilityUsdt = Number(liability) / 1_000_000
-        const real: Offer = {
-          offerId:                Number(offerId),
-          placer,
-          eventId:                evId,
-          outcome:                Number(outcome),
-          oddsDecimal,
-          remainingLiabilityUsdt: liabilityUsdt.toFixed(6),
-          maxBettorStakeUsdt:     (liabilityUsdt / (oddsDecimal - 1)).toFixed(6),
-        }
-        console.log('[bettazoo] injecting real offer into state:', real)
-
-        setOffers(prev => {
-          if (prev.some(o => o.offerId === real.offerId)) {
-            console.log('[bettazoo] offer already in state, skipping')
-            return prev
-          }
-          // Remove optimistic placeholder for this event+outcome if present
-          const filtered = prev.filter(o =>
-            !(o.offerId > 1_000_000_000 && o.eventId === evId && o.outcome === real.outcome)
-          )
-          const next = [...filtered, real]
-          console.log('[bettazoo] setOffers →', next.length, 'offers')
-          return next
-        })
-      }
-    },
-  })
+    const onMatched = () => loadOffers()
+    socket.on('offer:created', onCreated)
+    socket.on('offer:matched', onMatched)
+    return () => { socket.disconnect() }
+  }, [vaultAddress, loadOffers])
 
   if (!isConnected || !address) {
     return (
@@ -287,6 +220,7 @@ export default function PlacerDashboard() {
       <PlacerStatsBar
         address={address as `0x${string}`}
         offers={offers}
+        vaultAddress={vaultAddress ?? undefined}
         pnlSeed={address}
         uniqueChallengers={uniqueChallengers}
       />
@@ -328,14 +262,8 @@ export default function PlacerDashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5">
             <div className="space-y-4">
               <EventSelector value={selectedEventId} onSelect={setSelectedEventId} />
-              <CreateOfferForm
-                eventId={selectedEventId}
-                eventName={selectedEvent.name}
-                sport={selectedEvent.sport}
-                teams={selectedEvent.teams}
-                onOfferCreated={handleOfferCreated}
-              />
-              <RiskWidget address={address} />
+              <VaultPanel onVaultReady={setVaultAddress} />
+              <RiskWidget address={vaultAddress ?? address} />
             </div>
 
             <div className="space-y-3">
@@ -365,6 +293,7 @@ export default function PlacerDashboard() {
             onRefresh={loadOffers}
             compact
             onViewAll={() => setActiveTab('offers')}
+            vaultAddress={vaultAddress ?? undefined}
           />
 
           {/* Influence Rewards */}
@@ -374,7 +303,7 @@ export default function PlacerDashboard() {
 
       {/* ══════════════════ TAB: MY OFFERS ══════════════════ */}
       {activeTab === 'offers' && (
-        <MyOffers offers={offers} onRefresh={loadOffers} />
+        <MyOffers offers={offers} onRefresh={loadOffers} vaultAddress={vaultAddress ?? undefined} />
       )}
 
       {/* ── Profile Modal ── */}

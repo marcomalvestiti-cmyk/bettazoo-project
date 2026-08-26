@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useAccount, usePublicClient, useWriteContract } from 'wagmi'
+import { useAccount, usePublicClient, useWriteContract, useSwitchChain } from 'wagmi'
+import { arbitrumSepolia } from 'wagmi/chains'
 import { fetchOrderBook } from '@/lib/api'
-import { ESCROW_ABI, MOCK_EVENTS, OUTCOMES } from '@/lib/abis'
+import { ESCROW_ABI, VAULT_ABI, MOCK_EVENTS, OUTCOMES } from '@/lib/abis'
 import { withGasBuffer } from '@/lib/gasUtils'
 
 export type Offer = {
@@ -25,16 +26,18 @@ const OUTCOME_DOTS: Record<number, string> = {
 }
 
 interface Props {
-  offers?:    Offer[]
-  onRefresh?: () => void
-  compact?:   boolean
-  onViewAll?: () => void
+  offers?:       Offer[]
+  onRefresh?:    () => void
+  compact?:      boolean
+  onViewAll?:    () => void
+  vaultAddress?: string
 }
 
-export default function MyOffers({ offers: externalOffers, onRefresh, compact = false, onViewAll }: Props) {
-  const { address } = useAccount()
+export default function MyOffers({ offers: externalOffers, onRefresh, compact = false, onViewAll, vaultAddress }: Props) {
+  const { address, chain } = useAccount()
   const publicClient = usePublicClient()
   const { writeContractAsync } = useWriteContract()
+  const { switchChainAsync } = useSwitchChain()
 
   const [internalOffers, setInternalOffers] = useState<Offer[]>([])
   const [loading,     setLoading]     = useState(!externalOffers)
@@ -71,14 +74,31 @@ export default function MyOffers({ offers: externalOffers, onRefresh, compact = 
     setCancelling(offerId)
     setError('')
     try {
+      if (chain?.id !== arbitrumSepolia.id) {
+        await switchChainAsync({ chainId: arbitrumSepolia.id })
+      }
       const gas = await withGasBuffer(publicClient)
-      await writeContractAsync({
-        address: ESCROW_ADDRESS,
-        abi: ESCROW_ABI,
-        functionName: 'cancelOffer',
-        args: [BigInt(offerId)],
-        ...gas,
-      })
+      // Once a vault places offers, Escrow.cancelOffer requires msg.sender === offer.placer
+      // (the vault contract) — the owner cancels through PlacerVault.cancelOffer instead.
+      if (vaultAddress) {
+        await writeContractAsync({
+          address: vaultAddress as `0x${string}`,
+          abi: VAULT_ABI,
+          functionName: 'cancelOffer',
+          args: [BigInt(offerId)],
+          chainId: arbitrumSepolia.id,
+          ...gas,
+        })
+      } else {
+        await writeContractAsync({
+          address: ESCROW_ADDRESS,
+          abi: ESCROW_ABI,
+          functionName: 'cancelOffer',
+          args: [BigInt(offerId)],
+          chainId: arbitrumSepolia.id,
+          ...gas,
+        })
+      }
       if (onRefresh) onRefresh()
       else await loadOffers()
     } catch (err: unknown) {

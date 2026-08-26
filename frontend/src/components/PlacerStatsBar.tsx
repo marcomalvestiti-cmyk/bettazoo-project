@@ -1,8 +1,10 @@
 'use client'
 
 import { useReadContract } from 'wagmi'
+import { useEffect, useState } from 'react'
 import { formatUnits } from 'viem'
 import { ERC20_ABI, MOCK_EVENTS } from '@/lib/abis'
+import { fetchVaultPnl } from '@/lib/api'
 import PlacerBadge from './PlacerBadge'
 
 const USDT_ADDRESS = (process.env.NEXT_PUBLIC_USDT_ADDRESS ?? '0x0') as `0x${string}`
@@ -19,6 +21,7 @@ type Offer = {
 interface Props {
   address: `0x${string}`
   offers: Offer[]
+  vaultAddress?: string
   pnlSeed?: string
   uniqueChallengers?: number
 }
@@ -56,18 +59,28 @@ function StatCard({
   )
 }
 
-export default function PlacerStatsBar({ address, offers, pnlSeed, uniqueChallengers = 0 }: Props) {
+export default function PlacerStatsBar({ address, offers, vaultAddress, pnlSeed, uniqueChallengers = 0 }: Props) {
   const { data: rawBalance } = useReadContract({
     address: USDT_ADDRESS,
     abi: ERC20_ABI,
     functionName: 'balanceOf',
-    args: [address],
+    args: [(vaultAddress ?? address) as `0x${string}`],
   })
 
   const committed = offers.reduce((s, o) => s + parseFloat(o.remainingLiabilityUsdt || '0'), 0)
   const activeEvents = new Set(offers.map(o => o.eventId)).size
 
-  const pnl = deterministicPnL(pnlSeed ?? address)
+  const [realPnl, setRealPnl] = useState<number | null>(null)
+  useEffect(() => {
+    if (!vaultAddress) { setRealPnl(null); return }
+    let cancelled = false
+    fetchVaultPnl(vaultAddress)
+      .then(d => { if (!cancelled) setRealPnl(d.realizedPnlUsdt) })
+      .catch(() => { if (!cancelled) setRealPnl(null) })
+    return () => { cancelled = true }
+  }, [vaultAddress])
+
+  const pnl = realPnl ?? deterministicPnL(pnlSeed ?? address)
   const pnlPositive = pnl >= 0
   const pnlStr = pnlPositive ? `+$${pnl.toFixed(2)}` : `-$${Math.abs(pnl).toFixed(2)}`
 
@@ -78,9 +91,9 @@ export default function PlacerStatsBar({ address, offers, pnlSeed, uniqueChallen
   return (
     <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
       <StatCard
-        label="Available Liquidity"
+        label={vaultAddress ? 'Vault Balance' : 'Available Liquidity'}
         value={liquidityStr}
-        sub="USDT · wallet balance"
+        sub={vaultAddress ? 'USDT · in vault' : 'USDT · wallet balance'}
       />
       <StatCard
         label="Committed Credit"
@@ -98,9 +111,9 @@ export default function PlacerStatsBar({ address, offers, pnlSeed, uniqueChallen
         sub={`of ${MOCK_EVENTS.length} total`}
       />
       <StatCard
-        label="24h P&L"
+        label={realPnl !== null ? 'Realized P&L' : '24h P&L'}
         value={pnlStr}
-        sub="simulated · connect oracle for live"
+        sub={realPnl !== null ? 'USDT · settled matches' : 'simulated · create a vault for live'}
         positive={pnlPositive}
       />
       <div className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 space-y-1.5 min-w-0">

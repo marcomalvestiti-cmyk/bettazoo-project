@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAccount, useConnect, useDisconnect, useSwitchChain } from 'wagmi'
 import { arbitrumSepolia } from 'wagmi/chains'
 import { X, ChevronDown, AlertTriangle } from 'lucide-react'
@@ -89,7 +89,14 @@ export default function ConnectWallet() {
   const [modalOpen, setModalOpen] = useState(false)
   const [pendingId, setPendingId] = useState<string | null>(null)
 
-  if (isConnected) return <ConnectedChip />
+  // wagmi rehydrates a persisted connection from localStorage only after mount, so
+  // isConnected is always false during SSR — rendering off it directly before mount
+  // makes the client's first paint diverge from the server's, causing a hydration
+  // mismatch. Force the disconnected view until we know we're past hydration.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
+  if (mounted && isConnected) return <ConnectedChip />
 
   return (
     <>
