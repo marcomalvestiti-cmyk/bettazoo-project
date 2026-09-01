@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAccount, usePublicClient, useReadContract, useWriteContract } from 'wagmi'
+import { useAccount, usePublicClient, useReadContract, useWriteContract, useSwitchChain } from 'wagmi'
+import { arbitrumSepolia } from 'wagmi/chains'
 import { parseUnits } from 'viem'
 import { waitForTransactionReceipt } from 'viem/actions'
 import { ESCROW_ABI, ERC20_ABI, OUTCOMES } from '@/lib/abis'
@@ -21,6 +22,9 @@ type Props = {
 
 const ESCROW_ADDRESS = (process.env.NEXT_PUBLIC_ESCROW_ADDRESS ?? '0x0') as `0x${string}`
 const USDT_ADDRESS   = (process.env.NEXT_PUBLIC_USDT_ADDRESS   ?? '0x0') as `0x${string}`
+// Arbitrum Sepolia block times/RPC propagation can occasionally lag well past
+// viem's default receipt-wait window — give it more room before giving up.
+const RECEIPT_TIMEOUT_MS = 120_000
 
 const OUTCOME_COLOR: Record<number, { dot: string; text: string }> = {
   0: { dot: 'bg-sky-400',     text: 'text-sky-300'     },
@@ -46,9 +50,21 @@ export default function BetSlip({ outcome, offers, eventName, referrerAddress, o
   const [stake, setStake]       = useState('')
   const [status, setStatus]     = useState<'idle' | 'approving' | 'betting' | 'done' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
-  const { address }            = useAccount()
+  const { address, chain }     = useAccount()
   const publicClient           = usePublicClient()
   const { writeContractAsync } = useWriteContract()
+  const { switchChainAsync } = useSwitchChain()
+
+  // The wallet can be on any chain regardless of what this dapp reads/writes —
+  // request a switch up front so the tx isn't silently signed against the wrong
+  // network (passing chainId to writeContractAsync alone only rejects the
+  // mismatch, it doesn't prompt the wallet to switch).
+  async function ensureArbitrumSepolia() {
+    if (chain?.id !== arbitrumSepolia.id) {
+      await switchChainAsync({ chainId: arbitrumSepolia.id })
+    }
+  }
+
   const { data: currentAllowance } = useReadContract({
     address: USDT_ADDRESS,
     abi: ERC20_ABI,
@@ -85,6 +101,7 @@ export default function BetSlip({ outcome, offers, eventName, referrerAddress, o
     setErrorMsg('')
     setStatus(needsApprove ? 'approving' : 'betting')
     try {
+      await ensureArbitrumSepolia()
       const gas = await withGasBuffer(publicClient)
       if (needsApprove) {
         const approveTxHash = await writeContractAsync({
@@ -92,18 +109,21 @@ export default function BetSlip({ outcome, offers, eventName, referrerAddress, o
           abi: ERC20_ABI,
           functionName: 'approve',
           args: [ESCROW_ADDRESS, totalStakeRaw],
+          chainId: arbitrumSepolia.id,
           ...gas,
         })
-        await waitForTransactionReceipt(publicClient!, { hash: approveTxHash })
+        await waitForTransactionReceipt(publicClient!, { hash: approveTxHash, timeout: RECEIPT_TIMEOUT_MS })
         setStatus('betting')
       }
-      await writeContractAsync({
+      const betTxHash = await writeContractAsync({
         address: ESCROW_ADDRESS,
         abi: ESCROW_ABI,
         functionName: 'acceptOffers',
         args: [matchedOffers.map((o) => BigInt(o.offerId)), totalStakeRaw],
+        chainId: arbitrumSepolia.id,
         ...gas,
       })
+      await waitForTransactionReceipt(publicClient!, { hash: betTxHash, timeout: RECEIPT_TIMEOUT_MS })
       setStatus('done')
       saveBet(address, {
         id: `${Date.now()}-${matchedOffers[0].offerId}`,
@@ -126,7 +146,15 @@ export default function BetSlip({ outcome, offers, eventName, referrerAddress, o
       }
     } catch (err: unknown) {
       setStatus('error')
-      setErrorMsg(err instanceof Error ? err.message : 'Transaction failed')
+      const msg = err instanceof Error ? err.message : 'Transaction failed'
+      // A wait-timeout means we stopped watching, not that the chain rejected it —
+      // the tx can still land. Don't cancel it in your wallet; check its Activity
+      // tab or Arbiscan, then reopen the bet slip once it confirms.
+      setErrorMsg(
+        msg.toLowerCase().includes('timed out')
+          ? 'Still waiting for confirmation on-chain — this can take a bit on Arbitrum Sepolia. Check your wallet’s Activity tab; do not cancel it. Reopen the bet slip once it confirms.'
+          : msg
+      )
     }
   }
 
