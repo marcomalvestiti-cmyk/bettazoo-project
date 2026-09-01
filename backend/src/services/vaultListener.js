@@ -60,8 +60,13 @@ const VAULT_CREATED_TOPIC = ethers.id('VaultCreated(address,address)')
 
 const CHUNK_SIZE = parseInt(process.env.ESCROW_CHUNK_SIZE ?? '2000')
 const FACTORY_DEPLOY_BLOCK = parseInt(process.env.VAULT_FACTORY_DEPLOY_BLOCK ?? '0')
+// Small pause between chunks so a large historical backfill doesn't fire requests
+// back-to-back on top of the Escrow listener's own real-time polling on the same
+// shared public RPC — that combination was tripping sustained 429s.
+const CHUNK_DELAY_MS = parseInt(process.env.VAULT_CHUNK_DELAY_MS ?? '300')
 
 function ts() { return new Date().toISOString() }
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 // In-memory set of known vault addresses (lowercase). Populated from Mongo at startup
 // and kept live as new vaults are created. Vault-event logs are checked against this
@@ -130,6 +135,7 @@ async function processLogsInChunks(provider, filterBase, fromBlock, toBlock, onC
     } catch (err) {
       console.warn(`[${ts()}] [VaultListener] chunk ${start}-${end} failed: ${err.message}`)
     }
+    if (end < toBlock) await sleep(CHUNK_DELAY_MS)
   }
 }
 
@@ -160,6 +166,8 @@ async function syncHistoricalVaultEvents(provider, factoryAddress) {
       }
     }
   )
+
+  await sleep(2_000) // breathe before next pass to avoid 429 bursts
 
   // Pass 2: vault clone events, any address, filtered against knownVaults.
   let vaultLogCount = 0
