@@ -142,25 +142,31 @@ function startWeb3(url, contractAddress, io, skipHistoricalSync) {
     scheduleReconnect(url, contractAddress, io)
   })
 
-  startListener(provider, contractAddress, io, skipHistoricalSync).catch((err) => {
-    console.error(`[${ts()}] [Web3] Listener startup failed: ${err.message}`)
-    scheduleReconnect(url, contractAddress, io)
-  })
-
   const vaultFactoryAddress = process.env.VAULT_FACTORY_ADDRESS
-  if (vaultFactoryAddress) {
-    startVaultListener(provider, vaultFactoryAddress, io, skipHistoricalSync).catch((err) => {
+
+  // Chained (not parallel): running both historical syncs concurrently doubles
+  // the RPC request rate right when it's most likely to trip rate limits.
+  startListener(provider, contractAddress, io, skipHistoricalSync)
+    .catch((err) => {
+      console.error(`[${ts()}] [Web3] Listener startup failed: ${err.message}`)
+      scheduleReconnect(url, contractAddress, io)
+    })
+    .then(() => {
+      if (!vaultFactoryAddress) {
+        console.warn(`[${ts()}] [VaultListener] VAULT_FACTORY_ADDRESS not set — vault listener and keeper disabled`)
+        return
+      }
+      return startVaultListener(provider, vaultFactoryAddress, io, skipHistoricalSync).then(() => {
+        if (activeKeeperInterval) {
+          clearInterval(activeKeeperInterval)
+          activeKeeperInterval = null
+        }
+        activeKeeperInterval = startKeeper(provider) ?? null
+      })
+    })
+    .catch((err) => {
       console.error(`[${ts()}] [VaultListener] Startup failed: ${err.message}`)
     })
-
-    if (activeKeeperInterval) {
-      clearInterval(activeKeeperInterval)
-      activeKeeperInterval = null
-    }
-    activeKeeperInterval = startKeeper(provider) ?? null
-  } else {
-    console.warn(`[${ts()}] [VaultListener] VAULT_FACTORY_ADDRESS not set — vault listener and keeper disabled`)
-  }
 }
 
 function scheduleReconnect(url, contractAddress, io) {
