@@ -19,6 +19,7 @@ const connectDB = require('./config/db')
 const { startListener } = require('./services/web3Listener')
 const { startVaultListener } = require('./services/vaultListener')
 const { startKeeper } = require('./services/keeperService')
+const { throttleProvider } = require('./services/rpcQueue')
 
 const PORT = process.env.PORT || 3001
 
@@ -133,6 +134,11 @@ function startWeb3(url, contractAddress, io, skipHistoricalSync) {
     scheduleReconnect(url, contractAddress, io)
     return
   }
+
+  // All downstream consumers (Escrow listener, vault listener, keeper) share this
+  // single provider — throttling it once here rate-limits every RPC call the app
+  // makes, not just each consumer's own sync loop in isolation.
+  throttleProvider(provider)
 
   activeProvider = provider
 
