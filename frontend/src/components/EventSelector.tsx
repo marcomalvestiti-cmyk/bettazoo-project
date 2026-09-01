@@ -12,6 +12,15 @@ interface Props {
 
 export default function EventSelector({ value, onSelect }: Props) {
   const [openNodes, setOpenNodes] = useState<Set<string>>(new Set())
+  // A placer specializes in one sport/league at a time — once an event is picked,
+  // its league stays pinned (fast switching between that league's own events)
+  // instead of re-showing the full tree on every visit. "Change" reopens it.
+  const [browsing, setBrowsing]   = useState(false)
+
+  function handleSelect(eventId: string) {
+    onSelect(eventId)
+    setBrowsing(false)
+  }
 
   function toggle(id: string) {
     setOpenNodes(prev => {
@@ -33,7 +42,7 @@ export default function EventSelector({ value, onSelect }: Props) {
           return (
             <button
               key={ev.eventId}
-              onClick={() => onSelect(ev.eventId)}
+              onClick={() => handleSelect(ev.eventId)}
               className={`w-full text-left flex items-center gap-2 px-2 py-2 rounded-md text-xs transition-colors ${
                 isSelected
                   ? 'bg-[#FFB01F]/15 text-[#FFB01F] border border-[#FFB01F]/30'
@@ -96,9 +105,64 @@ export default function EventSelector({ value, onSelect }: Props) {
     )
   }
 
+  // ── Pinned view — locked into the selected event's sport/league; the placer just
+  // flips between that league's own events. "Change" reopens the full tree below.
+  if (selectedEvent && !browsing) {
+    const leagueEvents = MOCK_EVENTS.filter(
+      e => e.sport === selectedEvent.sport && e.league === selectedEvent.league
+    )
+    return (
+      <div className="bg-slate-900 border border-slate-800 rounded-lg p-3 space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-bold text-[#FFB01F] uppercase tracking-widest truncate">
+            {selectedEvent.icon} {selectedEvent.sportLabel} · {selectedEvent.leagueLabel}
+          </p>
+          <button
+            onClick={() => setBrowsing(true)}
+            className="shrink-0 text-[10px] font-bold text-slate-400 hover:text-[#FFB01F] border border-slate-700 hover:border-[#FFB01F]/40 px-2 py-1 rounded-md transition-colors"
+          >
+            Change
+          </button>
+        </div>
+
+        <div className="space-y-0.5 max-h-64 overflow-y-auto">
+          {leagueEvents.map(ev => {
+            const isSelected = ev.eventId === value
+            return (
+              <button
+                key={ev.eventId}
+                onClick={() => handleSelect(ev.eventId)}
+                className={`w-full text-left flex items-center gap-2 px-2 py-2 rounded-md text-xs transition-colors border ${
+                  isSelected
+                    ? 'bg-[#FFB01F]/15 text-[#FFB01F] border-[#FFB01F]/30'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800 border-transparent'
+                }`}
+              >
+                <span className="text-sm">{ev.icon}</span>
+                <span className="truncate font-medium">{ev.name}</span>
+                {isSelected && <span className="ml-auto shrink-0 w-1.5 h-1.5 rounded-full bg-[#FFB01F]" />}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Browsing view — full sport/league tree, used to pick (or switch) specialization ──
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-lg p-3 space-y-2">
-      <p className="text-xs font-bold text-[#FFB01F] uppercase tracking-widest">Select Event</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-bold text-[#FFB01F] uppercase tracking-widest">Select Event</p>
+        {selectedEvent && (
+          <button
+            onClick={() => setBrowsing(false)}
+            className="shrink-0 text-[10px] font-bold text-slate-500 hover:text-slate-300 transition-colors"
+          >
+            Cancel
+          </button>
+        )}
+      </div>
 
       {selectedEvent && (
         <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-[#FFB01F]/10 border border-[#FFB01F]/25">

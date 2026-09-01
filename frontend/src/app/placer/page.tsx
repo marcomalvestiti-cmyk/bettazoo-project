@@ -7,7 +7,6 @@ import { io, type Socket } from 'socket.io-client'
 
 import VaultPanel        from '@/components/VaultPanel'
 import RiskWidget       from '@/components/RiskWidget'
-import OrderBook        from '@/components/OrderBook'
 import MyOffers, { type Offer } from '@/components/MyOffers'
 import ProfileEditor    from '@/components/ProfileEditor'
 import PlacerStatsBar   from '@/components/PlacerStatsBar'
@@ -111,8 +110,6 @@ export default function PlacerDashboard() {
   const [uniqueChallengers, setUniqueChallengers] = useState(0)
   const [vaultAddress,      setVaultAddress]      = useState<string | null>(null)
 
-  const selectedEvent = MOCK_EVENTS.find(e => e.eventId === selectedEventId) ?? MOCK_EVENTS[0]
-
   // Pre-select league from saved profile specialization
   useEffect(() => {
     if (!address) return
@@ -178,7 +175,7 @@ export default function PlacerDashboard() {
         <div className="w-14 h-14 rounded-xl bg-[#FFB01F]/10 border border-[#FFB01F]/30 flex items-center justify-center mx-auto text-3xl">
           🔒
         </div>
-        <h1 className="text-2xl font-bold text-white">Placer Control Station</h1>
+        <h1 className="text-2xl font-bold text-white">Placer Pit Boss Console</h1>
         <p className="text-slate-400">Connect your wallet to access the dashboard.</p>
       </div>
     )
@@ -191,7 +188,7 @@ export default function PlacerDashboard() {
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1 min-w-0">
           <p className="text-xs font-bold text-[#FFB01F] uppercase tracking-widest">✦ Placer Area</p>
-          <h1 className="text-3xl font-bold text-white leading-none">Control Station</h1>
+          <h1 className="text-3xl font-bold text-white leading-none">Pit Boss Console</h1>
           <p className="text-xs text-slate-500 font-mono truncate">{address}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -229,7 +226,7 @@ export default function PlacerDashboard() {
       <div className="flex items-center gap-1 border-b border-slate-800">
         {([
           { id: 'dashboard', label: 'Dashboard' },
-          { id: 'offers',    label: 'My Offers', badge: offers.length },
+          { id: 'offers',    label: 'Vault Strategies', badge: offers.length },
         ] as const).map(tab => (
           <button
             key={tab.id}
@@ -258,46 +255,38 @@ export default function PlacerDashboard() {
       {activeTab === 'dashboard' && (
         <div className="space-y-4">
 
-          {/* Main grid — create offer + live order book */}
-          <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5">
+          {/* Main grid — 3 equal columns: cash/parameters, then monitoring/rewards spanning 2 */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+            {/* Column 1 — Cassa e Parametri */}
             <div className="space-y-4">
               <EventSelector value={selectedEventId} onSelect={setSelectedEventId} />
               <VaultPanel onVaultReady={setVaultAddress} />
-              <RiskWidget address={vaultAddress ?? address} />
+              <RiskWidget address={vaultAddress ?? address} vaultAddress={vaultAddress ?? undefined} />
             </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 flex-wrap">
-                <span className="text-xl">{selectedEvent.icon}</span>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-[#FFB01F] uppercase tracking-widest">
-                    {selectedEvent.sportLabel} · {selectedEvent.leagueLabel}
-                  </p>
-                  <h2 className="text-lg font-bold text-white leading-tight">{selectedEvent.name}</h2>
+            {/* Columns 2-3 — Monitoraggio e Reward */}
+            <div className="lg:col-span-2 space-y-4">
+              <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden">
+                <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-800">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                  <h2 className="text-sm font-bold text-white tracking-wide">Live Execution Feed</h2>
                 </div>
-                <div className="ml-auto flex items-center gap-2 shrink-0">
-                  {selectedEvent.teams.map(t => (
-                    <span key={t} className="text-xs font-medium bg-slate-900 border border-slate-700 px-2 py-1 rounded">
-                      {t}
-                    </span>
-                  ))}
+                <div className="p-3">
+                  <MyOffers
+                    offers={offers}
+                    onRefresh={loadOffers}
+                    compact
+                    onViewAll={() => setActiveTab('offers')}
+                    vaultAddress={vaultAddress ?? undefined}
+                  />
                 </div>
               </div>
-              <OrderBook eventId={selectedEventId} />
+
+              {/* Influence Rewards */}
+              <InfluenceRewards challengers={uniqueChallengers} address={address} />
             </div>
           </div>
-
-          {/* Compact offers widget */}
-          <MyOffers
-            offers={offers}
-            onRefresh={loadOffers}
-            compact
-            onViewAll={() => setActiveTab('offers')}
-            vaultAddress={vaultAddress ?? undefined}
-          />
-
-          {/* Influence Rewards */}
-          <InfluenceRewards challengers={uniqueChallengers} address={address} />
         </div>
       )}
 

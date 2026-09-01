@@ -17,10 +17,10 @@ const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 const RECEIPT_TIMEOUT_MS = 120_000
 
 const STRATEGIES = [
-  { id: 'volume',   label: 'Volume Dominator', sub: '1.5% Margin' },
-  { id: 'balanced', label: 'Balanced',         sub: '3.0% Margin' },
-  { id: 'safe',     label: 'Safe Bank',        sub: '5.0% Margin' },
-  { id: 'custom',   label: 'Custom',           sub: 'Set your own' },
+  { id: 'volume',   label: 'Volume Dominator', sub: '1.5% Margin', description: 'Best odds. Maximizes the number of incoming bets.' },
+  { id: 'balanced', label: 'Balanced',         sub: '3.0% Margin', description: 'Standard house edge. Good mix of volume and profit.' },
+  { id: 'safe',     label: 'Safe Bank',        sub: '5.0% Margin', description: 'Conservative odds. Lower volume, highest profit margin per bet.' },
+  { id: 'custom',   label: 'Custom',           sub: 'Set your own', description: undefined },
 ] as const
 type StrategyId = typeof STRATEGIES[number]['id']
 
@@ -105,6 +105,9 @@ export default function VaultPanel({ onVaultReady }: Props) {
     functionName: 'maxSingleOfferLiability',
     query: { enabled: !!vaultAddress },
   })
+  // Whether a per-bet liability cap is actually enforced on-chain — required before
+  // the keeper can go active (see handleSaveConfig).
+  const hasSingleCap = !!maxSingleLiabilityRaw && (maxSingleLiabilityRaw as bigint) > BigInt(0)
 
   // ── Funding form state ────────────────────────────────────────────────────────
   const [depositAmt,  setDepositAmt]  = useState('')
@@ -250,6 +253,14 @@ export default function VaultPanel({ onVaultReady }: Props) {
 
   async function handleSaveConfig() {
     if (!address) return
+    // The margin protects the vault over time, not on a single bet — without an
+    // on-chain per-offer cap, one oversized match could drain the whole balance
+    // in one shot. Require it before the keeper is allowed to go active.
+    if (active && !hasSingleCap) {
+      setSaveStatus('error')
+      setSaveErr('Set a "Max Size Per Bet" cap on-chain before activating the keeper — it protects the vault from a single oversized bet.')
+      return
+    }
     setSaveStatus('saving')
     setSaveErr('')
     try {
@@ -404,14 +415,19 @@ export default function VaultPanel({ onVaultReady }: Props) {
       {/* ── Strategy ── */}
       <div className="space-y-1.5">
         <label className="text-xs text-slate-500 font-medium uppercase tracking-wide">Strategy</label>
-        <div className="grid grid-cols-4 gap-1.5">
+        <div className="space-y-1.5">
           {STRATEGIES.map(s => (
             <button key={s.id} onClick={() => setStrategy(s.id)}
-              className={`flex flex-col items-center py-2.5 px-1 rounded-md border text-center transition-colors ${
-                strategy === s.id ? 'border-[#FFB01F]/60 bg-[#FFB01F]/8 text-[#FFB01F]' : 'border-slate-800 text-slate-500 hover:border-slate-700 hover:text-slate-400'
+              className={`w-full flex flex-col items-start py-2 px-3 rounded-md border text-left transition-colors ${
+                strategy === s.id ? 'border-[#FFB01F]/60 bg-[#FFB01F]/8' : 'border-slate-800 hover:border-slate-700'
               }`}>
-              <span className={`text-[10px] font-bold leading-none ${strategy === s.id ? 'text-[#FFB01F]' : ''}`}>{s.label}</span>
-              <span className={`text-[9px] mt-0.5 font-mono ${strategy === s.id ? 'text-[#FFB01F]/70' : 'text-slate-600'}`}>{s.sub}</span>
+              <span className="flex items-baseline gap-1.5">
+                <span className={`text-xs font-bold leading-none ${strategy === s.id ? 'text-[#FFB01F]' : 'text-slate-400'}`}>{s.label}</span>
+                <span className={`text-[10px] font-mono ${strategy === s.id ? 'text-[#FFB01F]/70' : 'text-slate-600'}`}>{s.sub}</span>
+              </span>
+              {s.description && (
+                <span className="text-xs text-slate-500 mt-0.5">{s.description}</span>
+              )}
             </button>
           ))}
         </div>
@@ -482,6 +498,35 @@ export default function VaultPanel({ onVaultReady }: Props) {
         </div>
       </div>
 
+      {/* ── Max size per bet — mandatory on-chain cap. Margin protects the vault over
+          many bets, not a single one: without this, one oversized match can drain
+          the whole balance in one shot. ── */}
+      <div className={`space-y-1.5 rounded-md border p-3 ${
+        hasSingleCap ? 'border-slate-800 bg-slate-950/40' : 'border-red-500/40 bg-red-500/5'
+      }`}>
+        <div className="flex items-center justify-between gap-2">
+          <label className="text-[10px] text-slate-300 font-bold uppercase tracking-wide">Max Size Per Bet (USDT)</label>
+          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-widest border ${
+            hasSingleCap
+              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
+              : 'bg-red-500/10 text-red-400 border-red-500/30'
+          }`}>
+            {hasSingleCap ? 'Set' : 'Required'}
+          </span>
+        </div>
+        <p className="text-xs text-slate-500">
+          Caps the liability of any single offer, enforced on-chain — without it, one large enough bet can empty the vault in one shot.
+        </p>
+        <div className="flex gap-1.5">
+          <input type="number" min="0" step="1" value={maxSingleInput} onChange={e => setMaxSingleInput(e.target.value)}
+            className={inputCls} placeholder="e.g. 100" />
+          <button onClick={handleSetCap} disabled={capStatus === 'setting'}
+            className="shrink-0 px-3 py-2 text-xs font-bold rounded-md bg-slate-800 border border-slate-700 text-slate-300 hover:border-slate-600 disabled:opacity-50 transition-colors">
+            {capStatus === 'setting' ? '…' : 'Set Cap'}
+          </button>
+        </div>
+      </div>
+
       {/* ── Activate + Save ── */}
       <div className="flex items-center justify-between bg-slate-950/50 border border-slate-800 rounded-md px-3 py-2.5">
         <span className="text-xs font-semibold text-slate-300">Keeper active</span>
@@ -501,14 +546,6 @@ export default function VaultPanel({ onVaultReady }: Props) {
       {/* ── On-chain safety controls ── */}
       <div className="border-t border-slate-800 pt-4 space-y-2.5">
         <label className="text-xs text-slate-500 font-medium uppercase tracking-wide">On-Chain Safety</label>
-        <div className="flex gap-1.5">
-          <input type="number" min="0" step="1" value={maxSingleInput} onChange={e => setMaxSingleInput(e.target.value)}
-            className={inputCls} placeholder="Max single offer liability (0 = uncapped)" />
-          <button onClick={handleSetCap} disabled={capStatus === 'setting'}
-            className="shrink-0 px-3 py-2 text-xs font-bold rounded-md bg-slate-800 border border-slate-700 text-slate-300 hover:border-slate-600 disabled:opacity-50 transition-colors">
-            {capStatus === 'setting' ? '…' : 'Set Cap'}
-          </button>
-        </div>
         <button onClick={handleTogglePause} disabled={pauseStatus === 'toggling'}
           className={`w-full py-2.5 text-xs font-bold rounded-md border transition-colors disabled:opacity-50 ${
             onChainPaused

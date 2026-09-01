@@ -109,7 +109,7 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
               href="/placer"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-700 hover:border-slate-500 text-white font-semibold text-sm shadow-sm hover:shadow-md transition-all"
             >
-              ← Back to Control Station
+              ← Back to Pit Boss Console
             </Link>
           </div>
 
