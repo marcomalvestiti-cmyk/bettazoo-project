@@ -1,10 +1,22 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { MOCK_EVENTS } from '@/lib/abis'
+import { fetchOrderBook } from '@/lib/api'
 import BestOddsStrip from '@/components/BestOddsStrip'
 
 const FEATURED_IDS = ['evt-001', 'evt-002', 'evt-003', 'evt-010', 'evt-012']
-const FEATURED = MOCK_EVENTS.filter(e => FEATURED_IDS.includes(e.eventId))
+const FEATURED_CANDIDATES = MOCK_EVENTS.filter(e => FEATURED_IDS.includes(e.eventId))
+
+// Only surface an event as "Featured" once at least one placer has quoted it —
+// an event with an empty orderbook has nothing to bet on yet.
+async function hasPlacerQuotes(eventId: string): Promise<boolean> {
+  try {
+    const data = await fetchOrderBook(eventId)
+    return (data.orders ?? []).length > 0
+  } catch {
+    return false
+  }
+}
 
 const EVENT_BADGES: Record<string, { label: string; emoji: string; className: string }> = {
   'evt-001': { label: 'Hot',      emoji: '🔥', className: 'bg-orange-500/15 text-orange-400 border-orange-500/30' },
@@ -13,7 +25,10 @@ const EVENT_BADGES: Record<string, { label: string; emoji: string; className: st
   'evt-010': { label: 'Live',     emoji: '🔴', className: 'bg-red-500/15    text-red-400    border-red-500/30'    },
 }
 
-export default function Home() {
+export default async function Home() {
+  const quoted = await Promise.all(FEATURED_CANDIDATES.map(e => hasPlacerQuotes(e.eventId)))
+  const FEATURED = FEATURED_CANDIDATES.filter((_, i) => quoted[i])
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-10 space-y-10">
 
