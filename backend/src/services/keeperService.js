@@ -2,6 +2,7 @@ const { ethers } = require('ethers')
 const Vault = require('../models/Vault')
 const Order = require('../models/Order')
 const BetMatch = require('../models/BetMatch')
+const Event = require('../models/Event')
 const { suggestOdds } = require('./aiService')
 
 const VAULT_ABI = [
@@ -76,11 +77,17 @@ async function tickVault(vault, keeperWallet) {
     return
   }
 
+  // Same protocol-vault exemption as the PATCH gate in routes/vaults.js — the
+  // treasury's own "Final Boss" vault isn't a third-party Placer, the KYC gate was
+  // built to onboard those.
+  const treasuryAddress = (process.env.PROTOCOL_TREASURY_ADDRESS || '').toLowerCase()
+  const isProtocolVault = !!treasuryAddress && vault.ownerAddress === treasuryAddress
+
   // Defense in depth: PATCH /config already refuses to set status='active' without
   // an approved KYC review, but if an admin revokes approval afterwards (kycStatus
   // flips to 'rejected'/'pending') the vault's status field stays 'active' in Mongo —
   // this stops the keeper from quoting on it regardless.
-  if (vault.kycStatus !== 'approved') {
+  if (!isProtocolVault && vault.kycStatus !== 'approved') {
     log(`skip — KYC status is '${vault.kycStatus ?? 'none'}', not 'approved'`)
     return
   }
@@ -112,6 +119,14 @@ async function tickVault(vault, keeperWallet) {
   const margin = marginForVault(vault)
 
   for (const { eventId, outcomes } of vault.scope || []) {
+    // Fetched once per event, not per outcome — referenceOdds (Tier 0's live feed,
+    // see services/eventsFeedService.js) is what turns this from a fixed-margin mock
+    // into a real pricing engine: suggestOdds shrinks *actual* market consensus by
+    // the vault's margin instead of a hardcoded {home:2.0, draw:3.4, away:3.8}
+    // default. Curated (non-football) events simply have no referenceOdds — same
+    // fallback behavior as before, no regression there.
+    const eventDoc = await Event.findOne({ eventId }).lean()
+
     for (const outcome of outcomes) {
       const marketKey = `${eventId}:${outcome}`
       const marketExposure = exposure.byMarket[marketKey] ?? 0
@@ -127,7 +142,13 @@ async function tickVault(vault, keeperWallet) {
 
       let priced
       try {
-        priced = await suggestOdds({ eventId, outcome, margin })
+        priced = await suggestOdds({
+          eventId, outcome, margin,
+          eventName: eventDoc?.name,
+          sport: eventDoc?.sport,
+          teams: eventDoc?.teams,
+          currentMarketOdds: eventDoc?.referenceOdds,
+        })
       } catch (err) {
         log(`skip ${marketKey} — pricing failed: ${err.message}`)
         continue
@@ -139,6 +160,7 @@ async function tickVault(vault, keeperWallet) {
         continue
       }
       targetOdds = Math.min(Math.max(targetOdds, vault.minOdds), vault.maxOdds)
+      const priceSource = eventDoc?.referenceOdds ? 'live market feed' : 'default reference odds'
 
       const existing = await Order.findOne({ placer: vault.vaultAddress, eventId, outcome, active: true }).lean()
 
@@ -169,7 +191,7 @@ async function tickVault(vault, keeperWallet) {
       try {
         const tx = await vaultContract.placeOffer(eventId, outcome, oddsRaw, liabilityRaw)
         const receipt = await tx.wait()
-        log(`quoted ${marketKey} — odds=${targetOdds.toFixed(2)} liability=${liabilityUsdt} USDT tx=${receipt.hash}`)
+        log(`quoted ${marketKey} — odds=${targetOdds.toFixed(2)} liability=${liabilityUsdt} USDT priced-from=${priceSource} tx=${receipt.hash}`)
       } catch (err) {
         log(`skip ${marketKey} — placeOffer failed: ${err.message}`)
       }

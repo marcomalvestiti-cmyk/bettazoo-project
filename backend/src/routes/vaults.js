@@ -135,7 +135,15 @@ router.patch('/:ownerAddress/config', async (req, res, next) => {
       $set.kycStatus = 'pending';
     }
 
-    if ($set.status === 'active') {
+    // Protocol-owned "Final Boss" vault (see services/keeperService.js pricing engine
+    // notes) — the treasury isn't a third-party liquidity provider agreeing to supply
+    // the House with funds, it IS the House's own capital, so the agreement/KYC gate
+    // (built for onboarding external Placers) doesn't apply to it. Unset unless the
+    // owner explicitly configures PROTOCOL_TREASURY_ADDRESS on Railway.
+    const treasuryAddress = (process.env.PROTOCOL_TREASURY_ADDRESS || '').toLowerCase();
+    const isProtocolVault = !!treasuryAddress && ownerAddress === treasuryAddress;
+
+    if ($set.status === 'active' && !isProtocolVault) {
       const nextKycStatus = $set.kycStatus ?? current.kycStatus ?? 'none';
       const hasSignedAgreement = current.agreementVersion === AGREEMENT_VERSION;
       const missing = [];

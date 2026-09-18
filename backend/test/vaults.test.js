@@ -208,6 +208,33 @@ describe('PATCH /api/vaults/:ownerAddress/config — activation gate', () => {
   });
 });
 
+describe('PATCH /api/vaults/:ownerAddress/config — protocol treasury vault exemption', () => {
+  afterEach(() => { delete process.env.PROTOCOL_TREASURY_ADDRESS; });
+
+  it('allows activation without agreement/KYC when the owner is the configured treasury', async () => {
+    process.env.PROTOCOL_TREASURY_ADDRESS = ownerAddress;
+    await Vault.create(makeVault()); // no agreementVersion, kycStatus defaults to 'none'
+    const timestamp = Date.now();
+    const signature = await signConfig(owner, ownerAddress, timestamp);
+    const res = await request(app)
+      .patch(`/api/vaults/${ownerAddress}/config`)
+      .send({ signature, timestamp, config: { status: 'active' } });
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('active');
+  });
+
+  it('still enforces the gate for a different owner even when a treasury address is set', async () => {
+    process.env.PROTOCOL_TREASURY_ADDRESS = '0x' + '5'.repeat(40); // not this owner
+    await Vault.create(makeVault());
+    const timestamp = Date.now();
+    const signature = await signConfig(owner, ownerAddress, timestamp);
+    const res = await request(app)
+      .patch(`/api/vaults/${ownerAddress}/config`)
+      .send({ signature, timestamp, config: { status: 'active' } });
+    expect(res.status).toBe(400);
+  });
+});
+
 describe('POST /api/vaults/:ownerAddress/agreement', () => {
   it('rejects an invalid signature', async () => {
     await Vault.create(makeVault());
