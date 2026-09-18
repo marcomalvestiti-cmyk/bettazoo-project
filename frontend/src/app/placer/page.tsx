@@ -129,9 +129,13 @@ export default function PlacerDashboard() {
   // The keeper places/cancels offers as the vault, so the source of truth is the
   // backend's vault-offers endpoint, not local optimistic state.
   const loadOffers = useCallback(async () => {
-    if (!vaultAddress) { setOffers([]); return }
+    if (!vaultAddress || !address) { setOffers([]); return }
     try {
-      const data = await fetchVaultOffers(vaultAddress, true)
+      // fetchVaultOffers takes the OWNER's wallet address (it's the path param the
+      // backend resolves to a vault, see routes/vaults.js), not the vault contract's
+      // own address — passing vaultAddress here always returned zero offers, since no
+      // Vault document is ever owned by its own contract address.
+      const data = await fetchVaultOffers(address, true)
       const mapped: Offer[] = data.orders.map(o => ({
         offerId:                o.offerId,
         placer:                 vaultAddress,
@@ -145,7 +149,7 @@ export default function PlacerDashboard() {
     } catch {
       setOffers([])
     }
-  }, [vaultAddress])
+  }, [vaultAddress, address])
 
   useEffect(() => { loadOffers() }, [loadOffers])
 

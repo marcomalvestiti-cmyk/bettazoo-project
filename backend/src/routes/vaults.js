@@ -133,6 +133,7 @@ router.patch('/:ownerAddress/config', async (req, res, next) => {
     // stray repeat call can never undo a real approval.
     if (config.kycRequestReview === true && ['none', 'rejected'].includes(current.kycStatus ?? 'none')) {
       $set.kycStatus = 'pending';
+      $set.kycRequestedAt = new Date();
     }
 
     // Protocol-owned "Final Boss" vault (see services/keeperService.js pricing engine

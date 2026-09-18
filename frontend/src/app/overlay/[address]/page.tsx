@@ -40,12 +40,16 @@ export default function OverlayPage({ params }: { params: Promise<{ address: str
   const loadOffers = useCallback(async () => {
     if (!vaultAddress) { setOffers([]); return }
     try {
-      const data = await fetchVaultOffers(vaultAddress, true)
+      // fetchVaultOffers takes the OWNER's wallet address (the route param the
+      // backend resolves to a vault, see routes/vaults.js), not the vault contract's
+      // own address — `address` here is the page's own [address] param, which IS the
+      // owner (this route is /overlay/[address] for a Placer, not a vault contract).
+      const data = await fetchVaultOffers(address, true)
       setOffers(data.orders)
     } catch {
       setOffers([])
     }
-  }, [vaultAddress])
+  }, [vaultAddress, address])
 
   useEffect(() => { loadOffers() }, [loadOffers])
 

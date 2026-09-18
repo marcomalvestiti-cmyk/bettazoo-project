@@ -294,6 +294,7 @@ export type AdminKycRow = {
   kycStatus:         'none' | 'pending' | 'approved' | 'rejected'
   agreementVersion:  number | null
   agreementSignedAt: string | null
+  kycRequestedAt:    string | null
   createdAt:         string
 }
 

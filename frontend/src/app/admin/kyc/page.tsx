@@ -103,7 +103,7 @@ export default function AdminKycPage() {
                   <div className="min-w-0 flex-1">
                     <p className="font-mono text-sm text-white truncate">{shortAddr(row.ownerAddress)}</p>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      Vault {shortAddr(row.vaultAddress)} · {row.agreementVersion ? 'Agreement signed' : 'Agreement NOT signed'} · requested {formatTime(row.createdAt)}
+                      Vault {shortAddr(row.vaultAddress)} · {row.agreementVersion ? 'Agreement signed' : 'Agreement NOT signed'} · {row.kycRequestedAt ? `requested ${formatTime(row.kycRequestedAt)}` : `vault created ${formatTime(row.createdAt)}`}
                     </p>
                   </div>
                   <div className="flex gap-2 shrink-0">

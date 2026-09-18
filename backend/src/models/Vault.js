@@ -45,6 +45,7 @@ const vaultSchema = new mongoose.Schema({
   // 'rejected' set only via the admin panel — no Sumsub integration yet on testnet,
   // this proves the enforcement point ahead of wiring a real verification provider.
   kycStatus: { type: String, enum: ['none', 'pending', 'approved', 'rejected'], default: 'none' },
+  kycRequestedAt: { type: Date },
 
   createdAtTx:    { type: String },
   createdAtBlock: { type: Number },

@@ -77,6 +77,7 @@ router.get('/kyc', async (req, res, next) => {
         kycStatus:         v.kycStatus ?? 'none',
         agreementVersion:  v.agreementVersion ?? null,
         agreementSignedAt: v.agreementSignedAt ?? null,
+        kycRequestedAt:    v.kycRequestedAt ?? null,
         createdAt:         v.createdAt,
       }))
       .sort((a, b) => (order[a.kycStatus] ?? 9) - (order[b.kycStatus] ?? 9));
