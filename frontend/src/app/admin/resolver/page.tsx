@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react'
 import { useAccount, usePublicClient, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { ESCROW_ABI } from '@/lib/abis'
 import { useEvents } from '@/lib/useEvents'
+import { fetchOracleEvents } from '@/lib/api'
 import ConnectWallet from '@/components/ConnectWallet'
+import AdminGate from '@/components/AdminGate'
 import { withGasBuffer } from '@/lib/gasUtils'
 
 const ESCROW_ADDRESS = (process.env.NEXT_PUBLIC_ESCROW_ADDRESS ?? '') as `0x${string}`
@@ -62,6 +64,24 @@ export default function AdminResolverPage() {
   const [resolvedMap, setResolvedMap] = useState<Record<string, number>>({})
   const [pendingEvent, setPendingEvent] = useState<{ eventId: string; outcome: number } | null>(null)
 
+  // Real resolved state (backend, itself synced from the on-chain EventResolved log —
+  // see web3Listener.js), not just this session's memory. Without this, reloading the
+  // page made an already-resolved event show up under "Pending" again — a second
+  // resolve attempt would revert harmlessly ("Already resolved"), but it's confusing
+  // and wastes gas on a wallet signature for nothing.
+  useEffect(() => {
+    fetchOracleEvents().then(list => {
+      const real: Record<string, number> = {}
+      for (const e of list) {
+        if (e.resolved && e.winningOutcome !== undefined) real[e.eventId] = e.winningOutcome
+      }
+      // Merge under any optimistic update already in state from a resolve made
+      // earlier in this same session, in case this fetch raced ahead of the
+      // backend's own indexing of that same event.
+      setResolvedMap(prev => ({ ...real, ...prev }))
+    }).catch(() => { /* stay with whatever's in session state */ })
+  }, [])
+
   // Mark resolved once the tx is confirmed on-chain
   useEffect(() => {
     if (isConfirmed && pendingEvent) {
@@ -93,6 +113,7 @@ export default function AdminResolverPage() {
   const isBusy   = isSigningTx || isConfirming
 
   return (
+    <AdminGate>
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
 
       {/* Header */}
@@ -276,5 +297,6 @@ export default function AdminResolverPage() {
         </section>
       )}
     </div>
+    </AdminGate>
   )
 }

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { resolveEventOnChain, simulateResult } = require('../services/oracleMock');
 const Event = require('../models/Event');
+const { requireAdminSecret } = require('../middleware/adminAuth');
 
 function isDbOffline(err) {
   const msg = err?.message ?? '';
@@ -28,7 +29,11 @@ router.get('/events', async (req, res, next) => {
 });
 
 // POST /api/oracle/resolve — DB-first; on-chain only if contract credentials are configured
-router.post('/resolve', async (req, res, next) => {
+// Not called by any current frontend page (admin/resolver writes resolveEvent()
+// directly on-chain, gated by the contract's own onlyOracle check) — but it's a
+// real unauthenticated DB write if left open, so it gets the same admin gate as
+// /api/admin/* rather than staying exposed because nothing happens to use it today.
+router.post('/resolve', requireAdminSecret, async (req, res, next) => {
   const {
     eventId,
     winningOutcome,

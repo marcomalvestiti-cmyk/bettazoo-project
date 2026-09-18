@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { Wallet, BookOpen, Lock, Trophy, Brain, Users } from 'lucide-react'
+import { Wallet, BookOpen, Lock, Trophy, Brain, Users, ShieldCheck, Video } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'How to Play — Bettazoo',
@@ -32,31 +32,39 @@ const PLACER_STEPS = [
   {
     step: 1,
     Icon: Trophy,
-    title: 'Access the Placer Area',
-    desc: 'Connect your wallet and open the Placer Dashboard. You provide the liquidity and set the odds for bettors to match against.',
+    title: 'Deploy Your Vault',
+    desc: 'Connect your wallet and create your own isolated on-chain Vault from the Placer Dashboard. Deposit USDT — it stays withdrawable to you alone, always.',
   },
   {
     step: 2,
     Icon: Brain,
-    title: 'Set Odds with AI Assistance',
-    desc: 'Pick any event, choose an outcome and set your custom odds. Use the built-in AI engine for data-driven odds suggestions and monitor your risk exposure in real time.',
+    title: 'Set a Strategy, Not a Bet Slip',
+    desc: 'Pick a margin strategy, choose which events and outcomes to cover, and set risk limits (max exposure, stop-loss, a required cap per bet). The Bettazoo keeper quotes and requotes automatically within those rules — you never place a bet by hand.',
   },
   {
     step: 3,
+    Icon: ShieldCheck,
+    title: 'Complete Compliance',
+    desc: 'Sign the Liquidity Provision Agreement (one wallet signature) and request a KYC review before your Vault can go active — a one-time step that protects both you and the House.',
+  },
+  {
+    step: 4,
     Icon: Users,
     title: 'Attract Bettors & Earn the Edge',
-    desc: 'Your offers appear live in the betting exchange. Share your Placer profile to build a following. Earn the margin between your quoted odds and the true probability.',
+    desc: 'Your offers appear live in the betting exchange. Share your Placer profile — or go live on stream with the OBS overlay and QR code — to build a following. Earn the margin between your quoted odds and the true probability.',
   },
 ]
 
 function StepCard({
   step,
+  total,
   Icon,
   title,
   desc,
   accent,
 }: {
   step: number
+  total: number
   Icon: React.ElementType
   title: string
   desc: string
@@ -74,7 +82,7 @@ function StepCard({
         <span className={`w-8 h-8 rounded-full border flex items-center justify-center text-xs font-bold ${accentClass}`}>
           {step}
         </span>
-        {step < 3 && <div className="w-px flex-1 mt-2 bg-slate-800" />}
+        {step < total && <div className="w-px flex-1 mt-2 bg-slate-800" />}
       </div>
       <div className="pb-8 space-y-1.5 min-w-0">
         <div className="flex items-center gap-2">
@@ -112,7 +120,7 @@ export default function HowToPlayPage() {
           </div>
           <div>
             {BETTOR_STEPS.map(s => (
-              <StepCard key={s.step} {...s} accent="red" />
+              <StepCard key={s.step} {...s} total={BETTOR_STEPS.length} accent="red" />
             ))}
           </div>
           <Link
@@ -132,7 +140,7 @@ export default function HowToPlayPage() {
           </div>
           <div>
             {PLACER_STEPS.map(s => (
-              <StepCard key={s.step} {...s} accent="amber" />
+              <StepCard key={s.step} {...s} total={PLACER_STEPS.length} accent="amber" />
             ))}
           </div>
           <Link
@@ -151,6 +159,17 @@ export default function HowToPlayPage() {
           <p className="text-sm font-semibold text-white">What is a Placer?</p>
           <p className="text-sm text-slate-400 leading-relaxed">
             A Placer runs their own book. You set the strategy and the risk limits; your vault takes the other side of bettors&apos; action on-chain, within the rules you set.
+          </p>
+        </div>
+      </div>
+
+      {/* Creator Suite */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl px-6 py-5 flex items-start gap-4">
+        <Video size={22} className="text-sky-400 shrink-0 mt-0.5" />
+        <div className="space-y-1">
+          <p className="text-sm font-semibold text-white">Streaming as a Placer</p>
+          <p className="text-sm text-slate-400 leading-relaxed">
+            Every Placer gets a public streaming page at <code className="text-sky-300 bg-slate-950 px-1.5 py-0.5 rounded text-xs">/placer/[address]</code> with live chat and your active offers — share it to build a following. Streaming on Twitch, Kick or YouTube from OBS? Add <code className="text-sky-300 bg-slate-950 px-1.5 py-0.5 rounded text-xs">/overlay/[address]</code> as a Browser Source for a transparent, always-current widget showing your live liquidity and a QR code viewers can scan to bet in seconds.
           </p>
         </div>
       </div>

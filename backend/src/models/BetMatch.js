@@ -8,7 +8,7 @@ const betMatchSchema = new mongoose.Schema({
   matchId:        { type: Number, required: true, unique: true }, // on-chain BetRecord.id
   offerId:        { type: Number, required: true, index: true },
   placer:         { type: String, required: true, lowercase: true, index: true },
-  bettor:         { type: String, required: true, lowercase: true },
+  bettor:         { type: String, required: true, lowercase: true, index: true },
   eventId:        { type: String, required: true, index: true },
   outcome:        { type: Number, required: true },
   odds:           { type: Number, required: true },

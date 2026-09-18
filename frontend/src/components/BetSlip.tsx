@@ -7,7 +7,6 @@ import { parseUnits } from 'viem'
 import { waitForTransactionReceipt } from 'viem/actions'
 import { ESCROW_ABI, ERC20_ABI, OUTCOMES } from '@/lib/abis'
 import { withGasBuffer } from '@/lib/gasUtils'
-import { saveBet } from '@/lib/betHistory'
 import { postReferral } from '@/lib/api'
 import type { Offer } from './OrderBook'
 import { displayMakerName, isKnownMaker } from '@/lib/formatAddress'
@@ -125,17 +124,10 @@ export default function BetSlip({ outcome, offers, eventName, referrerAddress, o
       })
       await waitForTransactionReceipt(publicClient!, { hash: betTxHash, timeout: RECEIPT_TIMEOUT_MS })
       setStatus('done')
-      saveBet(address, {
-        id: `${Date.now()}-${matchedOffers[0].offerId}`,
-        offerId: matchedOffers[0].offerId,
-        eventId: matchedOffers[0].eventId,
-        eventName,
-        outcome,
-        oddsDecimal: avgOdds,
-        stakeUsdt: stakeNum,
-        potentialWinUsdt: potentialWin,
-        placedAt: new Date().toISOString(),
-      })
+      // Bet history no longer written client-side — the backend indexes it straight
+      // from the OfferMatched event this tx just emitted (see BetMatch.js /
+      // web3Listener.js), so "My Bets" works from any device the bettor connects
+      // this wallet from, not just the browser that placed the bet.
       if (referrerAddress && referrerAddress.toLowerCase() !== address.toLowerCase()) {
         postReferral({
           placer:  referrerAddress,

@@ -1,4 +1,5 @@
 import type { MockEvent } from '@/lib/abis'
+import { adminHeaders } from '@/lib/adminAuth'
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -98,10 +99,35 @@ export async function fetchOracleEvents(): Promise<OracleEvent[]> {
   }
 }
 
+export type BettorBet = {
+  matchId:        number
+  offerId:        number
+  eventId:        string
+  outcome:        number
+  oddsDecimal:    number
+  stakeUsdt:      number
+  placedAt:       string
+  settled:        boolean
+  settledOutcome: number | null
+}
+
+// GET /api/bettor/:address/bets — derived from on-chain OfferMatched/EventResolved
+// events (BetMatch, indexed by web3Listener.js), not localStorage — works from any
+// device/browser the bettor connects the same wallet from.
+export async function fetchBettorBets(address: string): Promise<BettorBet[]> {
+  try {
+    const res  = await apiFetch('bettor bets', `${BASE}/api/bettor/${address}/bets`, { cache: 'no-store' })
+    const data = await res.json()
+    return (data.bets ?? []) as BettorBet[]
+  } catch {
+    return []
+  }
+}
+
 export async function postOracleResolve(body: { eventId: string; winningOutcome: number }) {
   const res = await apiFetch('oracle resolve', `${BASE}/api/oracle/resolve`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...adminHeaders() },
     body: JSON.stringify(body),
   })
   return res.json()
@@ -299,7 +325,7 @@ export type AdminKycRow = {
 }
 
 export async function fetchAdminKyc(): Promise<AdminKycRow[]> {
-  const res = await apiFetch('admin kyc', `${BASE}/api/admin/kyc`, { cache: 'no-store' })
+  const res = await apiFetch('admin kyc', `${BASE}/api/admin/kyc`, { cache: 'no-store', headers: adminHeaders() })
   const data = await res.json()
   return data.vaults ?? []
 }
@@ -310,7 +336,7 @@ export async function postAdminKycDecision(
 ): Promise<{ ownerAddress: string; kycStatus: string }> {
   const res = await apiFetch('admin kyc decision', `${BASE}/api/admin/kyc/${ownerAddress}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...adminHeaders() },
     body: JSON.stringify({ status }),
   })
   return res.json()

@@ -3,16 +3,15 @@
 import { useEffect, useState } from 'react'
 import { useAccount } from 'wagmi'
 import Link from 'next/link'
-import { loadBets, type BetRecord } from '@/lib/betHistory'
-import { fetchOracleEvents } from '@/lib/api'
+import { fetchBettorBets, type BettorBet } from '@/lib/api'
+import { useEvents } from '@/lib/useEvents'
 import { OUTCOMES } from '@/lib/abis'
 
 type BetStatus = 'open' | 'won' | 'lost'
 
-function getStatus(bet: BetRecord, resolved: Map<string, number>): BetStatus {
-  const winning = resolved.get(bet.eventId)
-  if (winning === undefined) return 'open'
-  return bet.outcome === winning ? 'won' : 'lost'
+function getStatus(bet: BettorBet): BetStatus {
+  if (!bet.settled || bet.settledOutcome === null) return 'open'
+  return bet.outcome === bet.settledOutcome ? 'won' : 'lost'
 }
 
 const STATUS_STYLE: Record<BetStatus, { label: string; cls: string }> = {
@@ -51,13 +50,20 @@ function netPayout(gross: number, stake: number) {
   return gross - (gross - stake) * PLATFORM_FEE
 }
 
-function BetRow({ bet, status }: { bet: BetRecord; status: BetStatus }) {
+// Gross payout = stake × decimal odds (includes the stake itself) — the standard
+// decimal-odds formula, same one the contract's payout math is built on.
+function grossPayout(bet: BettorBet) {
+  return bet.stakeUsdt * bet.oddsDecimal
+}
+
+function BetRow({ bet, status, eventName }: { bet: BettorBet; status: BetStatus; eventName: string }) {
   const st   = STATUS_STYLE[status]
   const date = new Date(bet.placedAt).toLocaleDateString('en-GB', {
     day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
   })
 
-  const net = netPayout(bet.potentialWinUsdt, bet.stakeUsdt)
+  const gross = grossPayout(bet)
+  const net = netPayout(gross, bet.stakeUsdt)
   const profit = status === 'won'
     ? `+$${(net - bet.stakeUsdt).toFixed(2)}`
     : status === 'lost'
@@ -79,7 +85,7 @@ function BetRow({ bet, status }: { bet: BetRecord; status: BetStatus }) {
           className="text-sm font-semibold text-slate-200 hover:text-white transition-colors line-clamp-1"
           onClick={(e) => e.stopPropagation()}
         >
-          {bet.eventName}
+          {eventName}
         </Link>
         <p className="text-[10px] text-slate-600 font-mono mt-0.5">{date}</p>
       </td>
@@ -122,27 +128,13 @@ function BetRow({ bet, status }: { bet: BetRecord; status: BetStatus }) {
 
 export default function BettorDashboard() {
   const { address, isConnected } = useAccount()
+  const { events } = useEvents()
   const [tab, setTab] = useState<'open' | 'settled'>('open')
-  const [bets, setBets] = useState<BetRecord[]>([])
-  const [resolved, setResolved] = useState<Map<string, number>>(new Map())
+  const [bets, setBets] = useState<BettorBet[]>([])
 
   useEffect(() => {
-    if (address) setBets(loadBets(address))
+    if (address) fetchBettorBets(address).then(setBets)
   }, [address])
-
-  useEffect(() => {
-    fetchOracleEvents()
-      .then((events) => {
-        const map = new Map<string, number>()
-        for (const e of events) {
-          if (e.resolved && e.winningOutcome !== undefined) {
-            map.set(e.eventId, e.winningOutcome)
-          }
-        }
-        setResolved(map)
-      })
-      .catch(() => {})
-  }, [])
 
   if (!isConnected || !address) {
     return (
@@ -156,15 +148,15 @@ export default function BettorDashboard() {
     )
   }
 
-  const openBets    = bets.filter((b) => getStatus(b, resolved) === 'open')
-  const settledBets = bets.filter((b) => getStatus(b, resolved) !== 'open')
-  const wonCount    = bets.filter((b) => getStatus(b, resolved) === 'won').length
+  const openBets    = bets.filter((b) => getStatus(b) === 'open')
+  const settledBets = bets.filter((b) => getStatus(b) !== 'open')
+  const wonCount    = bets.filter((b) => getStatus(b) === 'won').length
   const totalStaked = bets.reduce((s, b) => s + b.stakeUsdt, 0)
   const totalProfit = bets
-    .filter((b) => getStatus(b, resolved) === 'won')
-    .reduce((s, b) => s + (netPayout(b.potentialWinUsdt, b.stakeUsdt) - b.stakeUsdt), 0)
+    .filter((b) => getStatus(b) === 'won')
+    .reduce((s, b) => s + (netPayout(grossPayout(b), b.stakeUsdt) - b.stakeUsdt), 0)
   const totalLoss = bets
-    .filter((b) => getStatus(b, resolved) === 'lost')
+    .filter((b) => getStatus(b) === 'lost')
     .reduce((s, b) => s + b.stakeUsdt, 0)
   const netPnl = totalProfit - totalLoss
 
@@ -245,7 +237,12 @@ export default function BettorDashboard() {
               </thead>
               <tbody>
                 {displayBets.map((bet) => (
-                  <BetRow key={bet.id} bet={bet} status={getStatus(bet, resolved)} />
+                  <BetRow
+                    key={bet.matchId}
+                    bet={bet}
+                    status={getStatus(bet)}
+                    eventName={events.find((e) => e.eventId === bet.eventId)?.name ?? bet.eventId}
+                  />
                 ))}
               </tbody>
             </table>

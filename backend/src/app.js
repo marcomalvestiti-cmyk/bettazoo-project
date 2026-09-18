@@ -5,7 +5,7 @@ const app = express();
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin',  process.env.CORS_ORIGIN || '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-admin-secret');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
@@ -29,9 +29,10 @@ app.use('/api/orderbook', require('./routes/orderbook'));
 app.use('/api/ai',        require('./routes/ai'));
 app.use('/api/oracle',    require('./routes/oracle'));
 app.use('/api/profile',   require('./routes/profile'));
-app.use('/api/admin',     require('./routes/admin'));
+app.use('/api/admin',     require('./middleware/adminAuth').requireAdminSecret, require('./routes/admin'));
 app.use('/api/social',    require('./routes/social'));
 app.use('/api/vaults',    require('./routes/vaults'));
+app.use('/api/bettor',    require('./routes/bettor'));
 
 // 404 — always JSON (never HTML)
 app.use((_req, res) => {
@@ -39,8 +40,9 @@ app.use((_req, res) => {
 });
 
 // Global error handler — always JSON
-app.use((err, _req, res, _next) => {
+app.use((err, req, res, _next) => {
   console.error('[Express error]', err.stack);
+  require('./services/errorTracking').captureException(err, { path: req.path, method: req.method });
   res.status(500).json({ error: err.message });
 });
 

@@ -1,12 +1,18 @@
 // ── Global crash guards — MUST be registered before any other code ───────────
 // Node 18+ exits on unhandledRejection by default; these handlers keep Railway alive.
+// errorTracking is required lazily inside the handlers (not at top-level) purely so
+// these two registrations stay first — by the time either actually fires, dotenv has
+// long since loaded SENTRY_DSN.
 process.on('uncaughtException', (err) => {
   console.error(`[${ts()}] [CRASH GUARD] Uncaught exception — process continues:`)
   console.error(err.stack || err.message)
+  require('./services/errorTracking').captureException(err, { source: 'uncaughtException' })
 })
 process.on('unhandledRejection', (reason) => {
   console.error(`[${ts()}] [CRASH GUARD] Unhandled promise rejection — process continues:`)
   console.error(reason instanceof Error ? reason.stack : String(reason))
+  const err = reason instanceof Error ? reason : new Error(String(reason))
+  require('./services/errorTracking').captureException(err, { source: 'unhandledRejection' })
 })
 
 function ts() { return new Date().toISOString() }
@@ -20,6 +26,9 @@ const { startListener } = require('./services/web3Listener')
 const { startVaultListener } = require('./services/vaultListener')
 const { startKeeper } = require('./services/keeperService')
 const { startEventsSync } = require('./services/eventsFeedService')
+const { initErrorTracking } = require('./services/errorTracking')
+
+initErrorTracking()
 
 const PORT = process.env.PORT || 3001
 

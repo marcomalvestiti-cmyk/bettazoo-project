@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { fetchAdminKyc, postAdminKycDecision, type AdminKycRow } from '@/lib/api'
+import AdminGate from '@/components/AdminGate'
 
 const STATUS_BADGE: Record<AdminKycRow['kycStatus'], string> = {
   approved: 'bg-emerald-900/40 text-emerald-300 border-emerald-800',
@@ -55,6 +56,7 @@ export default function AdminKycPage() {
   const other    = rows.filter(r => r.kycStatus !== 'pending')
 
   return (
+    <AdminGate>
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
 
       {/* Header */}
@@ -158,5 +160,6 @@ export default function AdminKycPage() {
         </>
       )}
     </div>
+    </AdminGate>
   )
 }
