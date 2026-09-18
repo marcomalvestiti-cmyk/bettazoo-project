@@ -13,7 +13,7 @@ import PlacerStatsBar   from '@/components/PlacerStatsBar'
 import EventSelector    from '@/components/EventSelector'
 import PlacerBadge      from '@/components/PlacerBadge'
 
-import { MOCK_EVENTS } from '@/lib/abis'
+import { useEvents } from '@/lib/useEvents'
 import { fetchProfile, fetchChallengers, fetchVaultOffers, SOCKET_URL } from '@/lib/api'
 
 // ── Influence Rewards mock-up ─────────────────────────────────────────────────
@@ -102,9 +102,10 @@ function InfluenceRewards({ challengers, address }: { challengers: number; addre
 
 export default function PlacerDashboard() {
   const { address, isConnected } = useAccount()
+  const { events } = useEvents()
 
   const [activeTab,         setActiveTab]         = useState<'dashboard' | 'offers'>('dashboard')
-  const [selectedEventId,   setSelectedEventId]   = useState(MOCK_EVENTS[0].eventId)
+  const [selectedEventId,   setSelectedEventId]   = useState(events[0].eventId)
   const [offers,            setOffers]            = useState<Offer[]>([])
   const [profileOpen,       setProfileOpen]       = useState(false)
   const [uniqueChallengers, setUniqueChallengers] = useState(0)
@@ -117,12 +118,12 @@ export default function PlacerDashboard() {
       .then(profile => {
         const league = profile.specialization?.league
         if (league) {
-          const match = MOCK_EVENTS.find(e => e.league === league)
+          const match = events.find(e => e.league === league)
           if (match) setSelectedEventId(match.eventId)
         }
       })
       .catch(() => { /* silently ignore */ })
-  }, [address])
+  }, [address, events])
 
   // ── Offers now come from the vault, not the user's wallet ─────────────────────
   // The keeper places/cancels offers as the vault, so the source of truth is the

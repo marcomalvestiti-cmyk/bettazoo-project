@@ -5,7 +5,8 @@ import { useAccount, usePublicClient, useReadContract, useWriteContract, useSign
 import { arbitrumSepolia } from 'wagmi/chains'
 import { parseUnits, formatUnits } from 'viem'
 import { waitForTransactionReceipt } from 'viem/actions'
-import { VAULT_FACTORY_ABI, VAULT_ABI, ERC20_ABI, MOCK_EVENTS, OUTCOMES } from '@/lib/abis'
+import { VAULT_FACTORY_ABI, VAULT_ABI, ERC20_ABI, OUTCOMES } from '@/lib/abis'
+import { useEvents } from '@/lib/useEvents'
 import { fetchVault, patchVaultConfig, buildVaultConfigMessage, type VaultData, type VaultScope } from '@/lib/api'
 import { withGasBuffer } from '@/lib/gasUtils'
 
@@ -31,6 +32,7 @@ type Props = {
 const inputCls = 'w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-sm font-semibold text-white placeholder:text-slate-600 focus:outline-none focus:border-[#FFB01F] transition-colors'
 
 export default function VaultPanel({ onVaultReady }: Props) {
+  const { events } = useEvents()
   const { address, chain } = useAccount()
   const publicClient = usePublicClient()
   const { writeContractAsync } = useWriteContract()
@@ -446,7 +448,7 @@ export default function VaultPanel({ onVaultReady }: Props) {
           Market Scope {scope.length > 0 && <span className="text-slate-600">({scope.length} events)</span>}
         </label>
         <div className="max-h-64 overflow-y-auto space-y-1.5 pr-1">
-          {MOCK_EVENTS.map(ev => {
+          {events.map(ev => {
             const rowScope = scope.find(s => s.eventId === ev.eventId)
             return (
               <div key={ev.eventId} className="flex items-center gap-2 bg-slate-950/50 border border-slate-800 rounded-md px-2.5 py-1.5">

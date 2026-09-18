@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { useAccount, usePublicClient, useWriteContract, useSwitchChain } from 'wagmi'
 import { arbitrumSepolia } from 'wagmi/chains'
 import { fetchOrderBook } from '@/lib/api'
-import { ESCROW_ABI, VAULT_ABI, MOCK_EVENTS, OUTCOMES } from '@/lib/abis'
+import { ESCROW_ABI, VAULT_ABI, OUTCOMES } from '@/lib/abis'
+import { useEvents } from '@/lib/useEvents'
 import { withGasBuffer } from '@/lib/gasUtils'
 
 export type Offer = {
@@ -34,6 +35,7 @@ interface Props {
 }
 
 export default function MyOffers({ offers: externalOffers, onRefresh, compact = false, onViewAll, vaultAddress }: Props) {
+  const { events } = useEvents()
   const { address, chain } = useAccount()
   const publicClient = usePublicClient()
   const { writeContractAsync } = useWriteContract()
@@ -53,7 +55,7 @@ export default function MyOffers({ offers: externalOffers, onRefresh, compact = 
     setLoading(true)
     try {
       const all: Offer[] = []
-      for (const event of MOCK_EVENTS) {
+      for (const event of events) {
         const data = await fetchOrderBook(event.eventId)
         const mine = (data.orders as Offer[]).filter(
           (o) => o.placer.toLowerCase() === address.toLowerCase()
@@ -66,7 +68,7 @@ export default function MyOffers({ offers: externalOffers, onRefresh, compact = 
     } finally {
       setLoading(false)
     }
-  }, [address, externalOffers])
+  }, [address, externalOffers, events])
 
   useEffect(() => { loadOffers() }, [loadOffers])
 
@@ -182,7 +184,7 @@ export default function MyOffers({ offers: externalOffers, onRefresh, compact = 
               </thead>
               <tbody>
                 {preview.map((o) => {
-                  const event = MOCK_EVENTS.find(e => e.eventId === o.eventId)
+                  const event = events.find(e => e.eventId === o.eventId)
                   const dot   = OUTCOME_DOTS[o.outcome] ?? 'bg-slate-400'
                   return (
                     <tr
@@ -285,7 +287,7 @@ export default function MyOffers({ offers: externalOffers, onRefresh, compact = 
             >
               <option value="">All Events</option>
               {offerEventIds.map(id => {
-                const ev = MOCK_EVENTS.find(e => e.eventId === id)
+                const ev = events.find(e => e.eventId === id)
                 return <option key={id} value={id}>{ev?.name ?? id}</option>
               })}
             </select>
@@ -356,7 +358,7 @@ export default function MyOffers({ offers: externalOffers, onRefresh, compact = 
               }, new Map<string, Offer[]>())
 
               return [...grouped.entries()].map(([eventId, eventOffers]) => {
-                const event         = MOCK_EVENTS.find(e => e.eventId === eventId)
+                const event         = events.find(e => e.eventId === eventId)
                 const multiPosition = eventOffers.length > 1
 
                 return (

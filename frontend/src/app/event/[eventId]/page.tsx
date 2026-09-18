@@ -6,7 +6,7 @@ import { useAccount } from 'wagmi'
 import { useSearchParams } from 'next/navigation'
 import OrderBook, { type Offer } from '@/components/OrderBook'
 import BetSlip from '@/components/BetSlip'
-import { MOCK_EVENTS } from '@/lib/abis'
+import { useEvents } from '@/lib/useEvents'
 import Link from 'next/link'
 
 type BetSlipState = { outcome: number; offers: Offer[] }
@@ -17,8 +17,9 @@ export default function EventPage({ params }: { params: Promise<{ eventId: strin
   const searchParams      = useSearchParams()
   const referrerAddress   = searchParams.get('ref') ?? undefined
   const [betSlip, setBetSlip] = useState<BetSlipState | null>(null)
+  const { events } = useEvents()
 
-  const event = MOCK_EVENTS.find((e) => e.eventId === eventId)
+  const event = events.find((e) => e.eventId === eventId)
 
   function handleBet(outcome: number, offers: Offer[]) {
     setBetSlip({ outcome, offers })

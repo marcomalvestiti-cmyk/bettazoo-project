@@ -24,6 +24,7 @@ app.use((req, res, next) => {
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }))
 
+app.use('/api/events',    require('./routes/events'));
 app.use('/api/orderbook', require('./routes/orderbook'));
 app.use('/api/ai',        require('./routes/ai'));
 app.use('/api/oracle',    require('./routes/oracle'));

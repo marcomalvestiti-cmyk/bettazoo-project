@@ -1,4 +1,4 @@
-import { MOCK_EVENTS } from '@/lib/abis'
+import { fetchEvents } from '@/lib/api'
 import { filterEventsBySlug } from '@/lib/sportsData'
 import SportSidebar from '@/components/SportSidebar'
 import Link from 'next/link'
@@ -16,7 +16,8 @@ export default async function BetPage({
   params: Promise<{ slug?: string[] }>
 }) {
   const { slug = [] } = await params
-  const filtered = filterEventsBySlug(MOCK_EVENTS, slug)
+  const events = await fetchEvents().catch(() => [])
+  const filtered = filterEventsBySlug(events, slug)
 
   let title = 'Featured Events'
   let subtitle = 'Top events right now'
@@ -26,12 +27,12 @@ export default async function BetPage({
     subtitle = slug[0] === 'sports' ? 'All sports events' : 'All e-sports events'
   }
   if (slug.length >= 2) {
-    const sample = MOCK_EVENTS.find(e => e.sport === slug[1])
+    const sample = events.find(e => e.sport === slug[1])
     title    = sample?.sportLabel ?? slug[1]
     subtitle = slug[0] === 'sports' ? 'Sports' : 'E-Sports'
   }
   if (slug.length >= 3) {
-    const sample = MOCK_EVENTS.find(e => e.league === slug[2])
+    const sample = events.find(e => e.league === slug[2])
     title    = sample?.leagueLabel ?? slug[2]
     subtitle = sample?.sportLabel ?? slug[1]
   }

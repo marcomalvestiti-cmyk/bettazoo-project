@@ -1,3 +1,5 @@
+import type { MockEvent } from '@/lib/abis'
+
 const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
 const FETCH_TIMEOUT_MS = 10_000
@@ -33,6 +35,16 @@ async function apiFetch(label: string, input: RequestInfo, init?: RequestInit): 
 }
 
 // ── API functions ─────────────────────────────────────────────────────────────
+
+// GET /api/events — the real event catalog (live football feed + curated fallback,
+// see backend/src/services/eventsFeedService.js). Callers should fall back to
+// MOCK_EVENTS on error/empty — see lib/useEvents.ts for the client-side hook that
+// does this automatically; server components call this directly (e.g. app/page.tsx).
+export async function fetchEvents(): Promise<MockEvent[]> {
+  const res = await apiFetch('events', `${BASE}/api/events`, { cache: 'no-store' })
+  const data = await res.json()
+  return data.events ?? []
+}
 
 export async function fetchOrderBook(eventId: string, outcome?: number) {
   const params = new URLSearchParams()

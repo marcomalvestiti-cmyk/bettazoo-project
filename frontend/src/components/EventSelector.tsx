@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { SPORTS_TREE, type SportNode } from '@/lib/sportsData'
-import { MOCK_EVENTS } from '@/lib/abis'
+import { useEvents } from '@/lib/useEvents'
 
 interface Props {
   value: string
@@ -11,6 +11,7 @@ interface Props {
 }
 
 export default function EventSelector({ value, onSelect }: Props) {
+  const { events } = useEvents()
   const [openNodes, setOpenNodes] = useState<Set<string>>(new Set())
   // A placer specializes in one sport/league at a time — once an event is picked,
   // its league stays pinned (fast switching between that league's own events)
@@ -30,14 +31,14 @@ export default function EventSelector({ value, onSelect }: Props) {
     })
   }
 
-  const selectedEvent = MOCK_EVENTS.find(e => e.eventId === value)
+  const selectedEvent = events.find(e => e.eventId === value)
 
   function renderLeafEvents(leagueId: string) {
-    const events = MOCK_EVENTS.filter(e => e.league === leagueId)
-    if (!events.length) return null
+    const leagueEvents = events.filter(e => e.league === leagueId)
+    if (!leagueEvents.length) return null
     return (
       <div className="ml-3 border-l border-slate-800 space-y-0.5 pl-3 py-1">
-        {events.map(ev => {
+        {leagueEvents.map(ev => {
           const isSelected = ev.eventId === value
           return (
             <button
@@ -108,7 +109,7 @@ export default function EventSelector({ value, onSelect }: Props) {
   // ── Pinned view — locked into the selected event's sport/league; the placer just
   // flips between that league's own events. "Change" reopens the full tree below.
   if (selectedEvent && !browsing) {
-    const leagueEvents = MOCK_EVENTS.filter(
+    const leagueEvents = events.filter(
       e => e.sport === selectedEvent.sport && e.league === selectedEvent.league
     )
     return (

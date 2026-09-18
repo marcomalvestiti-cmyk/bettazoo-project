@@ -3,7 +3,8 @@
 import Link from 'next/link'
 import { use, useState, useEffect } from 'react'
 import { useAccount } from 'wagmi'
-import { MOCK_EVENTS, OUTCOMES } from '@/lib/abis'
+import { OUTCOMES } from '@/lib/abis'
+import { useEvents } from '@/lib/useEvents'
 import { fetchOrderBook } from '@/lib/api'
 import StreamPlayer from '@/components/StreamPlayer'
 import LiveChat from '@/components/LiveChat'
@@ -53,8 +54,9 @@ type QuoteOffer = Offer & { eventName: string }
 export default function PlacerStreamPage({ params }: { params: Promise<{ address: string }> }) {
   const { address }     = use(params)
   const { isConnected } = useAccount()
+  const { events }      = useEvents()
 
-  const [selectedEvent, setSelectedEvent] = useState(MOCK_EVENTS[0])
+  const [selectedEvent, setSelectedEvent] = useState(events[0])
   const [offers, setOffers]               = useState<QuoteOffer[]>([])
   const [loadingOffers, setLoadingOffers] = useState(true)
   const [betSlip, setBetSlip]             = useState<{ outcome: number; offers: Offer[] } | null>(null)
@@ -68,7 +70,7 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
     async function load() {
       setLoadingOffers(true)
       const all: QuoteOffer[] = []
-      for (const event of MOCK_EVENTS) {
+      for (const event of events) {
         try {
           const data = await fetchOrderBook(event.eventId)
           const mine = (data.orders as Offer[]).filter(
@@ -81,7 +83,7 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
     }
     load()
     return () => { cancelled = true }
-  }, [address])
+  }, [address, events])
 
   const eventOffers = offers.filter((o) => o.eventId === selectedEvent.eventId)
   const avgOdds     = offers.length
@@ -174,7 +176,7 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
                   </span>
                 )}
                 <span className="bg-slate-900 border border-slate-800 rounded px-2.5 py-1 text-slate-400 font-medium">
-                  {MOCK_EVENTS.length} events
+                  {events.length} events
                 </span>
               </div>
 
@@ -187,7 +189,7 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
           {/* Event tab switcher */}
           <div className="px-4 sm:px-6 py-3 border-t border-slate-800">
             <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-              {MOCK_EVENTS.map((e) => (
+              {events.map((e) => (
                 <button
                   key={e.eventId}
                   onClick={() => setSelectedEvent(e)}

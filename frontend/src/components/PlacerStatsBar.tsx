@@ -3,7 +3,8 @@
 import { useReadContract } from 'wagmi'
 import { useEffect, useState } from 'react'
 import { formatUnits } from 'viem'
-import { ERC20_ABI, MOCK_EVENTS } from '@/lib/abis'
+import { ERC20_ABI } from '@/lib/abis'
+import { useEvents } from '@/lib/useEvents'
 import { fetchVaultPnl } from '@/lib/api'
 import PlacerBadge from './PlacerBadge'
 
@@ -60,6 +61,7 @@ function StatCard({
 }
 
 export default function PlacerStatsBar({ address, offers, vaultAddress, pnlSeed, uniqueChallengers = 0 }: Props) {
+  const { events } = useEvents()
   const { data: rawBalance } = useReadContract({
     address: USDT_ADDRESS,
     abi: ERC20_ABI,
@@ -108,7 +110,7 @@ export default function PlacerStatsBar({ address, offers, vaultAddress, pnlSeed,
       <StatCard
         label="Active Events"
         value={activeEvents.toString()}
-        sub={`of ${MOCK_EVENTS.length} total`}
+        sub={`of ${events.length} total`}
       />
       <StatCard
         label={realPnl !== null ? 'Realized P&L' : '24h P&L'}

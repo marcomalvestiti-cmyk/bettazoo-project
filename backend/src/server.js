@@ -19,6 +19,7 @@ const connectDB = require('./config/db')
 const { startListener } = require('./services/web3Listener')
 const { startVaultListener } = require('./services/vaultListener')
 const { startKeeper } = require('./services/keeperService')
+const { startEventsSync } = require('./services/eventsFeedService')
 
 const PORT = process.env.PORT || 3001
 
@@ -50,6 +51,12 @@ async function main() {
     console.warn(`[${ts()}] ⚠️  MongoDB unavailable: ${err.message}`)
     console.warn(`[${ts()}] ⚠️  Server starting in OFFLINE mode — DB routes return mock/empty data.`)
   }
+
+  // ── Event catalog ────────────────────────────────────────────────────────────
+  // DB-only, independent of the RPC/web3 chain below — seeds the curated catalog
+  // (and, if ODDS_API_KEY is set, starts the live odds sync loop) regardless of
+  // whether the on-chain listener is configured.
+  startEventsSync()
 
   const server = http.createServer(app)
   const io = new Server(server, { cors: { origin: '*' } })

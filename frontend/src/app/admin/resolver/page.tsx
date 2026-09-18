@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useAccount, usePublicClient, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
-import { ESCROW_ABI, MOCK_EVENTS } from '@/lib/abis'
+import { ESCROW_ABI } from '@/lib/abis'
+import { useEvents } from '@/lib/useEvents'
 import ConnectWallet from '@/components/ConnectWallet'
 import { withGasBuffer } from '@/lib/gasUtils'
 
@@ -43,6 +44,7 @@ function shortError(msg: string): string {
 }
 
 export default function AdminResolverPage() {
+  const { events } = useEvents()
   const { address, isConnected } = useAccount()
   const publicClient = usePublicClient()
 
@@ -86,8 +88,8 @@ export default function AdminResolverPage() {
     })
   }
 
-  const pending  = MOCK_EVENTS.filter(e => !(e.eventId in resolvedMap))
-  const resolved = MOCK_EVENTS.filter(e =>   e.eventId in resolvedMap)
+  const pending  = events.filter(e => !(e.eventId in resolvedMap))
+  const resolved = events.filter(e =>   e.eventId in resolvedMap)
   const isBusy   = isSigningTx || isConfirming
 
   return (
@@ -152,7 +154,7 @@ export default function AdminResolverPage() {
       {/* Summary bar */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'Total Events', value: MOCK_EVENTS.length, color: 'text-white'       },
+          { label: 'Total Events', value: events.length, color: 'text-white'       },
           { label: 'Pending',      value: pending.length,     color: 'text-amber-400'   },
           { label: 'Resolved',     value: resolved.length,    color: 'text-emerald-400' },
         ].map(s => (

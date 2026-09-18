@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { fetchOrderBook } from '@/lib/api'
-import { MOCK_EVENTS, OUTCOMES } from '@/lib/abis'
+import { OUTCOMES } from '@/lib/abis'
+import { useEvents } from '@/lib/useEvents'
 
 type Offer = {
   offerId: number
@@ -14,6 +15,7 @@ type Offer = {
 }
 
 export default function PlacerUnmatchedOrders({ address }: { address: string }) {
+  const { events } = useEvents()
   const [offers, setOffers] = useState<Offer[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -22,7 +24,7 @@ export default function PlacerUnmatchedOrders({ address }: { address: string }) 
       setLoading(true)
       try {
         const all: Offer[] = []
-        for (const event of MOCK_EVENTS) {
+        for (const event of events) {
           const data = await fetchOrderBook(event.eventId)
           const mine = (data.orders as Offer[]).filter(
             (o) => o.placer.toLowerCase() === address.toLowerCase()
@@ -37,7 +39,7 @@ export default function PlacerUnmatchedOrders({ address }: { address: string }) 
       }
     }
     load()
-  }, [address])
+  }, [address, events])
 
   if (loading) {
     return <div className="text-slate-500 text-xs py-4 text-center">Loading…</div>
@@ -63,7 +65,7 @@ export default function PlacerUnmatchedOrders({ address }: { address: string }) 
             <tr key={o.offerId} className="text-slate-300 hover:bg-slate-700/30 transition-colors">
               <td className="py-2 font-mono text-slate-500">#{o.offerId}</td>
               <td className="py-2 truncate max-w-[110px] text-slate-400">
-                {MOCK_EVENTS.find((e) => e.eventId === o.eventId)?.name ?? o.eventId}
+                {events.find((e) => e.eventId === o.eventId)?.name ?? o.eventId}
               </td>
               <td className="py-2">
                 <span className="px-1.5 py-0.5 rounded bg-slate-700 text-slate-300">

@@ -261,6 +261,12 @@ export type MockEvent = {
 
 const t = (h: number) => new Date(Date.now() + h * 3_600_000).toISOString()
 
+// Offline/first-paint fallback only — the real catalog now comes from the backend
+// (GET /api/events, live odds feed + curated catalog — see
+// backend/src/services/eventsFeedService.js). Use the `useEvents()` hook
+// (lib/useEvents.ts) or `fetchEvents()` (lib/api.ts) instead of this array directly;
+// they already fall back to it automatically. Kept in sync with
+// backend/src/data/curatedEvents.js by convention, not by import (different runtimes).
 export const MOCK_EVENTS: MockEvent[] = [
   // Sports > Football > Serie A
   { eventId: 'evt-001', name: 'Juventus vs Inter',    category: 'sports',  sport: 'football',          league: 'serie-a',           sportLabel: 'Football',          leagueLabel: 'Serie A',           icon: '⚽', teams: ['Juventus', 'Inter'],                  startTime: t(1)   },

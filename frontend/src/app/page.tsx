@@ -1,11 +1,9 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { MOCK_EVENTS } from '@/lib/abis'
-import { fetchOrderBook } from '@/lib/api'
+import { fetchEvents, fetchOrderBook } from '@/lib/api'
 import BestOddsStrip from '@/components/BestOddsStrip'
 
 const FEATURED_IDS = ['evt-001', 'evt-002', 'evt-003', 'evt-010', 'evt-012']
-const FEATURED_CANDIDATES = MOCK_EVENTS.filter(e => FEATURED_IDS.includes(e.eventId))
 
 // Only surface an event as "Featured" once at least one placer has quoted it —
 // an event with an empty orderbook has nothing to bet on yet.
@@ -26,6 +24,17 @@ const EVENT_BADGES: Record<string, { label: string; emoji: string; className: st
 }
 
 export default async function Home() {
+  const events = await fetchEvents().catch(() => [])
+
+  // Prefer the curated FEATURED_IDS picks; once a live odds sync supersedes a
+  // curated football fixture (see backend eventsFeedService.js), that ID drops out
+  // of the catalog — backfill from the general list so the homepage never runs dry.
+  const picked = FEATURED_IDS
+    .map((id) => events.find((e) => e.eventId === id))
+    .filter((e): e is NonNullable<typeof e> => Boolean(e))
+  const backfill = events.filter((e) => !FEATURED_IDS.includes(e.eventId))
+  const FEATURED_CANDIDATES = picked.length >= 3 ? picked : [...picked, ...backfill].slice(0, 5)
+
   const quoted = await Promise.all(FEATURED_CANDIDATES.map(e => hasPlacerQuotes(e.eventId)))
   const FEATURED = FEATURED_CANDIDATES.filter((_, i) => quoted[i])
 
