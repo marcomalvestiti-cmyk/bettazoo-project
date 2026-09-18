@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useAccount, usePublicClient, useReadContract, useWriteContract, useSignMessage, useSwitchChain } from 'wagmi'
+import { useAccount, usePublicClient, useReadContract, useWriteContract, useSignMessage, useSignTypedData, useSwitchChain } from 'wagmi'
 import { arbitrumSepolia } from 'wagmi/chains'
 import { parseUnits, formatUnits } from 'viem'
 import { waitForTransactionReceipt } from 'viem/actions'
 import { VAULT_FACTORY_ABI, VAULT_ABI, ERC20_ABI, OUTCOMES } from '@/lib/abis'
 import { useEvents } from '@/lib/useEvents'
-import { fetchVault, patchVaultConfig, buildVaultConfigMessage, type VaultData, type VaultScope } from '@/lib/api'
+import { fetchVault, patchVaultConfig, postVaultAgreement, buildVaultConfigMessage, type VaultData, type VaultScope } from '@/lib/api'
+import { AGREEMENT_VERSION, AGREEMENT_DOMAIN, AGREEMENT_TYPES, AGREEMENT_TEXT, buildAgreementValue } from '@/lib/legal'
 import { withGasBuffer } from '@/lib/gasUtils'
 
 const VAULT_FACTORY_ADDRESS = (process.env.NEXT_PUBLIC_VAULT_FACTORY_ADDRESS ?? '0x0') as `0x${string}`
@@ -37,6 +38,7 @@ export default function VaultPanel({ onVaultReady }: Props) {
   const publicClient = usePublicClient()
   const { writeContractAsync } = useWriteContract()
   const { signMessageAsync } = useSignMessage()
+  const { signTypedDataAsync } = useSignTypedData()
   const { switchChainAsync } = useSwitchChain()
 
   // The wallet can be on any chain regardless of what this dapp reads/writes —
@@ -133,6 +135,16 @@ export default function VaultPanel({ onVaultReady }: Props) {
   const [maxSingleInput, setMaxSingleInput] = useState('')
   const [capStatus, setCapStatus] = useState<'idle' | 'setting' | 'error'>('idle')
   const [pauseStatus, setPauseStatus] = useState<'idle' | 'toggling' | 'error'>('idle')
+
+  // ── Compliance: EIP-712 Liquidity Provision Agreement + KYC gate ──────────────
+  // Both required before the keeper can go active — see handleSaveConfig and the
+  // server-side gate in backend/src/routes/vaults.js (this is the client-side mirror,
+  // the backend is the one that actually enforces it).
+  const [agreementStatus, setAgreementStatus] = useState<'idle' | 'signing' | 'error'>('idle')
+  const [agreementErr, setAgreementErr] = useState('')
+  const [kycRequestStatus, setKycRequestStatus] = useState<'idle' | 'requesting' | 'error'>('idle')
+  const hasSignedAgreement = vaultData?.agreementVersion === AGREEMENT_VERSION
+  const kycStatus = vaultData?.kycStatus ?? 'none'
 
   useEffect(() => {
     if (!vaultData?.exists) return
@@ -263,6 +275,16 @@ export default function VaultPanel({ onVaultReady }: Props) {
       setSaveErr('Set a "Max Size Per Bet" cap on-chain before activating the keeper — it protects the vault from a single oversized bet.')
       return
     }
+    // Same gate the backend enforces (routes/vaults.js) — checked here too so the
+    // error shows up instantly instead of after a round trip.
+    if (active && (!hasSignedAgreement || kycStatus !== 'approved')) {
+      const missing = []
+      if (!hasSignedAgreement) missing.push('sign the Liquidity Provision Agreement')
+      if (kycStatus !== 'approved') missing.push('complete KYC review')
+      setSaveStatus('error')
+      setSaveErr(`Cannot activate the keeper yet — ${missing.join(' and ')} first.`)
+      return
+    }
     setSaveStatus('saving')
     setSaveErr('')
     try {
@@ -309,6 +331,43 @@ export default function VaultPanel({ onVaultReady }: Props) {
       await refetchMaxSingle()
     } catch {
       setCapStatus('error')
+    }
+  }
+
+  async function handleSignAgreement() {
+    if (!address) return
+    setAgreementStatus('signing')
+    setAgreementErr('')
+    try {
+      await ensureArbitrumSepolia()
+      const timestamp = Date.now()
+      const signature = await signTypedDataAsync({
+        domain: AGREEMENT_DOMAIN,
+        types: AGREEMENT_TYPES,
+        primaryType: 'LiquidityProvisionAgreement',
+        message: buildAgreementValue(address, timestamp),
+      })
+      const data = await postVaultAgreement(address, signature, timestamp)
+      setVaultData(data)
+      setAgreementStatus('idle')
+    } catch (err: unknown) {
+      setAgreementStatus('error')
+      setAgreementErr(err instanceof Error ? err.message : 'Could not sign the agreement')
+    }
+  }
+
+  async function handleRequestKyc() {
+    if (!address) return
+    setKycRequestStatus('requesting')
+    try {
+      const timestamp = Date.now()
+      const message = buildVaultConfigMessage(address, timestamp)
+      const signature = await signMessageAsync({ message })
+      const data = await patchVaultConfig(address, signature, timestamp, { kycRequestReview: true })
+      setVaultData(data)
+      setKycRequestStatus('idle')
+    } catch {
+      setKycRequestStatus('error')
     }
   }
 
@@ -526,6 +585,65 @@ export default function VaultPanel({ onVaultReady }: Props) {
             className="shrink-0 px-3 py-2 text-xs font-bold rounded-md bg-slate-800 border border-slate-700 text-slate-300 hover:border-slate-600 disabled:opacity-50 transition-colors">
             {capStatus === 'setting' ? '…' : 'Set Cap'}
           </button>
+        </div>
+      </div>
+
+      {/* ── Compliance — both required before the keeper can go active ── */}
+      <div className="space-y-2.5 rounded-md border border-slate-800 bg-slate-950/40 p-3">
+        <label className="text-[10px] text-slate-300 font-bold uppercase tracking-wide">Compliance</label>
+
+        {/* Liquidity Provision Agreement */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-slate-400">Liquidity Provision Agreement</span>
+            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-widest border ${
+              hasSignedAgreement
+                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
+                : 'bg-red-500/10 text-red-400 border-red-500/30'
+            }`}>
+              {hasSignedAgreement ? 'Signed' : 'Not Signed'}
+            </span>
+          </div>
+          {!hasSignedAgreement && (
+            <>
+              <div className="max-h-24 overflow-y-auto rounded border border-slate-800 bg-slate-950 px-2.5 py-2 text-[10px] leading-relaxed text-slate-500 whitespace-pre-line">
+                {AGREEMENT_TEXT}
+              </div>
+              <button onClick={handleSignAgreement} disabled={agreementStatus === 'signing'}
+                className="w-full py-2 text-xs font-bold rounded-md bg-slate-800 border border-slate-700 text-slate-300 hover:border-slate-600 disabled:opacity-50 transition-colors">
+                {agreementStatus === 'signing' ? 'Signing…' : 'Sign Agreement'}
+              </button>
+              {agreementErr && <p className="text-[10px] text-red-400">{agreementErr}</p>}
+            </>
+          )}
+        </div>
+
+        {/* KYC review */}
+        <div className="space-y-1.5 pt-1.5 border-t border-slate-800/60">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-slate-400">KYC Review</span>
+            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-widest border ${
+              kycStatus === 'approved'
+                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
+                : kycStatus === 'pending'
+                ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                : kycStatus === 'rejected'
+                ? 'bg-red-500/10 text-red-400 border-red-500/30'
+                : 'bg-slate-800 text-slate-500 border-slate-700'
+            }`}>
+              {kycStatus === 'approved' ? 'Approved' : kycStatus === 'pending' ? 'Pending' : kycStatus === 'rejected' ? 'Rejected' : 'Not Started'}
+            </span>
+          </div>
+          {kycStatus === 'approved' ? (
+            <p className="text-[10px] text-slate-600">Verified — the keeper can quote once activated below.</p>
+          ) : kycStatus === 'pending' ? (
+            <p className="text-[10px] text-slate-600">Under manual review (testnet — no Sumsub integration yet). Check back soon.</p>
+          ) : (
+            <button onClick={handleRequestKyc} disabled={kycRequestStatus === 'requesting'}
+              className="w-full py-2 text-xs font-bold rounded-md bg-slate-800 border border-slate-700 text-slate-300 hover:border-slate-600 disabled:opacity-50 transition-colors">
+              {kycRequestStatus === 'requesting' ? 'Requesting…' : kycStatus === 'rejected' ? 'Request Review Again' : 'Request KYC Review'}
+            </button>
+          )}
         </div>
       </div>
 

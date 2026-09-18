@@ -196,6 +196,10 @@ export type VaultData = {
   minOdds?:               number
   maxOdds?:               number
   liabilityIncrementUsdt?: number
+  agreementVersion?:       number | null
+  agreementSignedAt?:      string | null
+  agreementCurrentVersion?: number
+  kycStatus?:              'none' | 'pending' | 'approved' | 'rejected'
   createdAtTx?:           string
   createdAtBlock?:        number
 }
@@ -225,6 +229,7 @@ export type VaultConfigPatch = {
   maxOdds?:                number
   liabilityIncrementUsdt?: number
   status?:                 'configuring' | 'active'
+  kycRequestReview?:       true
 }
 
 export async function patchVaultConfig(
@@ -237,6 +242,19 @@ export async function patchVaultConfig(
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ signature, timestamp, config }),
+  })
+  return res.json()
+}
+
+export async function postVaultAgreement(
+  ownerAddress: string,
+  signature: string,
+  timestamp: number,
+): Promise<VaultData> {
+  const res = await apiFetch('vault agreement', `${BASE}/api/vaults/${ownerAddress}/agreement`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ signature, timestamp }),
   })
   return res.json()
 }
@@ -266,6 +284,34 @@ export async function fetchVaultPnl(ownerAddress: string): Promise<{
   stopLossTriggered?: boolean
 }> {
   const res = await apiFetch('vault pnl', `${BASE}/api/vaults/${ownerAddress}/pnl`, { cache: 'no-store' })
+  return res.json()
+}
+
+export type AdminKycRow = {
+  ownerAddress:      string
+  vaultAddress:      string
+  status:            'configuring' | 'active' | 'stopped'
+  kycStatus:         'none' | 'pending' | 'approved' | 'rejected'
+  agreementVersion:  number | null
+  agreementSignedAt: string | null
+  createdAt:         string
+}
+
+export async function fetchAdminKyc(): Promise<AdminKycRow[]> {
+  const res = await apiFetch('admin kyc', `${BASE}/api/admin/kyc`, { cache: 'no-store' })
+  const data = await res.json()
+  return data.vaults ?? []
+}
+
+export async function postAdminKycDecision(
+  ownerAddress: string,
+  status: 'approved' | 'rejected' | 'none',
+): Promise<{ ownerAddress: string; kycStatus: string }> {
+  const res = await apiFetch('admin kyc decision', `${BASE}/api/admin/kyc/${ownerAddress}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  })
   return res.json()
 }
 

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
+const Vault = require('../models/Vault');
 const { syncHistoricalEvents } = require('../services/web3Listener');
 const { ethers } = require('ethers');
 
@@ -56,6 +57,48 @@ router.get('/status', async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin/kyc — every vault with a KYC-relevant status, pending first.
+// No Sumsub integration yet (testnet) — this is the manual stand-in for it, proving
+// out the enforcement point (see models/Vault.js, keeperService.js) ahead of wiring
+// a real verification provider pre-mainnet. Same no-auth posture as the rest of
+// /api/admin and /admin/resolver: testnet-only, not linked from the main nav.
+router.get('/kyc', async (req, res, next) => {
+  try {
+    const vaults = await Vault.find({}).sort({ createdAt: -1 }).lean();
+    const order = { pending: 0, none: 1, rejected: 2, approved: 3 };
+    const rows = vaults
+      .map(v => ({
+        ownerAddress:      v.ownerAddress,
+        vaultAddress:      v.vaultAddress,
+        status:            v.status,
+        kycStatus:         v.kycStatus ?? 'none',
+        agreementVersion:  v.agreementVersion ?? null,
+        agreementSignedAt: v.agreementSignedAt ?? null,
+        createdAt:         v.createdAt,
+      }))
+      .sort((a, b) => (order[a.kycStatus] ?? 9) - (order[b.kycStatus] ?? 9));
+    res.json({ vaults: rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/admin/kyc/:ownerAddress — { status: 'approved' | 'rejected' | 'none' }
+router.post('/kyc/:ownerAddress', async (req, res, next) => {
+  const ownerAddress = req.params.ownerAddress.toLowerCase();
+  const { status } = req.body;
+  if (!['approved', 'rejected', 'none'].includes(status)) {
+    return res.status(400).json({ error: "status must be 'approved', 'rejected' or 'none'" });
+  }
+  try {
+    const vault = await Vault.findOneAndUpdate({ ownerAddress }, { $set: { kycStatus: status } }, { new: true });
+    if (!vault) return res.status(404).json({ error: 'No vault found for this owner' });
+    res.json({ ownerAddress: vault.ownerAddress, kycStatus: vault.kycStatus });
+  } catch (err) {
+    next(err);
   }
 });
 

@@ -76,6 +76,15 @@ async function tickVault(vault, keeperWallet) {
     return
   }
 
+  // Defense in depth: PATCH /config already refuses to set status='active' without
+  // an approved KYC review, but if an admin revokes approval afterwards (kycStatus
+  // flips to 'rejected'/'pending') the vault's status field stays 'active' in Mongo —
+  // this stops the keeper from quoting on it regardless.
+  if (vault.kycStatus !== 'approved') {
+    log(`skip — KYC status is '${vault.kycStatus ?? 'none'}', not 'approved'`)
+    return
+  }
+
   const realizedPnl = await computeRealizedPnl(vault.vaultAddress)
   if (vault.stopLossUsdt > 0 && realizedPnl <= -vault.stopLossUsdt) {
     if (vault.status !== 'stopped') {

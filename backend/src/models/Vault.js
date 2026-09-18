@@ -31,6 +31,21 @@ const vaultSchema = new mongoose.Schema({
   maxOdds:                { type: Number, default: 20 },
   liabilityIncrementUsdt: { type: Number, default: 25 },
 
+  // Liquidity Provision Agreement — EIP-712 signature (see services/agreement.js).
+  // Not legally binding yet (no licensed OpCo exists at time of writing); recorded so
+  // the consent flow itself is proven out before mainnet, and versioned so a terms
+  // change invalidates old signatures (agreementVersion must equal the current one).
+  agreementVersion:   { type: Number },
+  agreementSignature: { type: String },
+  agreementSignedAt:  { type: Date },
+
+  // KYC gate — blocks keeper activation, not withdrawal (the vault is onlyOwner with
+  // no recipient parameter, so a withdrawal can never be gated by the backend; see
+  // the Tier 0 audit). 'none'/'pending' set by the owner (request review), 'approved'/
+  // 'rejected' set only via the admin panel — no Sumsub integration yet on testnet,
+  // this proves the enforcement point ahead of wiring a real verification provider.
+  kycStatus: { type: String, enum: ['none', 'pending', 'approved', 'rejected'], default: 'none' },
+
   createdAtTx:    { type: String },
   createdAtBlock: { type: Number },
 }, { timestamps: true });

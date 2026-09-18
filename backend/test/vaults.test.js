@@ -7,6 +7,7 @@ const Vault    = require('../src/models/Vault');
 const Order    = require('../src/models/Order');
 const BetMatch = require('../src/models/BetMatch');
 const vaultsRouter = require('../src/routes/vaults');
+const { AGREEMENT_VERSION, AGREEMENT_DOMAIN, AGREEMENT_TYPES } = require('../src/services/agreement');
 
 let mongod;
 
@@ -35,6 +36,11 @@ const vaultAddress = '0x' + '9'.repeat(40);
 async function signConfig(signer, address, timestamp) {
   const message = vaultsRouter.buildSignMessage(address, timestamp);
   return signer.signMessage(message);
+}
+
+async function signAgreement(signer, address, timestamp, version = AGREEMENT_VERSION) {
+  const value = { owner: address, version, timestamp };
+  return signer.signTypedData(AGREEMENT_DOMAIN, AGREEMENT_TYPES, value);
 }
 
 function makeVault(overrides = {}) {
@@ -116,13 +122,12 @@ describe('PATCH /api/vaults/:ownerAddress/config — signature auth', () => {
           maxExposureUsdt: 500,
           stopLossUsdt: 100,
           scope: [{ eventId: 'MATCH_001', outcomes: [0, 1] }],
-          status: 'active',
         },
       });
     expect(res.status).toBe(200);
     expect(res.body.maxExposureUsdt).toBe(500);
     expect(res.body.stopLossUsdt).toBe(100);
-    expect(res.body.status).toBe('active');
+    expect(res.body.status).toBe('configuring');
     expect(res.body.scope).toHaveLength(1);
     expect(res.body.scope[0]).toMatchObject({ eventId: 'MATCH_001', outcomes: [0, 1] });
   });
@@ -149,6 +154,90 @@ describe('PATCH /api/vaults/:ownerAddress/config — signature auth', () => {
       .patch(`/api/vaults/${ownerAddress}/config`) // targeting the real owner's vault
       .send({ signature: attackerSignature, timestamp, config: { maxExposureUsdt: 999999 } });
     expect(res.status).toBe(401);
+  });
+});
+
+describe('PATCH /api/vaults/:ownerAddress/config — activation gate', () => {
+  async function tryActivate() {
+    const timestamp = Date.now();
+    const signature = await signConfig(owner, ownerAddress, timestamp);
+    return request(app)
+      .patch(`/api/vaults/${ownerAddress}/config`)
+      .send({ signature, timestamp, config: { status: 'active' } });
+  }
+
+  it('refuses activation with neither agreement signed nor KYC approved', async () => {
+    await Vault.create(makeVault());
+    const res = await tryActivate();
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/Liquidity Provision Agreement/);
+    expect(res.body.error).toMatch(/KYC/);
+  });
+
+  it('refuses activation with the agreement signed but KYC not approved', async () => {
+    await Vault.create(makeVault({ agreementVersion: AGREEMENT_VERSION, kycStatus: 'pending' }));
+    const res = await tryActivate();
+    expect(res.status).toBe(400);
+    expect(res.body.error).not.toMatch(/Liquidity Provision Agreement/);
+    expect(res.body.error).toMatch(/KYC/);
+  });
+
+  it('refuses activation with KYC approved but the agreement not signed', async () => {
+    await Vault.create(makeVault({ kycStatus: 'approved' }));
+    const res = await tryActivate();
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/Liquidity Provision Agreement/);
+  });
+
+  it('allows activation once the agreement is signed and KYC is approved', async () => {
+    await Vault.create(makeVault({ agreementVersion: AGREEMENT_VERSION, kycStatus: 'approved' }));
+    const res = await tryActivate();
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('active');
+  });
+
+  it('kycRequestReview moves none -> pending but never downgrades an approved vault', async () => {
+    await Vault.create(makeVault({ kycStatus: 'approved' }));
+    const timestamp = Date.now();
+    const signature = await signConfig(owner, ownerAddress, timestamp);
+    const res = await request(app)
+      .patch(`/api/vaults/${ownerAddress}/config`)
+      .send({ signature, timestamp, config: { kycRequestReview: true } });
+    expect(res.status).toBe(200);
+    expect(res.body.kycStatus).toBe('approved'); // unchanged, not reset to 'pending'
+  });
+});
+
+describe('POST /api/vaults/:ownerAddress/agreement', () => {
+  it('rejects an invalid signature', async () => {
+    await Vault.create(makeVault());
+    const res = await request(app)
+      .post(`/api/vaults/${ownerAddress}/agreement`)
+      .send({ signature: '0xnotasignature', timestamp: Date.now() });
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects a signature from a wallet that is not the owner', async () => {
+    await Vault.create(makeVault());
+    const attacker = ethers.Wallet.createRandom();
+    const timestamp = Date.now();
+    const signature = await signAgreement(attacker, ownerAddress, timestamp);
+    const res = await request(app)
+      .post(`/api/vaults/${ownerAddress}/agreement`)
+      .send({ signature, timestamp });
+    expect(res.status).toBe(401);
+  });
+
+  it('accepts a valid EIP-712 signature and records the agreement version', async () => {
+    await Vault.create(makeVault());
+    const timestamp = Date.now();
+    const signature = await signAgreement(owner, ownerAddress, timestamp);
+    const res = await request(app)
+      .post(`/api/vaults/${ownerAddress}/agreement`)
+      .send({ signature, timestamp });
+    expect(res.status).toBe(200);
+    expect(res.body.agreementVersion).toBe(AGREEMENT_VERSION);
+    expect(res.body.agreementSignedAt).toBeTruthy();
   });
 });
 

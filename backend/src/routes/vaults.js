@@ -5,6 +5,7 @@ const Vault = require('../models/Vault');
 const Order = require('../models/Order');
 const BetMatch = require('../models/BetMatch');
 const { computeMaxBettorStake } = require('../utils/oddsMath');
+const { AGREEMENT_VERSION, verifyAgreementSignature } = require('../services/agreement');
 
 const SIGNATURE_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -54,6 +55,10 @@ function serializeVault(vault) {
     minOdds:                vault.minOdds,
     maxOdds:                vault.maxOdds,
     liabilityIncrementUsdt: vault.liabilityIncrementUsdt,
+    agreementVersion:       vault.agreementVersion ?? null,
+    agreementSignedAt:      vault.agreementSignedAt ?? null,
+    agreementCurrentVersion: AGREEMENT_VERSION,
+    kycStatus:              vault.kycStatus ?? 'none',
     createdAtTx:            vault.createdAtTx,
     createdAtBlock:         vault.createdAtBlock,
   };
@@ -118,8 +123,29 @@ router.patch('/:ownerAddress/config', async (req, res, next) => {
     }
     $set.status = config.status;
   }
-
   try {
+    const current = await Vault.findOne({ ownerAddress }).lean();
+    if (!current) return res.status(404).json({ error: 'No vault found for this owner — create one on-chain first' });
+
+    // Owner-initiated "please review me" — the actual approve/reject only happens
+    // through the admin panel (POST /api/admin/kyc/:ownerAddress). Only moves 'none'
+    // or 'rejected' to 'pending' — never downgrades an already-approved vault, so a
+    // stray repeat call can never undo a real approval.
+    if (config.kycRequestReview === true && ['none', 'rejected'].includes(current.kycStatus ?? 'none')) {
+      $set.kycStatus = 'pending';
+    }
+
+    if ($set.status === 'active') {
+      const nextKycStatus = $set.kycStatus ?? current.kycStatus ?? 'none';
+      const hasSignedAgreement = current.agreementVersion === AGREEMENT_VERSION;
+      const missing = [];
+      if (!hasSignedAgreement) missing.push('sign the Liquidity Provision Agreement');
+      if (nextKycStatus !== 'approved') missing.push('complete KYC review');
+      if (missing.length > 0) {
+        return res.status(400).json({ error: `Cannot activate the vault yet — ${missing.join(' and ')} first.` });
+      }
+    }
+
     const vault = await Vault.findOneAndUpdate(
       { ownerAddress },
       { $set },
@@ -195,6 +221,37 @@ router.get('/:ownerAddress/pnl', async (req, res, next) => {
     if (isDbOffline(err)) {
       console.warn('[vaults pnl] DB unavailable:', err.message);
       return res.json({ realizedPnlUsdt: 0, matchesSettled: 0, _offline: true });
+    }
+    next(err);
+  }
+});
+
+// POST /api/vaults/:ownerAddress/agreement
+// Body: { signature, timestamp }
+// EIP-712 signature over the current Liquidity Provision Agreement (see
+// services/agreement.js) — a separate route from PATCH /config because it's a
+// different signing scheme (typed data, not a plain personal_sign message) and a
+// distinct, one-time action rather than a config field.
+router.post('/:ownerAddress/agreement', async (req, res, next) => {
+  const ownerAddress = req.params.ownerAddress.toLowerCase();
+  const { signature, timestamp } = req.body;
+
+  if (!verifyAgreementSignature(ownerAddress, signature, timestamp)) {
+    return res.status(401).json({ error: 'Invalid or expired agreement signature' });
+  }
+
+  try {
+    const vault = await Vault.findOneAndUpdate(
+      { ownerAddress },
+      { $set: { agreementVersion: AGREEMENT_VERSION, agreementSignature: signature, agreementSignedAt: new Date() } },
+      { new: true }
+    );
+    if (!vault) return res.status(404).json({ error: 'No vault found for this owner — create one on-chain first' });
+    res.json(serializeVault(vault));
+  } catch (err) {
+    if (isDbOffline(err)) {
+      console.warn('[vaults agreement] DB unavailable:', err.message);
+      return res.status(503).json({ error: 'Database offline — agreement not saved', _offline: true });
     }
     next(err);
   }
