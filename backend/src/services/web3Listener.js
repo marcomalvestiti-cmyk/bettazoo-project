@@ -3,12 +3,14 @@ const mongoose = require('mongoose')
 const Order = require('../models/Order')
 const Event = require('../models/Event')
 const BetMatch = require('../models/BetMatch')
+const Vault = require('../models/Vault')
 
 const ESCROW_ABI = [
   'event OfferCreated(uint256 indexed offerId, address indexed placer, string eventId, uint8 outcome, uint256 odds, uint256 liability)',
   'event OfferMatched(uint256 indexed matchId, uint256 indexed offerId, address indexed bettor, uint256 bettorStake, uint256 placerLiability)',
   'event EventResolved(string eventId, uint8 winningOutcome)',
   'event WinningsPaid(address indexed winner, uint256 amount)',
+  'event PlacerFeeOverrideUpdated(address indexed placer, uint256 feePercent, bool active)',
   'function offers(uint256 offerId) view returns (uint256 id, address placer, string eventId, uint8 outcome, uint256 odds, uint256 liability, uint256 remainingLiability, bool active)',
 ]
 
@@ -410,6 +412,21 @@ async function startListener(provider, contractAddress, io, skipHistoricalSync =
       console.log(`[${ts()}] [EventResolved] eventId=${eventId} winningOutcome=${winningOutcome}`)
     } catch (err) {
       console.error(`[${ts()}] [EventResolved] error: ${err.message}`)
+    }
+  })
+
+  // Rare, admin-triggered — real-time only, no historical backfill needed (a missed
+  // event just means the vault's badge is stale until the admin re-sets it, no funds
+  // or resolveEvent math depend on this indexed copy, the contract remains authoritative).
+  contract.on('PlacerFeeOverrideUpdated', async (placer, feePercent, active) => {
+    try {
+      await Vault.findOneAndUpdate(
+        { vaultAddress: placer.toLowerCase() },
+        { feeOverridePercent: Number(feePercent), hasFeeOverride: active }
+      )
+      console.log(`[${ts()}] [PlacerFeeOverrideUpdated] placer=${placer} feePercent=${feePercent} active=${active}`)
+    } catch (err) {
+      console.error(`[${ts()}] [PlacerFeeOverrideUpdated] error: ${err.message}`)
     }
   })
 

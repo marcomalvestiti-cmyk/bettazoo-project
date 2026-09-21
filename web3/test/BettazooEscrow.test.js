@@ -686,6 +686,91 @@ describe("BettazooEscrow", function () {
       ).to.be.revertedWith("Fee exceeds 100%");
     });
 
+    it("hasPlacerFeeOverride di default è false, senza effetto sul fee globale", async function () {
+      expect(await escrow.hasPlacerFeeOverride(placer1.address)).to.be.false;
+      expect(await escrow.placerFeeOverride(placer1.address)).to.equal(0n);
+    });
+
+    it("setPlacerFeeOverride funziona solo per l'owner ed emette PlacerFeeOverrideUpdated", async function () {
+      await expect(escrow.connect(owner).setPlacerFeeOverride(placer1.address, 20))
+        .to.emit(escrow, "PlacerFeeOverrideUpdated")
+        .withArgs(placer1.address, 20n, true);
+
+      expect(await escrow.hasPlacerFeeOverride(placer1.address)).to.be.true;
+      expect(await escrow.placerFeeOverride(placer1.address)).to.equal(20n);
+
+      await expect(
+        escrow.connect(bettor1).setPlacerFeeOverride(placer1.address, 0)
+      ).to.be.revertedWithCustomError(escrow, "OwnableUnauthorizedAccount");
+    });
+
+    it("setPlacerFeeOverride reverte se fee > 100%", async function () {
+      await expect(
+        escrow.connect(owner).setPlacerFeeOverride(placer1.address, 101)
+      ).to.be.revertedWith("Fee exceeds 100%");
+    });
+
+    it("resolveEvent usa l'override del placer invece del fee globale", async function () {
+      // placer1 con override 20% invece del 5% globale
+      await escrow.connect(owner).setPlacerFeeOverride(placer1.address, 20);
+
+      // odds 2.0, liability 100 → bettor stake 100, pot 200, netProfit(bettor vince)=100
+      await escrow.connect(placer1).createOffer("EVENT_1", 0, 20000n, USDT(100));
+      await escrow.connect(bettor1).acceptOffers([0], USDT(100));
+
+      const bettorBefore   = await usdt.balanceOf(bettor1.address);
+      const treasuryBefore = await usdt.balanceOf(treasury.address);
+
+      await escrow.connect(oracle).resolveEvent("EVENT_1", 0); // bettor vince
+
+      const bettorAfter   = await usdt.balanceOf(bettor1.address);
+      const treasuryAfter = await usdt.balanceOf(treasury.address);
+
+      const fee = USDT(100) * 20n / 100n; // 20 USDT, non 5
+      expect(bettorAfter - bettorBefore).to.equal(USDT(200) - fee);
+      expect(treasuryAfter - treasuryBefore).to.equal(fee);
+    });
+
+    it("clearPlacerFeeOverride riporta al fee globale", async function () {
+      await escrow.connect(owner).setPlacerFeeOverride(placer1.address, 20);
+      await expect(escrow.connect(owner).clearPlacerFeeOverride(placer1.address))
+        .to.emit(escrow, "PlacerFeeOverrideUpdated")
+        .withArgs(placer1.address, PLATFORM_FEE_PCT, false);
+
+      expect(await escrow.hasPlacerFeeOverride(placer1.address)).to.be.false;
+
+      await escrow.connect(placer1).createOffer("EVENT_1", 0, 20000n, USDT(100));
+      await escrow.connect(bettor1).acceptOffers([0], USDT(100));
+
+      const bettorBefore = await usdt.balanceOf(bettor1.address);
+      await escrow.connect(oracle).resolveEvent("EVENT_1", 0);
+      const bettorAfter = await usdt.balanceOf(bettor1.address);
+
+      const fee = USDT(100) * PLATFORM_FEE_PCT / 100n; // torna a 5 USDT
+      expect(bettorAfter - bettorBefore).to.equal(USDT(200) - fee);
+    });
+
+    it("clearPlacerFeeOverride funziona solo per l'owner", async function () {
+      await escrow.connect(owner).setPlacerFeeOverride(placer1.address, 20);
+      await expect(
+        escrow.connect(bettor1).clearPlacerFeeOverride(placer1.address)
+      ).to.be.revertedWithCustomError(escrow, "OwnableUnauthorizedAccount");
+    });
+
+    it("l'override di un placer non influenza il fee degli altri placer", async function () {
+      await escrow.connect(owner).setPlacerFeeOverride(placer1.address, 20);
+
+      await escrow.connect(placer2).createOffer("EVENT_1", 0, 20000n, USDT(100));
+      await escrow.connect(bettor1).acceptOffers([0], USDT(100));
+
+      const bettorBefore = await usdt.balanceOf(bettor1.address);
+      await escrow.connect(oracle).resolveEvent("EVENT_1", 0);
+      const bettorAfter = await usdt.balanceOf(bettor1.address);
+
+      const fee = USDT(100) * PLATFORM_FEE_PCT / 100n; // placer2 resta al 5% globale
+      expect(bettorAfter - bettorBefore).to.equal(USDT(200) - fee);
+    });
+
     it("acceptOffers reverte se nessun array di offerte", async function () {
       await expect(
         escrow.connect(bettor1).acceptOffers([], USDT(100))

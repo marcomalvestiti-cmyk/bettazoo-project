@@ -77,6 +77,20 @@ describe('GET /api/vaults/:ownerAddress', () => {
     expect(res.body.vaultAddress).toBe(vaultAddress);
     expect(res.body.status).toBe('configuring');
   });
+
+  it('defaults feeOverridePercent/hasFeeOverride when no vig override was ever set', async () => {
+    await Vault.create(makeVault());
+    const res = await request(app).get(`/api/vaults/${ownerAddress}`);
+    expect(res.body.feeOverridePercent).toBeNull();
+    expect(res.body.hasFeeOverride).toBe(false);
+  });
+
+  it('exposes a set fee override (mirrored from PlacerFeeOverrideUpdated by web3Listener.js)', async () => {
+    await Vault.create(makeVault({ feeOverridePercent: 20, hasFeeOverride: true }));
+    const res = await request(app).get(`/api/vaults/${ownerAddress}`);
+    expect(res.body.feeOverridePercent).toBe(20);
+    expect(res.body.hasFeeOverride).toBe(true);
+  });
 });
 
 describe('PATCH /api/vaults/:ownerAddress/config — signature auth', () => {

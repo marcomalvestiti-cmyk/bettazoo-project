@@ -559,6 +559,15 @@ export default function VaultPanel({ onVaultReady }: Props) {
         </div>
       </div>
 
+      {/* ── Platform fee — read-only. Set by the platform admin (bespoke revenue-share
+          deals with individual creators), never by the vault owner. ── */}
+      <div className="flex items-center justify-between gap-2 rounded-md border border-slate-800 bg-slate-950/40 p-3">
+        <span className="text-xs text-slate-400">Platform Fee</span>
+        <span className="text-xs font-bold text-slate-300">
+          {vaultData?.hasFeeOverride ? `${vaultData.feeOverridePercent}% (custom)` : '5% (default)'}
+        </span>
+      </div>
+
       {/* ── Max size per bet — mandatory on-chain cap. Margin protects the vault over
           many bets, not a single one: without this, one oversized match can drain
           the whole balance in one shot. ── */}

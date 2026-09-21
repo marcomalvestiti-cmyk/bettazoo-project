@@ -226,6 +226,8 @@ export type VaultData = {
   agreementSignedAt?:      string | null
   agreementCurrentVersion?: number
   kycStatus?:              'none' | 'pending' | 'approved' | 'rejected'
+  feeOverridePercent?:     number | null
+  hasFeeOverride?:         boolean
   createdAtTx?:           string
   createdAtBlock?:        number
 }
@@ -340,6 +342,23 @@ export async function postAdminKycDecision(
     body: JSON.stringify({ status }),
   })
   return res.json()
+}
+
+export type AdminVaultRow = {
+  ownerAddress:       string
+  vaultAddress:       string
+  feeOverridePercent: number | null
+  hasFeeOverride:     boolean
+}
+
+// List of vaults for the Vigorish-per-vault admin panel (/admin/fees) — the fee itself
+// is set/cleared as an on-chain tx from the admin's own connected wallet (see
+// ESCROW_ABI's setPlacerFeeOverride/clearPlacerFeeOverride), this only supplies the
+// owner/vault address pairs to pick from.
+export async function fetchAdminVaults(): Promise<AdminVaultRow[]> {
+  const res = await apiFetch('admin vaults', `${BASE}/api/admin/vaults`, { cache: 'no-store', headers: adminHeaders() })
+  const data = await res.json()
+  return data.vaults ?? []
 }
 
 export const SOCKET_URL = BASE

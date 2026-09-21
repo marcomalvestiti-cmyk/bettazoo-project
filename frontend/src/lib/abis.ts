@@ -45,6 +45,37 @@ export const ESCROW_ABI = [
     stateMutability: 'view',
     type: 'function',
   },
+  {
+    inputs: [
+      { internalType: 'address', name: 'placer',     type: 'address' },
+      { internalType: 'uint256', name: 'feePercent', type: 'uint256' },
+    ],
+    name: 'setPlacerFeeOverride',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [{ internalType: 'address', name: 'placer', type: 'address' }],
+    name: 'clearPlacerFeeOverride',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [{ internalType: 'address', name: '', type: 'address' }],
+    name: 'placerFeeOverride',
+    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [{ internalType: 'address', name: '', type: 'address' }],
+    name: 'hasPlacerFeeOverride',
+    outputs: [{ internalType: 'bool', name: '', type: 'bool' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
   // ── Events ─────────────────────────────────────────────────────────────────
   {
     anonymous: false,
@@ -69,6 +100,16 @@ export const ESCROW_ABI = [
       { indexed: false, internalType: 'uint256', name: 'placerLiability',  type: 'uint256' },
     ],
     name: 'OfferMatched',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true,  internalType: 'address', name: 'placer',     type: 'address' },
+      { indexed: false, internalType: 'uint256', name: 'feePercent', type: 'uint256' },
+      { indexed: false, internalType: 'bool',    name: 'active',     type: 'bool'    },
+    ],
+    name: 'PlacerFeeOverrideUpdated',
     type: 'event',
   },
 ] as const

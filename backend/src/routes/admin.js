@@ -87,6 +87,25 @@ router.get('/kyc', async (req, res, next) => {
   }
 });
 
+// GET /api/admin/vaults — every vault with owner/vault address + current fee override
+// state, for the Vigorish-per-vault admin panel (/admin/fees). The actual set/clear
+// happens as an on-chain tx signed by the admin's own connected wallet (same pattern as
+// /admin/resolver calling resolveEvent directly) — this route only lists candidates.
+router.get('/vaults', async (req, res, next) => {
+  try {
+    const vaults = await Vault.find({}).sort({ createdAt: -1 }).lean();
+    const rows = vaults.map(v => ({
+      ownerAddress:       v.ownerAddress,
+      vaultAddress:       v.vaultAddress,
+      feeOverridePercent: v.feeOverridePercent ?? null,
+      hasFeeOverride:     v.hasFeeOverride ?? false,
+    }));
+    res.json({ vaults: rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST /api/admin/kyc/:ownerAddress — { status: 'approved' | 'rejected' | 'none' }
 router.post('/kyc/:ownerAddress', async (req, res, next) => {
   const ownerAddress = req.params.ownerAddress.toLowerCase();

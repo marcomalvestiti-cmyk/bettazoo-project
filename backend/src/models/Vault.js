@@ -47,6 +47,12 @@ const vaultSchema = new mongoose.Schema({
   kycStatus: { type: String, enum: ['none', 'pending', 'approved', 'rejected'], default: 'none' },
   kycRequestedAt: { type: Date },
 
+  // Vigorish per-vault (Tier 3) — mirrored from BettazooEscrow's PlacerFeeOverrideUpdated
+  // event by web3Listener.js. The contract is authoritative; this is display-only (set
+  // by the platform admin via /admin/fees, never by the vault owner).
+  feeOverridePercent: { type: Number, default: null },
+  hasFeeOverride:     { type: Boolean, default: false },
+
   createdAtTx:    { type: String },
   createdAtBlock: { type: Number },
 }, { timestamps: true });

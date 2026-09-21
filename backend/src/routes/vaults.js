@@ -59,6 +59,8 @@ function serializeVault(vault) {
     agreementSignedAt:      vault.agreementSignedAt ?? null,
     agreementCurrentVersion: AGREEMENT_VERSION,
     kycStatus:              vault.kycStatus ?? 'none',
+    feeOverridePercent:     vault.feeOverridePercent ?? null,
+    hasFeeOverride:         vault.hasFeeOverride ?? false,
     createdAtTx:            vault.createdAtTx,
     createdAtBlock:         vault.createdAtBlock,
   };

@@ -7,7 +7,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title BettazooEscrow
- * @notice Escrow P2P per scommesse in stablecoin con multi-matching e platform fee del 5%.
+ * @notice Escrow P2P per scommesse in stablecoin con multi-matching e platform fee del 5%
+ *         (globale, override-abile per singolo placer — vedi placerFeeOverride).
  *
  * Meccanica delle quote (odds):
  *   odds in formato europeo decimale * ODDS_PRECISION (10000).
@@ -22,7 +23,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  *      - trasferisce l'actualStake (potenzialmente < totalStake se offerte esaurite)
  *   3. Oracle/Admin chiama resolveEvent(eventId, winningOutcome):
  *      - itera tutti i BetRecord dell'evento
- *      - calcola fee = winnerNetProfit * platformFeePercentage / 100
+ *      - calcola fee = winnerNetProfit * feePercent / 100, dove feePercent è
+ *        placerFeeOverride[record.placer] se impostato, altrimenti platformFeePercentage
  *        (winnerNetProfit = placerLiability se vince il bettor, bettorStake se vince il placer)
  *      - paga il vincitore (totalPot - fee) e il treasury (fee)
  */
@@ -34,6 +36,11 @@ contract BettazooEscrow is Ownable {
     // Percentage of the winner's net profit sent to treasury.
     // Applied only to profit (not to the returned stake), settable by owner.
     uint256 public platformFeePercentage = 5;
+
+    // Per-placer override of platformFeePercentage (e.g. a bespoke revenue-share deal
+    // with a specific creator/vault). Falls back to platformFeePercentage when unset.
+    mapping(address => uint256) public placerFeeOverride;
+    mapping(address => bool) public hasPlacerFeeOverride;
 
     IERC20 public immutable stablecoin;
     address public treasury;
@@ -89,6 +96,7 @@ contract BettazooEscrow is Ownable {
     );
     event EventResolved(string eventId, uint8 winningOutcome);
     event WinningsPaid(address indexed winner, uint256 amount);
+    event PlacerFeeOverrideUpdated(address indexed placer, uint256 feePercent, bool active);
 
     modifier onlyOracle() {
         require(msg.sender == oracle || msg.sender == owner(), "Not oracle");
@@ -288,7 +296,10 @@ contract BettazooEscrow is Ownable {
                 winnerNetProfit = record.bettorStake;
             }
 
-            uint256 fee = winnerNetProfit * platformFeePercentage / 100;
+            uint256 feePercent = hasPlacerFeeOverride[record.placer]
+                ? placerFeeOverride[record.placer]
+                : platformFeePercentage;
+            uint256 fee = winnerNetProfit * feePercent / 100;
             uint256 winnerPayout = totalPot - fee;
 
             stablecoin.safeTransfer(winner, winnerPayout);
@@ -313,6 +324,22 @@ contract BettazooEscrow is Ownable {
     function setPlatformFee(uint256 _fee) external onlyOwner {
         require(_fee <= 100, "Fee exceeds 100%");
         platformFeePercentage = _fee;
+    }
+
+    /// @notice Overrides platformFeePercentage for a single placer address (typically a
+    ///         PlacerVault). Used for bespoke revenue-share deals with individual creators.
+    function setPlacerFeeOverride(address placer, uint256 feePercent) external onlyOwner {
+        require(feePercent <= 100, "Fee exceeds 100%");
+        hasPlacerFeeOverride[placer] = true;
+        placerFeeOverride[placer] = feePercent;
+        emit PlacerFeeOverrideUpdated(placer, feePercent, true);
+    }
+
+    /// @notice Removes a placer's fee override — resolveEvent falls back to platformFeePercentage.
+    function clearPlacerFeeOverride(address placer) external onlyOwner {
+        hasPlacerFeeOverride[placer] = false;
+        placerFeeOverride[placer] = 0;
+        emit PlacerFeeOverrideUpdated(placer, platformFeePercentage, false);
     }
 
     // ─── View ──────────────────────────────────────────────────────────────────
