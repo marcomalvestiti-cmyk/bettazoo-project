@@ -81,18 +81,33 @@ async function loadKnownVaults() {
   console.log(`[${ts()}] [VaultListener] Loaded ${knownVaults.size} known vault address(es) from DB`)
 }
 
+// Keyed by ownerAddress (not vaultAddress) because Vault.ownerAddress is unique — an
+// owner can only ever hold one Vault doc. Normally that's also their only vault ever
+// (the factory's own createVault() forbids a second one), but after an Escrow/Factory
+// redeploy (e.g. the Vigorish-per-vault migration, 2026-09-21) an owner can get a
+// second VaultCreated on the NEW factory. Upserting by vaultAddress there would insert
+// a second doc and collide with the ownerAddress unique index (silent failure — the
+// event gets dropped, backend keeps pointing at the stale vault indefinitely). Keying
+// by ownerAddress instead repoints the existing doc: strategy/scope/agreement/kycStatus
+// carry over (owner-level preferences, not contract-instance-level), only the
+// instance-specific fields reset — status to 'configuring' because a fresh vault clone
+// always starts with maxSingleOfferLiability=0, and the product's own activation gate
+// requires that cap before going active again.
 async function handleVaultCreated(owner, vault, txHash, blockNumber) {
   const vaultAddr = vault.toLowerCase()
   knownVaults.add(vaultAddr)
   await Vault.findOneAndUpdate(
-    { vaultAddress: vaultAddr },
+    { ownerAddress: owner.toLowerCase() },
     {
-      ownerAddress:   owner.toLowerCase(),
-      vaultAddress:   vaultAddr,
-      status:         'configuring',
-      onChainPaused:  false,
-      createdAtTx:    txHash,
-      createdAtBlock: blockNumber,
+      $set: {
+        vaultAddress:       vaultAddr,
+        status:             'configuring',
+        onChainPaused:      false,
+        feeOverridePercent: null,
+        hasFeeOverride:     false,
+        createdAtTx:        txHash,
+        createdAtBlock:     blockNumber,
+      },
     },
     { upsert: true, setDefaultsOnInsert: true }
   )
@@ -225,4 +240,4 @@ async function startVaultListener(provider, factoryAddress, io, skipHistoricalSy
   console.log(`[${ts()}] [VaultListener] Real-time subscriptions active (factory=${factoryAddress})`)
 }
 
-module.exports = { startVaultListener, syncHistoricalVaultEvents }
+module.exports = { startVaultListener, syncHistoricalVaultEvents, handleVaultCreated }
