@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { io, type Socket } from 'socket.io-client'
 
 import VaultPanel        from '@/components/VaultPanel'
+import FundVaultPanel    from '@/components/FundVaultPanel'
 import RiskWidget       from '@/components/RiskWidget'
 import MyOffers, { type Offer } from '@/components/MyOffers'
 import ProfileEditor    from '@/components/ProfileEditor'
@@ -104,7 +105,7 @@ export default function PlacerDashboard() {
   const { address, isConnected } = useAccount()
   const { events } = useEvents()
 
-  const [activeTab,         setActiveTab]         = useState<'dashboard' | 'offers'>('dashboard')
+  const [activeTab,         setActiveTab]         = useState<'dashboard' | 'offers' | 'fund'>('dashboard')
   const [selectedEventId,   setSelectedEventId]   = useState(events[0].eventId)
   const [offers,            setOffers]            = useState<Offer[]>([])
   const [profileOpen,       setProfileOpen]       = useState(false)
@@ -232,6 +233,7 @@ export default function PlacerDashboard() {
         {([
           { id: 'dashboard', label: 'Dashboard' },
           { id: 'offers',    label: 'Vault Strategies', badge: offers.length },
+          { id: 'fund',      label: 'Fund Vault' },
         ] as const).map(tab => (
           <button
             key={tab.id}
@@ -298,6 +300,13 @@ export default function PlacerDashboard() {
       {/* ══════════════════ TAB: MY OFFERS ══════════════════ */}
       {activeTab === 'offers' && (
         <MyOffers offers={offers} onRefresh={loadOffers} vaultAddress={vaultAddress ?? undefined} />
+      )}
+
+      {/* ══════════════════ TAB: FUND VAULT (Tier 3, item 2/3) ══════════════════ */}
+      {activeTab === 'fund' && (
+        <div className="max-w-xl">
+          <FundVaultPanel />
+        </div>
       )}
 
       {/* ── Profile Modal ── */}

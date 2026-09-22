@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
 const Vault = require('../models/Vault');
+const FundVault = require('../models/FundVault');
+const FundVaultLP = require('../models/FundVaultLP');
 const { syncHistoricalEvents } = require('../services/web3Listener');
 const { ethers } = require('ethers');
 
@@ -117,6 +119,92 @@ router.post('/kyc/:ownerAddress', async (req, res, next) => {
     const vault = await Vault.findOneAndUpdate({ ownerAddress }, { $set: { kycStatus: status } }, { new: true });
     if (!vault) return res.status(404).json({ error: 'No vault found for this owner' });
     res.json({ ownerAddress: vault.ownerAddress, kycStatus: vault.kycStatus });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/admin/fund-vaults — every fund vault (Tier 3 item 2/3), manager-level KYC
+// queue, pending first. Same manual/no-Sumsub posture as GET /kyc above.
+router.get('/fund-vaults', async (req, res, next) => {
+  try {
+    const vaults = await FundVault.find({}).sort({ createdAt: -1 }).lean();
+    const order = { pending: 0, none: 1, rejected: 2, approved: 3 };
+    const rows = vaults
+      .map(v => ({
+        ownerAddress:      v.ownerAddress,
+        fundVaultAddress:  v.fundVaultAddress,
+        status:            v.status,
+        kycStatus:         v.kycStatus ?? 'none',
+        agreementVersion:  v.agreementVersion ?? null,
+        agreementSignedAt: v.agreementSignedAt ?? null,
+        kycRequestedAt:    v.kycRequestedAt ?? null,
+        createdAt:         v.createdAt,
+      }))
+      .sort((a, b) => (order[a.kycStatus] ?? 9) - (order[b.kycStatus] ?? 9));
+    res.json({ vaults: rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/admin/fund-vaults/kyc/:ownerAddress — manager-level KYC decision, same
+// semantics as POST /kyc/:ownerAddress above but on FundVault.
+router.post('/fund-vaults/kyc/:ownerAddress', async (req, res, next) => {
+  const ownerAddress = req.params.ownerAddress.toLowerCase();
+  const { status } = req.body;
+  if (!['approved', 'rejected', 'none'].includes(status)) {
+    return res.status(400).json({ error: "status must be 'approved', 'rejected' or 'none'" });
+  }
+  try {
+    const vault = await FundVault.findOneAndUpdate({ ownerAddress }, { $set: { kycStatus: status } }, { new: true });
+    if (!vault) return res.status(404).json({ error: 'No fund vault found for this owner' });
+    res.json({ ownerAddress: vault.ownerAddress, kycStatus: vault.kycStatus });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/admin/fund-vaults/lp-kyc — every LP compliance record across all fund
+// vaults, pending first. LP-level counterpart to GET /fund-vaults above.
+router.get('/fund-vaults/lp-kyc', async (req, res, next) => {
+  try {
+    const lps = await FundVaultLP.find({}).sort({ createdAt: -1 }).lean();
+    const order = { pending: 0, none: 1, rejected: 2, approved: 3 };
+    const rows = lps
+      .map(lp => ({
+        fundVaultAddress:  lp.fundVaultAddress,
+        lpAddress:         lp.lpAddress,
+        approved:          lp.approved,
+        kycStatus:         lp.kycStatus ?? 'none',
+        agreementVersion:  lp.agreementVersion ?? null,
+        agreementSignedAt: lp.agreementSignedAt ?? null,
+        kycRequestedAt:    lp.kycRequestedAt ?? null,
+        createdAt:         lp.createdAt,
+      }))
+      .sort((a, b) => (order[a.kycStatus] ?? 9) - (order[b.kycStatus] ?? 9));
+    res.json({ lps: rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/admin/fund-vaults/lp-kyc/:fundVaultAddress/:lpAddress
+router.post('/fund-vaults/lp-kyc/:fundVaultAddress/:lpAddress', async (req, res, next) => {
+  const fundVaultAddress = req.params.fundVaultAddress.toLowerCase();
+  const lpAddress = req.params.lpAddress.toLowerCase();
+  const { status } = req.body;
+  if (!['approved', 'rejected', 'none'].includes(status)) {
+    return res.status(400).json({ error: "status must be 'approved', 'rejected' or 'none'" });
+  }
+  try {
+    const lp = await FundVaultLP.findOneAndUpdate(
+      { fundVaultAddress, lpAddress },
+      { $set: { kycStatus: status } },
+      { new: true }
+    );
+    if (!lp) return res.status(404).json({ error: 'No LP record found for this fund vault' });
+    res.json({ fundVaultAddress: lp.fundVaultAddress, lpAddress: lp.lpAddress, kycStatus: lp.kycStatus });
   } catch (err) {
     next(err);
   }

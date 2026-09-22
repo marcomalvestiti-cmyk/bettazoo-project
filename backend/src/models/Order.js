@@ -12,6 +12,12 @@ const orderSchema = new mongoose.Schema({
   active:              { type: Boolean, default: true, index: true },
   txHash:              { type: String },
   blockNumber:         { type: Number },
+
+  // Fund vault reconciliation only (see keeperService.tickFundVault) — cumulative
+  // liability amount already reported via PlacerFundVault.reportSettlement for this
+  // offer, so the keeper only ever reports the *newly* settled delta each tick.
+  // Meaningless (stays '0') for orders placed by a single-owner PlacerVault.
+  reportedSettlementLiability: { type: String, default: '0' },
 }, { timestamps: true });
 
 orderSchema.index({ eventId: 1, active: 1, odds: -1 });

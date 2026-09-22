@@ -361,4 +361,117 @@ export async function fetchAdminVaults(): Promise<AdminVaultRow[]> {
   return data.vaults ?? []
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// Fund Vault (Tier 3, item 2/3) — ERC-4626 vault for third-party LP capital.
+// Mirrors the Vault* helpers above; separate collection/routes on the backend, see
+// backend/src/routes/fundVaults.js. On-chain numeric state (TVL, price per share,
+// highWaterMark, performanceFeePercent, approvedLPs) is read directly via wagmi from
+// FUND_VAULT_ABI, not through these — same convention VaultPanel.tsx already uses.
+// ══════════════════════════════════════════════════════════════════════════════
+
+export type FundVaultData = {
+  exists:                   boolean
+  ownerAddress?:            string
+  fundVaultAddress?:        string
+  keeperAddress?:           string
+  onChainPaused?:           boolean
+  status?:                  'configuring' | 'active' | 'stopped'
+  strategy?:                { marginStrategyId: 'volume' | 'balanced' | 'safe' | 'custom'; customMargin?: number }
+  scope?:                   VaultScope[]
+  maxExposureUsdt?:         number
+  perMarketExposureUsdt?:   number
+  stopLossUsdt?:            number
+  minOdds?:                 number
+  maxOdds?:                 number
+  liabilityIncrementUsdt?:  number
+  agreementVersion?:        number | null
+  agreementSignedAt?:       string | null
+  agreementCurrentVersion?: number
+  kycStatus?:               'none' | 'pending' | 'approved' | 'rejected'
+  createdAtTx?:             string
+  createdAtBlock?:          number
+}
+
+export async function fetchFundVault(ownerAddress: string): Promise<FundVaultData> {
+  const res = await apiFetch('fund vault GET', `${BASE}/api/fund-vaults/${ownerAddress}`, { cache: 'no-store' })
+  return res.json()
+}
+
+// Must match backend/src/routes/fundVaults.js's buildFundVaultSignMessage() exactly —
+// deliberately different text from buildVaultConfigMessage above, so a signature for
+// one route can never satisfy the other (see fundVaults.test.js for the isolation test).
+export function buildFundVaultConfigMessage(ownerAddress: string, timestamp: number): string {
+  return `Bettazoo fund vault config update\nowner:${ownerAddress.toLowerCase()}\ntimestamp:${timestamp}`
+}
+
+export type FundVaultConfigPatch = VaultConfigPatch // identical shape
+
+export async function patchFundVaultConfig(
+  ownerAddress: string,
+  signature: string,
+  timestamp: number,
+  config: FundVaultConfigPatch,
+): Promise<FundVaultData> {
+  const res = await apiFetch('fund vault PATCH', `${BASE}/api/fund-vaults/${ownerAddress}/config`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ signature, timestamp, config }),
+  })
+  return res.json()
+}
+
+export async function postFundVaultAgreement(
+  ownerAddress: string,
+  signature: string,
+  timestamp: number,
+): Promise<FundVaultData> {
+  const res = await apiFetch('fund vault agreement', `${BASE}/api/fund-vaults/${ownerAddress}/agreement`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ signature, timestamp }),
+  })
+  return res.json()
+}
+
+export type FundVaultLPRow = {
+  lpAddress:         string
+  approved:          boolean
+  kycStatus:         'none' | 'pending' | 'approved' | 'rejected'
+  agreementVersion:  number | null
+  agreementSignedAt: string | null
+}
+
+export async function fetchFundVaultLPs(ownerAddress: string): Promise<FundVaultLPRow[]> {
+  const res = await apiFetch('fund vault LPs', `${BASE}/api/fund-vaults/${ownerAddress}/lps`, { cache: 'no-store' })
+  const data = await res.json()
+  return data.lps ?? []
+}
+
+export async function postFundVaultLPAgreement(
+  ownerAddress: string,
+  lpAddress: string,
+  signature: string,
+  timestamp: number,
+) {
+  const res = await apiFetch(
+    'fund vault LP agreement',
+    `${BASE}/api/fund-vaults/${ownerAddress}/lp/${lpAddress}/agreement`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ signature, timestamp }),
+    },
+  )
+  return res.json()
+}
+
+export async function postFundVaultLPKycRequest(ownerAddress: string, lpAddress: string) {
+  const res = await apiFetch(
+    'fund vault LP kyc-request',
+    `${BASE}/api/fund-vaults/${ownerAddress}/lp/${lpAddress}/kyc-request`,
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' },
+  )
+  return res.json()
+}
+
 export const SOCKET_URL = BASE

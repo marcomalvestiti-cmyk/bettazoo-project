@@ -8,6 +8,7 @@ module.exports = {
     settings: {
       optimizer: { enabled: true, runs: 200 },
       viaIR: true,
+      evmVersion: 'cancun', // required for transient storage (TSTORE/TLOAD), live on Arbitrum since ArbOS 32
     },
   },
   networks: {

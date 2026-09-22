@@ -1,5 +1,6 @@
 const { ethers } = require('ethers')
 const Vault = require('../models/Vault')
+const FundVault = require('../models/FundVault')
 const Order = require('../models/Order')
 const BetMatch = require('../models/BetMatch')
 const Event = require('../models/Event')
@@ -9,6 +10,15 @@ const VAULT_ABI = [
   'function placeOffer(string eventId, uint8 outcome, uint256 odds, uint256 liability) returns (uint256 offerId)',
   'function cancelOffer(uint256 offerId)',
   'function balance() view returns (uint256)',
+]
+
+// Fund vaults keep the exact same placeOffer/cancelOffer/balance() signatures as the
+// single-owner PlacerVault (see contracts/PlacerFundVault.sol) — VAULT_ABI works
+// unchanged for those calls. reportSettlement is the one addition, used only by
+// reconcileFundVaultSettlements below.
+const FUND_VAULT_ABI = [
+  ...VAULT_ABI,
+  'function reportSettlement(uint256 offerId, uint256 resolvedAmount)',
 ]
 
 const OUTCOME_KEYS = ['home', 'draw', 'away']
@@ -199,6 +209,167 @@ async function tickVault(vault, keeperWallet) {
   }
 }
 
+/**
+ * Reports newly-settled liability for a fund vault's own offers so its on-chain NAV
+ * (balance + lockedLiability) stops overstating locked capital once a bet has actually
+ * resolved. Idempotent per offer: only ever reports the delta between what's been
+ * matched-and-settled so far (BetMatch, already indexed by web3Listener) and what was
+ * already reported (Order.reportedSettlementLiability) — see contracts/PlacerFundVault.sol
+ * for why this can't be derived trustlessly on-chain instead.
+ */
+async function reconcileFundVaultSettlements(fundVault, keeperWallet) {
+  const log = (msg) => console.log(`[${ts()}] [Keeper] fundVault=${fundVault.fundVaultAddress} ${msg}`)
+
+  const orders = await Order.find({ placer: fundVault.fundVaultAddress }).lean()
+  if (orders.length === 0) return
+
+  const fundVaultContract = new ethers.Contract(fundVault.fundVaultAddress, FUND_VAULT_ABI, keeperWallet)
+
+  for (const order of orders) {
+    const settledMatches = await BetMatch.find({
+      offerId: order.offerId, placer: fundVault.fundVaultAddress, settled: true,
+    }).lean()
+    if (settledMatches.length === 0) continue
+
+    const totalSettledRaw = settledMatches.reduce((sum, m) => sum + BigInt(m.placerLiability), 0n)
+    const alreadyReportedRaw = BigInt(order.reportedSettlementLiability ?? '0')
+    const newlySettledRaw = totalSettledRaw - alreadyReportedRaw
+    if (newlySettledRaw <= 0n) continue
+
+    try {
+      const tx = await fundVaultContract.reportSettlement(order.offerId, newlySettledRaw)
+      await tx.wait()
+      await Order.updateOne(
+        { offerId: order.offerId, placer: fundVault.fundVaultAddress },
+        { reportedSettlementLiability: totalSettledRaw.toString() }
+      )
+      log(`reportSettlement offerId=${order.offerId} amount=${rawToUsdt(newlySettledRaw)} USDT tx=${tx.hash}`)
+    } catch (err) {
+      log(`reportSettlement offerId=${order.offerId} failed: ${err.message}`)
+    }
+  }
+}
+
+/**
+ * Same requoting logic as tickVault, against a FundVault instead — the two models
+ * share every field the pricing/exposure/stop-loss logic reads (see models/FundVault.js),
+ * only the Mongo collection and the extra settlement-reconciliation step differ.
+ */
+async function tickFundVault(fundVault, keeperWallet) {
+  const log = (msg) => console.log(`[${ts()}] [Keeper] fundVault=${fundVault.fundVaultAddress} ${msg}`)
+
+  if (fundVault.onChainPaused) {
+    log('skip — paused on-chain')
+    return
+  }
+  if (fundVault.kycStatus !== 'approved') {
+    log(`skip — KYC status is '${fundVault.kycStatus ?? 'none'}', not 'approved'`)
+    return
+  }
+
+  await reconcileFundVaultSettlements(fundVault, keeperWallet)
+
+  const realizedPnl = await computeRealizedPnl(fundVault.fundVaultAddress)
+  if (fundVault.stopLossUsdt > 0 && realizedPnl <= -fundVault.stopLossUsdt) {
+    if (fundVault.status !== 'stopped') {
+      await FundVault.findOneAndUpdate({ fundVaultAddress: fundVault.fundVaultAddress }, { status: 'stopped' })
+      log(`STOP-LOSS triggered — realized P&L ${realizedPnl.toFixed(2)} USDT <= -${fundVault.stopLossUsdt}. Vault set to 'stopped'.`)
+    }
+    return
+  }
+
+  const vaultContract = new ethers.Contract(fundVault.fundVaultAddress, FUND_VAULT_ABI, keeperWallet)
+  let balanceRaw
+  try {
+    balanceRaw = await vaultContract.balance()
+  } catch (err) {
+    log(`skip — could not read balance: ${err.message}`)
+    return
+  }
+  const balanceUsdt = rawToUsdt(balanceRaw)
+  if (balanceUsdt <= 0) {
+    log('skip — zero liquid balance, nothing to quote with')
+    return
+  }
+
+  const exposure = await computeExposure(fundVault.fundVaultAddress)
+  const margin = marginForVault(fundVault)
+
+  for (const { eventId, outcomes } of fundVault.scope || []) {
+    const eventDoc = await Event.findOne({ eventId }).lean()
+
+    for (const outcome of outcomes) {
+      const marketKey = `${eventId}:${outcome}`
+      const marketExposure = exposure.byMarket[marketKey] ?? 0
+
+      if (fundVault.maxExposureUsdt > 0 && exposure.totalUsdt >= fundVault.maxExposureUsdt) {
+        log(`skip ${marketKey} — global exposure cap reached (${exposure.totalUsdt.toFixed(2)}/${fundVault.maxExposureUsdt} USDT)`)
+        continue
+      }
+      if (fundVault.perMarketExposureUsdt > 0 && marketExposure >= fundVault.perMarketExposureUsdt) {
+        log(`skip ${marketKey} — per-market exposure cap reached (${marketExposure.toFixed(2)}/${fundVault.perMarketExposureUsdt} USDT)`)
+        continue
+      }
+
+      let priced
+      try {
+        priced = await suggestOdds({
+          eventId, outcome, margin,
+          eventName: eventDoc?.name,
+          sport: eventDoc?.sport,
+          teams: eventDoc?.teams,
+          currentMarketOdds: eventDoc?.referenceOdds,
+        })
+      } catch (err) {
+        log(`skip ${marketKey} — pricing failed: ${err.message}`)
+        continue
+      }
+      const key = OUTCOME_KEYS[outcome]
+      let targetOdds = priced.suggestedOdds?.[key]
+      if (typeof targetOdds !== 'number' || !(targetOdds > 1)) {
+        log(`skip ${marketKey} — no valid price returned`)
+        continue
+      }
+      targetOdds = Math.min(Math.max(targetOdds, fundVault.minOdds), fundVault.maxOdds)
+      const priceSource = eventDoc?.referenceOdds ? 'live market feed' : 'default reference odds'
+
+      const existing = await Order.findOne({ placer: fundVault.fundVaultAddress, eventId, outcome, active: true }).lean()
+
+      if (existing) {
+        const drift = Math.abs(existing.oddsDecimal - targetOdds) / existing.oddsDecimal
+        if (drift < REQUOTE_TOLERANCE) {
+          log(`hold ${marketKey} — offerId=${existing.offerId} odds=${existing.oddsDecimal} within tolerance of target=${targetOdds.toFixed(2)}`)
+          continue
+        }
+        try {
+          const tx = await vaultContract.cancelOffer(existing.offerId)
+          await tx.wait()
+          log(`requoting ${marketKey} — cancelled offerId=${existing.offerId} (odds ${existing.oddsDecimal} -> target ${targetOdds.toFixed(2)})`)
+        } catch (err) {
+          log(`skip ${marketKey} — cancel of offerId=${existing.offerId} failed: ${err.message}`)
+          continue
+        }
+      }
+
+      const liabilityUsdt = Math.min(fundVault.liabilityIncrementUsdt, balanceUsdt)
+      if (liabilityUsdt <= 0) {
+        log(`skip ${marketKey} — no balance left this tick`)
+        continue
+      }
+
+      const oddsRaw = BigInt(Math.round(targetOdds * 10000))
+      const liabilityRaw = usdtToRaw(liabilityUsdt)
+      try {
+        const tx = await vaultContract.placeOffer(eventId, outcome, oddsRaw, liabilityRaw)
+        const receipt = await tx.wait()
+        log(`quoted ${marketKey} — odds=${targetOdds.toFixed(2)} liability=${liabilityUsdt} USDT priced-from=${priceSource} tx=${receipt.hash}`)
+      } catch (err) {
+        log(`skip ${marketKey} — placeOffer failed: ${err.message}`)
+      }
+    }
+  }
+}
+
 function startKeeper(provider) {
   const privateKey = process.env.KEEPER_PRIVATE_KEY
   if (!privateKey) {
@@ -229,6 +400,15 @@ function startKeeper(provider) {
           console.error(`[${ts()}] [Keeper] vault=${vault.vaultAddress} tick error: ${err.message}`)
         }
       }
+
+      const fundVaults = await FundVault.find({ status: 'active' }).lean()
+      for (const fundVault of fundVaults) {
+        try {
+          await tickFundVault(fundVault, keeperWallet)
+        } catch (err) {
+          console.error(`[${ts()}] [Keeper] fundVault=${fundVault.fundVaultAddress} tick error: ${err.message}`)
+        }
+      }
     } catch (err) {
       console.error(`[${ts()}] [Keeper] tick error: ${err.message}`)
     } finally {
@@ -240,4 +420,4 @@ function startKeeper(provider) {
   return interval
 }
 
-module.exports = { startKeeper, tickVault }
+module.exports = { startKeeper, tickVault, tickFundVault, reconcileFundVaultSettlements }

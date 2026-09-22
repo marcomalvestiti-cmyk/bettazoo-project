@@ -1,0 +1,12 @@
+{
+  "network": "arbitrumSepolia",
+  "chainId": 421614,
+  "escrowAddress": "0xD01D7Af6eB42968DdE249cD56ab382F2eF7fF04D",
+  "usdtAddress": "0x29fA91A7288A2b3De899F4ed1679e288018f69a0",
+  "fundVaultImplementationAddress": "0x59BC9C4D36c80cDE91bcba3333FAeaA5A9DBB3FD",
+  "fundVaultFactoryAddress": "0x62a26E2A3FbeFE8714e9492ce084dA6e79632d65",
+  "fundVaultFactoryDeployBlock": 311494585,
+  "defaultKeeperAddress": "0x15d2A347B5FAE71de407Cd0cEb6203760ed4724d",
+  "platformFeeRecipient": "0xa4c486cEaff47a130057BD624dCd265Fa66f3284",
+  "deployedAt": "2026-09-22T08:22:52.982Z"
+}

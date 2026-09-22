@@ -24,6 +24,7 @@ const app = require('./app')
 const connectDB = require('./config/db')
 const { startListener } = require('./services/web3Listener')
 const { startVaultListener } = require('./services/vaultListener')
+const { startFundVaultListener } = require('./services/fundVaultListener')
 const { startKeeper } = require('./services/keeperService')
 const { startEventsSync } = require('./services/eventsFeedService')
 const { initErrorTracking } = require('./services/errorTracking')
@@ -159,9 +160,11 @@ function startWeb3(url, contractAddress, io, skipHistoricalSync) {
   })
 
   const vaultFactoryAddress = process.env.VAULT_FACTORY_ADDRESS
+  const fundVaultFactoryAddress = process.env.FUND_VAULT_FACTORY_ADDRESS
 
-  // Chained (not parallel): running both historical syncs concurrently doubles
-  // the RPC request rate right when it's most likely to trip rate limits.
+  // Chained (not parallel): running historical syncs concurrently multiplies the RPC
+  // request rate right when it's most likely to trip rate limits (lesson from the
+  // 2026-09-01 web3Listener/vaultListener race — see memory).
   startListener(provider, contractAddress, io, skipHistoricalSync)
     .catch((err) => {
       console.error(`[${ts()}] [Web3] Listener startup failed: ${err.message}`)
@@ -173,6 +176,12 @@ function startWeb3(url, contractAddress, io, skipHistoricalSync) {
         return
       }
       return startVaultListener(provider, vaultFactoryAddress, io, skipHistoricalSync).then(() => {
+        if (!fundVaultFactoryAddress) {
+          console.warn(`[${ts()}] [FundVaultListener] FUND_VAULT_FACTORY_ADDRESS not set — fund vault listener disabled`)
+          return
+        }
+        return startFundVaultListener(provider, fundVaultFactoryAddress, io, skipHistoricalSync)
+      }).then(() => {
         if (activeKeeperInterval) {
           clearInterval(activeKeeperInterval)
           activeKeeperInterval = null

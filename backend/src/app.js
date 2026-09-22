@@ -32,6 +32,7 @@ app.use('/api/profile',   require('./routes/profile'));
 app.use('/api/admin',     require('./middleware/adminAuth').requireAdminSecret, require('./routes/admin'));
 app.use('/api/social',    require('./routes/social'));
 app.use('/api/vaults',    require('./routes/vaults'));
+app.use('/api/fund-vaults', require('./routes/fundVaults'));
 app.use('/api/bettor',    require('./routes/bettor'));
 
 // 404 — always JSON (never HTML)
