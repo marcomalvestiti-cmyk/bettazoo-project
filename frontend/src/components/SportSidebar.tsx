@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect, type MouseEvent } from 'react'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { Link, usePathname } from '@/i18n/navigation'
 import {
   Trophy, Gamepad2, CircleDot, Dumbbell,
   Crosshair, Sword, ShieldHalf, Target, Zap,
@@ -24,6 +24,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
 }
 
 export default function SportSidebar({ activeSlug }: { activeSlug: string[] }) {
+  const t = useTranslations('Bet.Sidebar')
   const pathname = usePathname()
   const activeStr = activeSlug.join('/')
 
@@ -104,7 +105,7 @@ export default function SportSidebar({ activeSlug }: { activeSlug: string[] }) {
           {hasChildren && (
             <button
               onClick={(e) => toggle(node.id, e)}
-              aria-label={isOpen ? `Chiudi ${node.label}` : `Apri ${node.label}`}
+              aria-label={isOpen ? t('closeNode', { label: node.label }) : t('openNode', { label: node.label })}
               className={[
                 'flex items-center justify-center w-11 self-stretch shrink-0 rounded-r-md',
                 'transition-colors',
@@ -152,7 +153,7 @@ export default function SportSidebar({ activeSlug }: { activeSlug: string[] }) {
           size={14}
           className={`shrink-0 ${activeSlug.length === 0 ? 'text-[#B31A1A]' : ''}`}
         />
-        Featured
+        {t('featured')}
       </Link>
       {SPORTS_TREE.map(node => renderNode(node, [], 0))}
     </nav>
@@ -166,14 +167,14 @@ export default function SportSidebar({ activeSlug }: { activeSlug: string[] }) {
         className="md:hidden fixed bottom-5 right-5 z-40 flex items-center gap-2 bg-[#B31A1A] text-white text-sm font-semibold px-4 py-3 rounded-full shadow-xl active:scale-95 transition-transform"
       >
         <SlidersHorizontal size={15} />
-        Events
+        {t('events')}
       </button>
 
       {/* ── Desktop sidebar ── */}
       <aside className="hidden md:flex flex-col w-56 shrink-0 border-r border-slate-800 sticky top-16 h-[calc(100vh-64px)] overflow-y-auto">
         <div className="px-3 pt-5 pb-4">
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 px-3 mb-3">
-            Events
+            {t('events')}
           </p>
           {tree}
         </div>
@@ -204,11 +205,11 @@ export default function SportSidebar({ activeSlug }: { activeSlug: string[] }) {
         >
           {/* Drawer header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 shrink-0">
-            <span className="text-sm font-bold text-white">Events</span>
+            <span className="text-sm font-bold text-white">{t('events')}</span>
             <button
               onClick={() => setMobileOpen(false)}
               className="p-2 rounded hover:bg-slate-800 transition-colors"
-              aria-label="Chiudi menu"
+              aria-label={t('closeMenuAria')}
             >
               <X size={16} className="text-slate-400" />
             </button>

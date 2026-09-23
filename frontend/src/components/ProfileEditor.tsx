@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { fetchProfile, updateProfile, type Specialization } from '@/lib/api'
 import { SPORTS_TREE, type SportNode } from '@/lib/sportsData'
 
@@ -19,6 +20,7 @@ function getChildren(tree: SportNode[], id: string): SportNode[] {
 }
 
 export default function ProfileEditor({ address }: { address: string }) {
+  const t = useTranslations('ProfileEditor')
   const [nickname, setNickname] = useState('')
   const [bio, setBio]           = useState('')
   const [spec, setSpec]         = useState<Specialization>({ category: '', sport: '', league: '' })
@@ -61,7 +63,7 @@ export default function ProfileEditor({ address }: { address: string }) {
       setStatus('saved')
       setTimeout(() => setStatus('idle'), 2500)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unknown error'
+      const msg = err instanceof Error ? err.message : t('unknownError')
       console.error('[ProfileEditor] Save failed:', msg)
       setErrorMsg(msg)
       setStatus('error')
@@ -73,12 +75,12 @@ export default function ProfileEditor({ address }: { address: string }) {
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 space-y-4">
-      <p className="text-xs font-bold text-[#FFB01F] uppercase tracking-widest">Profile</p>
+      <p className="text-xs font-bold text-[#FFB01F] uppercase tracking-widest">{t('title')}</p>
 
       {/* Nickname */}
       <div className="space-y-1">
         <div className="flex justify-between items-center">
-          <label className="text-xs text-slate-400 font-medium">Nickname</label>
+          <label className="text-xs text-slate-400 font-medium">{t('nickname')}</label>
           <span className="text-xs text-slate-600">{nickname.length}/{NICKNAME_MAX}</span>
         </div>
         <input
@@ -86,7 +88,7 @@ export default function ProfileEditor({ address }: { address: string }) {
           value={nickname}
           maxLength={NICKNAME_MAX}
           onChange={(e) => { setNickname(e.target.value); setStatus('idle') }}
-          placeholder="Your Placer name..."
+          placeholder={t('nicknamePlaceholder')}
           className={inputCls}
         />
       </div>
@@ -94,7 +96,7 @@ export default function ProfileEditor({ address }: { address: string }) {
       {/* Bio */}
       <div className="space-y-1">
         <div className="flex justify-between items-center">
-          <label className="text-xs text-slate-400 font-medium">Bio</label>
+          <label className="text-xs text-slate-400 font-medium">{t('bio')}</label>
           <span className="text-xs text-slate-600">{bio.length}/{BIO_MAX}</span>
         </div>
         <textarea
@@ -102,21 +104,21 @@ export default function ProfileEditor({ address }: { address: string }) {
           maxLength={BIO_MAX}
           rows={2}
           onChange={(e) => { setBio(e.target.value); setStatus('idle') }}
-          placeholder="Introduce yourself..."
+          placeholder={t('bioPlaceholder')}
           className={`${inputCls} resize-none`}
         />
       </div>
 
       {/* Specialization */}
       <div className="space-y-2 border-t border-slate-800 pt-3">
-        <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Specialization</p>
+        <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">{t('specialization')}</p>
 
         <select
           value={spec.category}
           onChange={(e) => setCategory(e.target.value)}
           className={selectCls}
         >
-          <option value="">— Category —</option>
+          <option value="">{t('categoryPlaceholder')}</option>
           {categories.map(c => (
             <option key={c.id} value={c.id}>{c.label}</option>
           ))}
@@ -128,7 +130,7 @@ export default function ProfileEditor({ address }: { address: string }) {
           disabled={!spec.category}
           className={selectCls}
         >
-          <option value="">— Sport —</option>
+          <option value="">{t('sportPlaceholder')}</option>
           {sports.map(s => (
             <option key={s.id} value={s.id}>{s.label}</option>
           ))}
@@ -140,7 +142,7 @@ export default function ProfileEditor({ address }: { address: string }) {
           disabled={!spec.sport}
           className={selectCls}
         >
-          <option value="">— League —</option>
+          <option value="">{t('leaguePlaceholder')}</option>
           {leagues.map(l => (
             <option key={l.id} value={l.id}>{l.label}</option>
           ))}
@@ -148,7 +150,7 @@ export default function ProfileEditor({ address }: { address: string }) {
 
         {spec.league && (
           <p className="text-[10px] text-slate-500 font-mono">
-            Dashboard will pre-load this league on next login.
+            {t('preloadNote')}
           </p>
         )}
       </div>
@@ -156,14 +158,14 @@ export default function ProfileEditor({ address }: { address: string }) {
       <div className="flex items-center justify-between gap-3 pt-1">
         <span className="text-xs">
           {status === 'error' && <span className="text-red-400">{errorMsg}</span>}
-          {status === 'saved' && <span className="text-emerald-400">✓ Saved</span>}
+          {status === 'saved' && <span className="text-emerald-400">{t('saved')}</span>}
         </span>
         <button
           onClick={handleSave}
           disabled={status === 'saving' || status === 'loading'}
           className="px-4 py-2 rounded-md text-xs font-bold bg-[#FFB01F] hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 transition-colors shrink-0"
         >
-          {status === 'saving' ? 'Saving...' : 'Save profile'}
+          {status === 'saving' ? t('savingButton') : t('saveButton')}
         </button>
       </div>
     </div>

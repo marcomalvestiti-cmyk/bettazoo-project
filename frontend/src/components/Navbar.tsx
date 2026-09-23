@@ -1,21 +1,23 @@
 'use client'
 
-import Link from 'next/link'
 import Image from 'next/image'
-import { usePathname } from 'next/navigation'
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
+import { Link, usePathname } from '@/i18n/navigation'
 import ConnectWallet from './ConnectWallet'
-
-const NAV_LINKS = [
-  { href: '/bet',         label: 'Bet' },
-  { href: '/bettor',      label: 'My Bets' },
-  { href: '/how-to-play', label: 'How to Play' },
-  { href: '/rules',       label: 'Rules' },
-]
+import LocaleSwitcher from './LocaleSwitcher'
 
 export default function Navbar() {
+  const t = useTranslations('Nav')
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+
+  const NAV_LINKS = [
+    { href: '/bet',         label: t('bet') },
+    { href: '/bettor',      label: t('myBets') },
+    { href: '/how-to-play', label: t('howToPlay') },
+    { href: '/rules',       label: t('rules') },
+  ]
 
   function isActive(href: string) {
     if (href === '/bet')    return pathname === '/bet' || pathname.startsWith('/bet/')
@@ -64,7 +66,7 @@ export default function Navbar() {
           })}
         </nav>
 
-        {/* Right — Placer Area + Get Test Tokens + Connect Wallet */}
+        {/* Right — Placer Area + Get Test Tokens + Language + Connect Wallet */}
         <div className="hidden md:flex items-center gap-2 shrink-0">
           <Link
             href="/placer"
@@ -74,7 +76,7 @@ export default function Navbar() {
                 : 'border-amber-500/50 text-amber-500 hover:border-amber-500 hover:bg-amber-500/10'
             }`}
           >
-            ✦ Placer Area
+            ✦ {t('placerArea')}
           </Link>
           <Link
             href="/faucet"
@@ -84,17 +86,19 @@ export default function Navbar() {
                 : 'border-emerald-500/50 text-emerald-400 hover:border-emerald-400 hover:bg-emerald-500/10'
             }`}
           >
-            💧 Get Test Tokens
+            💧 {t('getTestTokens')}
           </Link>
+          <LocaleSwitcher />
           <ConnectWallet />
         </div>
 
         {/* Mobile: wallet always visible + hamburger */}
         <div className="md:hidden flex items-center gap-2 ml-auto shrink-0">
+          <LocaleSwitcher />
           <ConnectWallet />
           <button
             onClick={() => setOpen((v) => !v)}
-            aria-label={open ? 'Close menu' : 'Open menu'}
+            aria-label={open ? t('closeMenu') : t('openMenu')}
             aria-expanded={open}
             className="w-10 h-10 flex flex-col items-center justify-center gap-[5px] rounded-md border border-slate-700 hover:border-slate-600 hover:bg-slate-800 transition-colors shrink-0"
           >
@@ -134,7 +138,7 @@ export default function Navbar() {
                 : 'border-emerald-500/40 text-emerald-400 hover:border-emerald-400 hover:bg-emerald-500/10'
             }`}
           >
-            💧 Get Test Tokens
+            💧 {t('getTestTokens')}
           </Link>
           <Link
             href="/placer"
@@ -145,7 +149,7 @@ export default function Navbar() {
                 : 'border-amber-500/40 text-amber-500 hover:border-amber-500 hover:bg-amber-500/10'
             }`}
           >
-            ✦ Placer Area
+            ✦ {t('placerArea')}
           </Link>
         </nav>
       </div>

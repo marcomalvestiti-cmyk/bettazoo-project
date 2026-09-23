@@ -1,12 +1,14 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
+
 type Props = {
   count: number
   size?: 'sm' | 'md'
 }
 
 type BadgeTier = {
-  label: string
+  labelKey: 'whaleMaker' | 'proBookie' | 'rookiePlacer'
   icon: string
   suffix?: string
   bg: string
@@ -16,7 +18,7 @@ type BadgeTier = {
 
 function getBadgeTier(count: number): BadgeTier | null {
   if (count >= 51) return {
-    label: 'Whale Maker',
+    labelKey: 'whaleMaker',
     icon: '🥇',
     suffix: '✓',
     bg: 'bg-yellow-500/15',
@@ -24,14 +26,14 @@ function getBadgeTier(count: number): BadgeTier | null {
     text: 'text-yellow-400',
   }
   if (count >= 11) return {
-    label: 'Pro Bookie',
+    labelKey: 'proBookie',
     icon: '🥈',
     bg: 'bg-slate-400/15',
     border: 'border-slate-400/40',
     text: 'text-slate-300',
   }
   if (count >= 1) return {
-    label: 'Rookie Placer',
+    labelKey: 'rookiePlacer',
     icon: '🥉',
     bg: 'bg-amber-700/15',
     border: 'border-amber-700/40',
@@ -41,6 +43,7 @@ function getBadgeTier(count: number): BadgeTier | null {
 }
 
 export default function PlacerBadge({ count, size = 'sm' }: Props) {
+  const t = useTranslations('Event.PlacerBadge')
   const tier = getBadgeTier(count)
   if (!tier) return null
 
@@ -51,7 +54,7 @@ export default function PlacerBadge({ count, size = 'sm' }: Props) {
   return (
     <span className={`inline-flex items-center font-bold rounded leading-none select-none whitespace-nowrap border ${tier.bg} ${tier.border} ${tier.text} ${sizeClass}`}>
       <span>{tier.icon}</span>
-      <span>{tier.label}</span>
+      <span>{t(tier.labelKey)}</span>
       {tier.suffix && <span>{tier.suffix}</span>}
     </span>
   )

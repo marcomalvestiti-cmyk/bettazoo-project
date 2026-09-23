@@ -1,0 +1,55 @@
+{
+  "Rules": {
+    "meta": {
+      "title": "Regole — Bettazoo",
+      "description": "Regole della piattaforma, meccaniche dello Smart Contract e struttura delle commissioni per le scommesse P2P di Bettazoo."
+    },
+    "header": {
+      "overline": "Legale e Meccaniche",
+      "title": "Regole della Piattaforma",
+      "subtitle": "Tutte le scommesse su Bettazoo sono regolate esclusivamente dallo Smart Contract BettazooEscrow distribuito on-chain. Queste regole rispecchiano la logica immutabile del contratto."
+    },
+    "items": {
+      "security": {
+        "title": "Non-Custodial e Sicuro",
+        "tag": "Sicurezza",
+        "body": "I fondi sono bloccati in uno Smart Contract Escrow verificato. Non deteniamo mai il tuo denaro — nemmeno per un blocco. Solo lo smart contract controlla i movimenti dei fondi, applicati interamente da codice on-chain che chiunque può verificare."
+      },
+      "payouts": {
+        "title": "Liquidazione Automatica",
+        "tag": "Pagamenti",
+        "body": "I risultati delle partite vengono forniti tramite Data Oracle certificati (es. Betradar). Non appena il risultato finale è confermato on-chain, i pagamenti in USDT vengono distribuiti istantaneamente ai vincitori — nessun intervento manuale, nessun ritardo."
+      },
+      "fees": {
+        "title": "Commissioni Trasparenti",
+        "tag": "Commissioni",
+        "body": "Viene applicata una commissione fissa del 5% solo sul montepremi netto vinto. Non ci sono commissioni di deposito, né di prelievo, né costi nascosti. La commissione viene detratta automaticamente dallo smart contract prima di distribuire le vincite."
+      },
+      "cancellations": {
+        "title": "Scommesse Non Abbinate e Cancellazioni",
+        "tag": "Cancellazioni",
+        "body": "Se il tuo ordine di scommessa o l'offerta di un Placer non viene abbinata prima dell'inizio dell'evento, puoi cancellarla in qualsiasi momento. La tua puntata o passività totale viene rilasciata immediatamente e direttamente sul tuo wallet — a costo zero."
+      },
+      "matching": {
+        "title": "Abbinamento Equo",
+        "tag": "Vedi Quote",
+        "body": "Gli ordini vengono abbinati nello smart contract tramite un algoritmo greedy che privilegia le migliori quote disponibili. È supportato l'abbinamento parziale — la tua scommessa può essere suddivisa tra più offerte di Placer per massimizzare il riempimento."
+      },
+      "voidEvents": {
+        "title": "Eventi Contestati e Annullati",
+        "tag": "Casi Particolari",
+        "body": "In caso di partita rinviata, sospesa o annullata, l'Oracle invia un risultato nullo. Tutti i fondi bloccati — sia le puntate dei bettor sia le passività dei placer — vengono rilasciati integralmente ai rispettivi proprietari originali."
+      }
+    },
+    "contract": {
+      "title": "Indirizzo dello Smart Contract",
+      "addressPrefix": "BettazooEscrow:",
+      "addressSuffix": "(Hardhat localhost — da aggiornare al deploy su mainnet)",
+      "note": "Il codice sorgente del contratto è aperto e verificabile. In caso di discrepanza tra questa pagina e il contratto distribuito, prevale il codice del contratto."
+    },
+    "cta": {
+      "howToPlay": "Come Giocare",
+      "browseEvents": "Sfoglia gli Eventi"
+    }
+  }
+}

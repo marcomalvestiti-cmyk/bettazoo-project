@@ -1,0 +1,15 @@
+{
+  "Home": {
+    "heroAlt": "Bettazoo — Plataforma de Apuestas Deportivas, Esports y Cripto",
+    "heroSubtitle": "Apuesta entre pares — sin casa de apuestas, stablecoin USDT en Web3.",
+    "eyebrow": "Eventos",
+    "heading": "Apuestas Destacadas",
+    "viewAllBets": "Ver Todas las Apuestas",
+    "badges": {
+      "hot": "Popular",
+      "featured": "Destacado",
+      "new": "Nuevo",
+      "live": "En Vivo"
+    }
+  }
+}

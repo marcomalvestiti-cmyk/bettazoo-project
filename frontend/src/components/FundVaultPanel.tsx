@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslations } from 'next-intl'
 import { useAccount, usePublicClient, useReadContract, useWriteContract, useSignMessage, useSignTypedData, useSwitchChain } from 'wagmi'
 import { arbitrumSepolia } from 'wagmi/chains'
 import { parseUnits, formatUnits } from 'viem'
@@ -20,17 +21,13 @@ const USDT_ADDRESS = (process.env.NEXT_PUBLIC_USDT_ADDRESS ?? '0x0') as `0x${str
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 const RECEIPT_TIMEOUT_MS = 120_000
 
-const STRATEGIES = [
-  { id: 'volume',   label: 'Volume Dominator', sub: '1.5% Margin', description: 'Best odds. Maximizes the number of incoming bets.' },
-  { id: 'balanced', label: 'Balanced',         sub: '3.0% Margin', description: 'Standard house edge. Good mix of volume and profit.' },
-  { id: 'safe',     label: 'Safe Bank',        sub: '5.0% Margin', description: 'Conservative odds. Lower volume, highest profit margin per bet.' },
-  { id: 'custom',   label: 'Custom',           sub: 'Set your own', description: undefined },
-] as const
-type StrategyId = typeof STRATEGIES[number]['id']
+const STRATEGY_IDS = ['volume', 'balanced', 'safe', 'custom'] as const
+type StrategyId = typeof STRATEGY_IDS[number]
 
 const inputCls = 'w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-sm font-semibold text-white placeholder:text-slate-600 focus:outline-none focus:border-[#FFB01F] transition-colors'
 
 export default function FundVaultPanel() {
+  const t = useTranslations('FundPanel')
   const { events } = useEvents()
   const { address, chain } = useAccount()
   const publicClient = usePublicClient()
@@ -184,7 +181,7 @@ export default function FundVaultPanel() {
       const msg = err instanceof Error ? err.message : 'Transaction error'
       setCreateErr(
         msg.toLowerCase().includes('timed out')
-          ? 'Still waiting for confirmation on-chain — check your wallet’s Activity tab; do not cancel it. Reload once it confirms.'
+          ? t('timedOut')
           : msg
       )
     } finally {
@@ -245,7 +242,7 @@ export default function FundVaultPanel() {
       setFundStatus('error')
       // A liquidity-capped redeem reverts with ERC4626ExceededMaxWithdraw — surface it plainly.
       const raw = err instanceof Error ? err.message : 'Withdrawal failed'
-      setFundErr(raw.includes('ExceededMaxWithdraw') ? 'Not enough liquid balance right now — some capital is locked in open offers.' : raw)
+      setFundErr(raw.includes('ExceededMaxWithdraw') ? t('illiquidError') : raw)
     }
   }
 
@@ -264,15 +261,15 @@ export default function FundVaultPanel() {
     if (!address) return
     if (active && !hasSingleCap) {
       setSaveStatus('error')
-      setSaveErr('Set a "Max Size Per Bet" cap on-chain before activating the keeper — it protects LP capital from a single oversized bet.')
+      setSaveErr(t('singleCapErr'))
       return
     }
     if (active && (!hasSignedAgreement || kycStatus !== 'approved')) {
       const missing = []
-      if (!hasSignedAgreement) missing.push('sign the Liquidity Provision Agreement')
-      if (kycStatus !== 'approved') missing.push('complete KYC review')
+      if (!hasSignedAgreement) missing.push(t('missingSignAgreement'))
+      if (kycStatus !== 'approved') missing.push(t('missingKyc'))
       setSaveStatus('error')
-      setSaveErr(`Cannot activate the keeper yet — ${missing.join(' and ')} first.`)
+      setSaveErr(t('cannotActivateErr', { missing: missing.join(` ${t('and')} `) }))
       return
     }
     setSaveStatus('saving')
@@ -423,17 +420,14 @@ export default function FundVaultPanel() {
   if (!vaultExists) {
     return (
       <div className="bg-slate-900 border border-slate-800 rounded-lg p-5 space-y-4">
-        <h3 className="font-bold text-white text-sm tracking-wide">Fund Vault</h3>
+        <h3 className="font-bold text-white text-sm tracking-wide">{t('title')}</h3>
         <p className="text-xs text-slate-400">
-          Open your own banco to third-party capital. LPs deposit USDT and get quote-shares back;
-          you run the strategy, the keeper quotes automatically, and you earn a performance fee on
-          any profit — split with the platform. Your own single-owner Placer Vault (if any) is
-          untouched by this.
+          {t('intro')}
         </p>
         {createErr && <p className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-md px-3 py-2">{createErr}</p>}
         <button onClick={handleCreateFundVault} disabled={creating}
           className="w-full py-3 text-sm font-bold rounded-md bg-[#FFB01F] hover:bg-amber-400 text-slate-950 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-          {creating ? 'Deploying fund vault…' : 'Create Your Fund Vault'}
+          {creating ? t('deploying') : t('createButton')}
         </button>
       </div>
     )
@@ -443,21 +437,21 @@ export default function FundVaultPanel() {
     <div className="bg-slate-900 border border-slate-800 rounded-lg p-5 space-y-5">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <h3 className="font-bold text-white text-sm tracking-wide">Fund Vault</h3>
+          <h3 className="font-bold text-white text-sm tracking-wide">{t('title')}</h3>
           <p className="text-[10px] font-mono text-slate-500 truncate">{vaultAddress}</p>
           {address && (
             <a href={`/fund/${address}`} target="_blank" rel="noreferrer"
               className="text-[10px] text-[#FFB01F] hover:underline">
-              View public LP page ↗
+              {t('viewPublicPage')}
             </a>
           )}
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <span className={`text-[9px] font-bold px-2 py-1 rounded-full border uppercase tracking-widest ${
             onChainPaused ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400'
-          }`}>{onChainPaused ? 'Paused' : 'Live'}</span>
+          }`}>{onChainPaused ? t('paused') : t('live')}</span>
           <span className="text-[9px] font-bold px-2 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-400 uppercase tracking-widest">
-            {vaultData?.status ?? 'configuring'}
+            {vaultData?.status === 'active' ? t('statusActive') : t('statusConfiguring')}
           </span>
         </div>
       </div>
@@ -465,15 +459,15 @@ export default function FundVaultPanel() {
       {/* ── TVL / liquidity ── */}
       <div className="grid grid-cols-3 gap-2">
         <div className="bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2">
-          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-600">TVL</p>
+          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-600">{t('tvl')}</p>
           <p className="text-lg font-bold font-mono text-white">${parseFloat(tvlStr).toFixed(2)}</p>
         </div>
         <div className="bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2">
-          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-600">Liquid</p>
+          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-600">{t('liquid')}</p>
           <p className="text-lg font-bold font-mono text-slate-300">${parseFloat(liquidStr).toFixed(2)}</p>
         </div>
         <div className="bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2">
-          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-600">Locked in Offers</p>
+          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-600">{t('lockedInOffers')}</p>
           <p className="text-lg font-bold font-mono text-amber-400">${parseFloat(lockedStr).toFixed(2)}</p>
         </div>
       </div>
@@ -481,24 +475,24 @@ export default function FundVaultPanel() {
       {/* ── Your position + funding ── */}
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs text-slate-500">
-          <span>Your shares: <span className="font-mono text-slate-300">{myShareBalance.toString()}</span></span>
-          <span>Wallet: <span className="font-mono text-slate-400">${parseFloat(walletBalanceStr).toFixed(2)}</span></span>
+          <span>{t('yourShares')} <span className="font-mono text-slate-300">{myShareBalance.toString()}</span></span>
+          <span>{t('wallet')} <span className="font-mono text-slate-400">${parseFloat(walletBalanceStr).toFixed(2)}</span></span>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div className="flex gap-1.5">
             <input type="number" min="0" step="0.01" value={depositAmt} onChange={e => setDepositAmt(e.target.value)}
-              className={inputCls} placeholder="Deposit USDT" />
+              className={inputCls} placeholder={t('depositPlaceholder')} />
             <button onClick={handleDeposit} disabled={fundStatus === 'depositing'}
               className="shrink-0 px-3 py-2 text-xs font-bold rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50 transition-colors">
-              {fundStatus === 'depositing' ? '…' : 'Deposit'}
+              {fundStatus === 'depositing' ? '…' : t('deposit')}
             </button>
           </div>
           <div className="flex gap-1.5">
             <input type="number" min="0" step="0.01" value={withdrawAmt} onChange={e => setWithdrawAmt(e.target.value)}
-              className={inputCls} placeholder={`Withdraw (up to $${parseFloat(myMaxWithdrawStr).toFixed(2)})`} />
+              className={inputCls} placeholder={t('withdrawPlaceholder', { amount: parseFloat(myMaxWithdrawStr).toFixed(2) })} />
             <button onClick={handleWithdraw} disabled={fundStatus === 'withdrawing'}
               className="shrink-0 px-3 py-2 text-xs font-bold rounded-md bg-slate-800 border border-slate-700 text-slate-300 hover:border-slate-600 disabled:opacity-50 transition-colors">
-              {fundStatus === 'withdrawing' ? '…' : 'Withdraw'}
+              {fundStatus === 'withdrawing' ? '…' : t('withdraw')}
             </button>
           </div>
         </div>
@@ -507,18 +501,18 @@ export default function FundVaultPanel() {
 
       {/* ── Strategy ── */}
       <div className="space-y-1.5">
-        <label className="text-xs text-slate-500 font-medium uppercase tracking-wide">Strategy</label>
+        <label className="text-xs text-slate-500 font-medium uppercase tracking-wide">{t('strategyLabel')}</label>
         <div className="space-y-1.5">
-          {STRATEGIES.map(s => (
-            <button key={s.id} onClick={() => setStrategy(s.id)}
+          {STRATEGY_IDS.map(id => (
+            <button key={id} onClick={() => setStrategy(id)}
               className={`w-full flex flex-col items-start py-2 px-3 rounded-md border text-left transition-colors ${
-                strategy === s.id ? 'border-[#FFB01F]/60 bg-[#FFB01F]/8' : 'border-slate-800 hover:border-slate-700'
+                strategy === id ? 'border-[#FFB01F]/60 bg-[#FFB01F]/8' : 'border-slate-800 hover:border-slate-700'
               }`}>
               <span className="flex items-baseline gap-1.5">
-                <span className={`text-xs font-bold leading-none ${strategy === s.id ? 'text-[#FFB01F]' : 'text-slate-400'}`}>{s.label}</span>
-                <span className={`text-[10px] font-mono ${strategy === s.id ? 'text-[#FFB01F]/70' : 'text-slate-600'}`}>{s.sub}</span>
+                <span className={`text-xs font-bold leading-none ${strategy === id ? 'text-[#FFB01F]' : 'text-slate-400'}`}>{t(`strategies.${id}.label`)}</span>
+                <span className={`text-[10px] font-mono ${strategy === id ? 'text-[#FFB01F]/70' : 'text-slate-600'}`}>{t(`strategies.${id}.sub`)}</span>
               </span>
-              {s.description && <span className="text-xs text-slate-500 mt-0.5">{s.description}</span>}
+              {id !== 'custom' && <span className="text-xs text-slate-500 mt-0.5">{t(`strategies.${id}.description`)}</span>}
             </button>
           ))}
         </div>
@@ -526,7 +520,7 @@ export default function FundVaultPanel() {
           <div className="flex items-center gap-2 pt-1">
             <input type="number" min="0" step="0.1" value={customMargin} onChange={e => setCustomMargin(e.target.value)}
               className={inputCls} placeholder="3.0" />
-            <span className="text-xs text-slate-500 font-mono shrink-0">% margin</span>
+            <span className="text-xs text-slate-500 font-mono shrink-0">{t('marginSuffix')}</span>
           </div>
         )}
       </div>
@@ -534,7 +528,7 @@ export default function FundVaultPanel() {
       {/* ── Market scope ── */}
       <div className="space-y-1.5">
         <label className="text-xs text-slate-500 font-medium uppercase tracking-wide">
-          Market Scope {scope.length > 0 && <span className="text-slate-600">({scope.length} events)</span>}
+          {t('marketScopeLabel')} {scope.length > 0 && <span className="text-slate-600">{t('eventsCount', { count: scope.length })}</span>}
         </label>
         <div className="max-h-64 overflow-y-auto space-y-1.5 pr-1">
           {events.map(ev => {
@@ -560,43 +554,43 @@ export default function FundVaultPanel() {
       {/* ── Risk limits ── */}
       <div className="grid grid-cols-2 gap-2.5">
         <div className="space-y-1">
-          <label className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">Max Exposure</label>
+          <label className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">{t('maxExposure')}</label>
           <input type="number" min="0" step="1" value={maxExposure} onChange={e => setMaxExposure(e.target.value)} className={inputCls} />
         </div>
         <div className="space-y-1">
-          <label className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">Per-Market Cap</label>
+          <label className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">{t('perMarketCap')}</label>
           <input type="number" min="0" step="1" value={perMarketExposure} onChange={e => setPerMarketExposure(e.target.value)} className={inputCls} />
         </div>
         <div className="space-y-1">
-          <label className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">Stop-Loss (USDT)</label>
+          <label className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">{t('stopLoss')}</label>
           <input type="number" min="0" step="1" value={stopLoss} onChange={e => setStopLoss(e.target.value)} className={inputCls} />
         </div>
         <div className="space-y-1">
-          <label className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">Quote Size</label>
+          <label className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">{t('quoteSize')}</label>
           <input type="number" min="1" step="1" value={liabilityIncrement} onChange={e => setLiabilityIncrement(e.target.value)} className={inputCls} />
         </div>
         <div className="space-y-1">
-          <label className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">Min Odds</label>
+          <label className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">{t('minOdds')}</label>
           <input type="number" min="1.01" step="0.01" value={minOdds} onChange={e => setMinOdds(e.target.value)} className={inputCls} />
         </div>
         <div className="space-y-1">
-          <label className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">Max Odds</label>
+          <label className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">{t('maxOdds')}</label>
           <input type="number" min="1.01" step="0.01" value={maxOdds} onChange={e => setMaxOdds(e.target.value)} className={inputCls} />
         </div>
       </div>
 
       {/* ── Performance fee — YOUR cut of LP profit, split with the platform on-chain ── */}
       <div className="space-y-1.5 rounded-md border border-slate-800 bg-slate-950/40 p-3">
-        <label className="text-[10px] text-slate-300 font-bold uppercase tracking-wide">Performance Fee</label>
+        <label className="text-[10px] text-slate-300 font-bold uppercase tracking-wide">{t('performanceFeeLabel')}</label>
         <p className="text-xs text-slate-500">
-          Your cut of LP profit above the high-water mark, crystallized on-chain. Platform takes a share of this fee, not a separate cost to you.
+          {t('performanceFeeDesc')}
         </p>
         <div className="flex gap-1.5">
           <input type="number" min="0" max="100" step="1" value={feeInput} onChange={e => setFeeInput(e.target.value)} className={inputCls} placeholder="20" />
           <span className="self-center text-xs text-slate-500 font-mono">%</span>
           <button onClick={handleSetPerformanceFee} disabled={feeStatus === 'setting'}
             className="shrink-0 px-3 py-2 text-xs font-bold rounded-md bg-slate-800 border border-slate-700 text-slate-300 hover:border-slate-600 disabled:opacity-50 transition-colors">
-            {feeStatus === 'setting' ? '…' : 'Set Fee'}
+            {feeStatus === 'setting' ? '…' : t('setFee')}
           </button>
         </div>
       </div>
@@ -604,32 +598,32 @@ export default function FundVaultPanel() {
       {/* ── Max size per bet — mandatory on-chain cap ── */}
       <div className={`space-y-1.5 rounded-md border p-3 ${hasSingleCap ? 'border-slate-800 bg-slate-950/40' : 'border-red-500/40 bg-red-500/5'}`}>
         <div className="flex items-center justify-between gap-2">
-          <label className="text-[10px] text-slate-300 font-bold uppercase tracking-wide">Max Size Per Bet (USDT)</label>
+          <label className="text-[10px] text-slate-300 font-bold uppercase tracking-wide">{t('maxSizeLabel')}</label>
           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-widest border ${
             hasSingleCap ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25' : 'bg-red-500/10 text-red-400 border-red-500/30'
-          }`}>{hasSingleCap ? 'Set' : 'Required'}</span>
+          }`}>{hasSingleCap ? t('capSet') : t('capRequired')}</span>
         </div>
-        <p className="text-xs text-slate-500">Caps the liability of any single offer, enforced on-chain — protects LP capital from one oversized bet.</p>
+        <p className="text-xs text-slate-500">{t('maxSizeDesc')}</p>
         <div className="flex gap-1.5">
-          <input type="number" min="0" step="1" value={maxSingleInput} onChange={e => setMaxSingleInput(e.target.value)} className={inputCls} placeholder="e.g. 100" />
+          <input type="number" min="0" step="1" value={maxSingleInput} onChange={e => setMaxSingleInput(e.target.value)} className={inputCls} placeholder={t('maxSizePlaceholder')} />
           <button onClick={handleSetCap} disabled={capStatus === 'setting'}
             className="shrink-0 px-3 py-2 text-xs font-bold rounded-md bg-slate-800 border border-slate-700 text-slate-300 hover:border-slate-600 disabled:opacity-50 transition-colors">
-            {capStatus === 'setting' ? '…' : 'Set Cap'}
+            {capStatus === 'setting' ? '…' : t('setCap')}
           </button>
         </div>
       </div>
 
       {/* ── LP allowlist — on-chain gate, revoking only blocks new deposits, never withdrawals ── */}
       <div className="space-y-2.5 rounded-md border border-slate-800 bg-slate-950/40 p-3">
-        <label className="text-[10px] text-slate-300 font-bold uppercase tracking-wide">Approved LPs</label>
+        <label className="text-[10px] text-slate-300 font-bold uppercase tracking-wide">{t('approvedLpsLabel')}</label>
         <p className="text-xs text-slate-500">
-          Only approved addresses can deposit. Revoking never blocks an existing LP from withdrawing their own position.
+          {t('approvedLpsDesc')}
         </p>
         <div className="flex gap-1.5">
-          <input type="text" value={newLpAddress} onChange={e => setNewLpAddress(e.target.value)} className={inputCls} placeholder="0x… LP address" />
+          <input type="text" value={newLpAddress} onChange={e => setNewLpAddress(e.target.value)} className={inputCls} placeholder={t('lpAddressPlaceholder')} />
           <button onClick={() => handleSetApprovedLP(newLpAddress.trim(), true)} disabled={lpStatus === 'working' || !newLpAddress.trim()}
             className="shrink-0 px-3 py-2 text-xs font-bold rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50 transition-colors">
-            {lpStatus === 'working' ? '…' : 'Approve'}
+            {lpStatus === 'working' ? '…' : t('approve')}
           </button>
         </div>
         {lps.length > 0 && (
@@ -642,11 +636,11 @@ export default function FundVaultPanel() {
                     lp.kycStatus === 'approved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
                     : lp.kycStatus === 'pending' ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
                     : 'bg-slate-800 text-slate-500 border-slate-700'
-                  }`}>{lp.kycStatus}</span>
+                  }`}>{lp.kycStatus === 'approved' ? t('approved') : lp.kycStatus === 'pending' ? t('pending') : lp.kycStatus === 'rejected' ? t('rejected') : t('notStarted')}</span>
                   <button onClick={() => handleSetApprovedLP(lp.lpAddress, !lp.approved)} disabled={lpStatus === 'working'}
                     className={`text-[9px] font-bold px-2 py-1 rounded-full border uppercase tracking-widest transition-colors ${
                       lp.approved ? 'bg-red-500/10 text-red-400 border-red-500/30 hover:bg-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25 hover:bg-emerald-500/20'
-                    }`}>{lp.approved ? 'Revoke' : 'Approve'}</button>
+                    }`}>{lp.approved ? t('revoke') : t('approve')}</button>
                 </div>
               </div>
             ))}
@@ -656,13 +650,13 @@ export default function FundVaultPanel() {
 
       {/* ── Manager compliance — same mechanism as the single-owner vault ── */}
       <div className="space-y-2.5 rounded-md border border-slate-800 bg-slate-950/40 p-3">
-        <label className="text-[10px] text-slate-300 font-bold uppercase tracking-wide">Compliance (Fund Manager)</label>
+        <label className="text-[10px] text-slate-300 font-bold uppercase tracking-wide">{t('complianceManagerLabel')}</label>
         <div className="space-y-1.5">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-slate-400">Liquidity Provision Agreement</span>
+            <span className="text-xs text-slate-400">{t('agreementLabel')}</span>
             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-widest border ${
               hasSignedAgreement ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25' : 'bg-red-500/10 text-red-400 border-red-500/30'
-            }`}>{hasSignedAgreement ? 'Signed' : 'Not Signed'}</span>
+            }`}>{hasSignedAgreement ? t('signed') : t('notSigned')}</span>
           </div>
           {!hasSignedAgreement && (
             <>
@@ -671,7 +665,7 @@ export default function FundVaultPanel() {
               </div>
               <button onClick={handleSignAgreement} disabled={agreementStatus === 'signing'}
                 className="w-full py-2 text-xs font-bold rounded-md bg-slate-800 border border-slate-700 text-slate-300 hover:border-slate-600 disabled:opacity-50 transition-colors">
-                {agreementStatus === 'signing' ? 'Signing…' : 'Sign Agreement'}
+                {agreementStatus === 'signing' ? t('signing') : t('signAgreement')}
               </button>
               {agreementErr && <p className="text-[10px] text-red-400">{agreementErr}</p>}
             </>
@@ -679,22 +673,22 @@ export default function FundVaultPanel() {
         </div>
         <div className="space-y-1.5 pt-1.5 border-t border-slate-800/60">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-slate-400">KYC Review</span>
+            <span className="text-xs text-slate-400">{t('kycLabel')}</span>
             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-widest border ${
               kycStatus === 'approved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
               : kycStatus === 'pending' ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
               : kycStatus === 'rejected' ? 'bg-red-500/10 text-red-400 border-red-500/30'
               : 'bg-slate-800 text-slate-500 border-slate-700'
-            }`}>{kycStatus === 'approved' ? 'Approved' : kycStatus === 'pending' ? 'Pending' : kycStatus === 'rejected' ? 'Rejected' : 'Not Started'}</span>
+            }`}>{kycStatus === 'approved' ? t('approved') : kycStatus === 'pending' ? t('pending') : kycStatus === 'rejected' ? t('rejected') : t('notStarted')}</span>
           </div>
           {kycStatus === 'approved' ? (
-            <p className="text-[10px] text-slate-600">Verified — the keeper can quote once activated below.</p>
+            <p className="text-[10px] text-slate-600">{t('kycVerifiedNote')}</p>
           ) : kycStatus === 'pending' ? (
-            <p className="text-[10px] text-slate-600">Under manual review (testnet — no Sumsub integration yet). Check back soon.</p>
+            <p className="text-[10px] text-slate-600">{t('kycPendingNote')}</p>
           ) : (
             <button onClick={handleRequestKyc} disabled={kycRequestStatus === 'requesting'}
               className="w-full py-2 text-xs font-bold rounded-md bg-slate-800 border border-slate-700 text-slate-300 hover:border-slate-600 disabled:opacity-50 transition-colors">
-              {kycRequestStatus === 'requesting' ? 'Requesting…' : kycStatus === 'rejected' ? 'Request Review Again' : 'Request KYC Review'}
+              {kycRequestStatus === 'requesting' ? t('requesting') : kycStatus === 'rejected' ? t('requestReviewAgain') : t('requestKyc')}
             </button>
           )}
         </div>
@@ -702,7 +696,7 @@ export default function FundVaultPanel() {
 
       {/* ── Activate + Save ── */}
       <div className="flex items-center justify-between bg-slate-950/50 border border-slate-800 rounded-md px-3 py-2.5">
-        <span className="text-xs font-semibold text-slate-300">Keeper active</span>
+        <span className="text-xs font-semibold text-slate-300">{t('keeperActiveLabel')}</span>
         <button onClick={() => setActive(a => !a)}
           className={`relative w-10 h-5 rounded-full transition-colors ${active ? 'bg-[#FFB01F]' : 'bg-slate-700'}`}>
           <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${active ? 'translate-x-5' : 'translate-x-0.5'}`} />
@@ -713,16 +707,16 @@ export default function FundVaultPanel() {
 
       <button onClick={handleSaveConfig} disabled={saveStatus === 'saving'}
         className="w-full py-3 text-sm font-bold rounded-md bg-[#FFB01F] hover:bg-amber-400 text-slate-950 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-        {saveStatus === 'saving' ? 'Signing & saving…' : saveStatus === 'done' ? '✓ Saved!' : 'Save Config'}
+        {saveStatus === 'saving' ? t('savingSigning') : saveStatus === 'done' ? t('saved') : t('saveConfig')}
       </button>
 
       <div className="border-t border-slate-800 pt-4 space-y-2.5">
-        <label className="text-xs text-slate-500 font-medium uppercase tracking-wide">On-Chain Safety</label>
+        <label className="text-xs text-slate-500 font-medium uppercase tracking-wide">{t('onChainSafetyLabel')}</label>
         <button onClick={handleTogglePause} disabled={pauseStatus === 'toggling'}
           className={`w-full py-2.5 text-xs font-bold rounded-md border transition-colors disabled:opacity-50 ${
             onChainPaused ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20' : 'bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20'
           }`}>
-          {pauseStatus === 'toggling' ? '…' : onChainPaused ? 'Unpause Vault' : 'Pause Vault (blocks new offers + deposits, never withdrawals)'}
+          {pauseStatus === 'toggling' ? '…' : onChainPaused ? t('unpause') : t('pauseWithHint')}
         </button>
       </div>
     </div>

@@ -1,0 +1,55 @@
+{
+  "Rules": {
+    "meta": {
+      "title": "Rules — Bettazoo",
+      "description": "Platform rules, Smart Contract mechanics, and fee structure for Bettazoo P2P betting."
+    },
+    "header": {
+      "overline": "Legal & Mechanics",
+      "title": "Platform Rules",
+      "subtitle": "All bets on Bettazoo are governed exclusively by the BettazooEscrow Smart Contract deployed on-chain. These rules reflect the contract's immutable logic."
+    },
+    "items": {
+      "security": {
+        "title": "Non-Custodial & Secure",
+        "tag": "Security",
+        "body": "Funds are locked in a verified Smart Contract Escrow. We never hold your money — not for a single block. Only the smart contract controls fund movement, enforced entirely by on-chain code that anyone can audit."
+      },
+      "payouts": {
+        "title": "Automated Settlement",
+        "tag": "Payouts",
+        "body": "Match results are delivered via certified Data Oracles (e.g., Betradar). As soon as the final result is confirmed on-chain, USDT payouts are distributed instantly to winners — no manual intervention, no delays."
+      },
+      "fees": {
+        "title": "Transparent Fees",
+        "tag": "Fees",
+        "body": "A flat 5% rake is applied only on the net winning pot. There are no deposit fees, no withdrawal fees, and no hidden charges. The fee is deducted automatically by the smart contract before distributing winnings."
+      },
+      "cancellations": {
+        "title": "Unmatched Bets & Cancellations",
+        "tag": "Cancellations",
+        "body": "If your bet order or Placer offer is not matched before the event starts, you can cancel it at any time. Your full stake or liability is released immediately and directly back to your wallet — zero cost."
+      },
+      "matching": {
+        "title": "Fair Matching",
+        "tag": "View Odds",
+        "body": "Orders are matched in the smart contract using a greedy algorithm that prioritises the best available odds. Partial matching is supported — your bet can be split across multiple Placer offers to maximise fill."
+      },
+      "voidEvents": {
+        "title": "Disputed & Void Events",
+        "tag": "Edge Cases",
+        "body": "In the event of a postponed, abandoned, or void match, the Oracle submits a void result. All locked funds — both bettor stakes and placer liabilities — are released in full to their original owners."
+      }
+    },
+    "contract": {
+      "title": "Smart Contract Address",
+      "addressPrefix": "BettazooEscrow:",
+      "addressSuffix": "(Hardhat localhost — update on mainnet deploy)",
+      "note": "The contract source code is open and verifiable. In case of any discrepancy between this page and the deployed contract, the contract code prevails."
+    },
+    "cta": {
+      "howToPlay": "How to Play",
+      "browseEvents": "Browse Events"
+    }
+  }
+}

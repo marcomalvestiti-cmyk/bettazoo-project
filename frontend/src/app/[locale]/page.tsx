@@ -1,0 +1,133 @@
+import { Link } from '@/i18n/navigation'
+import Image from 'next/image'
+import { getTranslations } from 'next-intl/server'
+import { fetchEvents, fetchOrderBook } from '@/lib/api'
+import BestOddsStrip from '@/components/BestOddsStrip'
+
+const FEATURED_IDS = ['evt-001', 'evt-002', 'evt-003', 'evt-010', 'evt-012']
+
+// Only surface an event as "Featured" once at least one placer has quoted it —
+// an event with an empty orderbook has nothing to bet on yet.
+async function hasPlacerQuotes(eventId: string): Promise<boolean> {
+  try {
+    const data = await fetchOrderBook(eventId)
+    return (data.orders ?? []).length > 0
+  } catch {
+    return false
+  }
+}
+
+const EVENT_BADGES: Record<string, { key: 'hot' | 'featured' | 'new' | 'live'; emoji: string; className: string }> = {
+  'evt-001': { key: 'hot',      emoji: '🔥', className: 'bg-orange-500/15 text-orange-400 border-orange-500/30' },
+  'evt-002': { key: 'featured', emoji: '⭐', className: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30' },
+  'evt-003': { key: 'new',      emoji: '✨', className: 'bg-sky-500/15    text-sky-400    border-sky-500/30'    },
+  'evt-010': { key: 'live',     emoji: '🔴', className: 'bg-red-500/15    text-red-400    border-red-500/30'    },
+}
+
+export default async function Home() {
+  const t = await getTranslations('Home')
+  const events = await fetchEvents().catch(() => [])
+
+  // Prefer the curated FEATURED_IDS picks; once a live odds sync supersedes a
+  // curated football fixture (see backend eventsFeedService.js), that ID drops out
+  // of the catalog — backfill from the general list so the homepage never runs dry.
+  const picked = FEATURED_IDS
+    .map((id) => events.find((e) => e.eventId === id))
+    .filter((e): e is NonNullable<typeof e> => Boolean(e))
+  const backfill = events.filter((e) => !FEATURED_IDS.includes(e.eventId))
+  const FEATURED_CANDIDATES = picked.length >= 3 ? picked : [...picked, ...backfill].slice(0, 5)
+
+  const quoted = await Promise.all(FEATURED_CANDIDATES.map(e => hasPlacerQuotes(e.eventId)))
+  const FEATURED = FEATURED_CANDIDATES.filter((_, i) => quoted[i])
+
+  return (
+    <div className="max-w-5xl mx-auto px-4 py-10 space-y-10">
+
+      {/* Hero */}
+      <div className="space-y-4">
+        <Image
+          src="/Logo-Bettazoo.png"
+          alt={t('heroAlt')}
+          width={300}
+          height={120}
+          className="h-20 w-auto object-contain"
+          priority
+        />
+        <p className="text-slate-400 text-base max-w-md">
+          {t('heroSubtitle')}
+        </p>
+      </div>
+
+      {/* Section header */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div className="space-y-1">
+          <p className="text-sm font-semibold text-red-500 uppercase tracking-widest">{t('eyebrow')}</p>
+          <h2 className="text-3xl font-bold text-white">{t('heading')}</h2>
+        </div>
+        <Link
+          href="/bet"
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3 rounded-lg bg-[#B31A1A] hover:bg-red-600 active:scale-95 text-white font-bold text-sm shadow-lg hover:shadow-red-900/40 hover:scale-[1.02] transition-all"
+        >
+          {t('viewAllBets')} →
+        </Link>
+      </div>
+
+      {/* Event list */}
+      <div className="space-y-2">
+        {FEATURED.map((event) => {
+          const start = new Date(event.startTime)
+          const badge = EVENT_BADGES[event.eventId]
+          return (
+            <Link
+              key={event.eventId}
+              href={`/event/${event.eventId}`}
+              className="group flex flex-col sm:flex-row sm:items-center gap-4 bg-slate-900 border border-slate-800 hover:border-slate-700 hover:bg-slate-800 rounded-lg px-5 py-4 transition-colors"
+            >
+              {/* icon + info */}
+              <div className="flex items-start gap-4 flex-1 min-w-0">
+                <span className="hidden sm:flex w-10 h-10 rounded-lg bg-slate-800 items-center justify-center text-xl select-none shrink-0">
+                  {event.icon}
+                </span>
+                <div className="space-y-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-red-500 bg-[#B31A1A]/10 px-2 py-0.5 rounded">
+                        {event.sportLabel}
+                      </span>
+                      {badge && (
+                        <span className={`inline-flex items-center gap-0.5 text-xs font-semibold px-2 py-0.5 rounded border leading-none select-none ${badge.className}`}>
+                          {badge.emoji} {t(`badges.${badge.key}`)}
+                        </span>
+                      )}
+                      <span className="text-xs text-slate-500">
+                        {start.toLocaleDateString('en-GB')} · {start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    {/* mobile arrow — top-right of info block */}
+                    <span className="sm:hidden text-slate-400 group-hover:text-red-500 transition-colors text-xl shrink-0">→</span>
+                  </div>
+                  <h3 className="text-lg font-semibold text-slate-100 group-hover:text-white transition-colors">
+                    {event.name}
+                  </h3>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {event.teams.map((team) => (
+                      <span key={team} className="text-xs font-medium bg-slate-800 text-slate-400 px-2 py-0.5 rounded">
+                        {team}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* odds strip + desktop arrow */}
+              <div className="flex items-center gap-3 sm:shrink-0">
+                <BestOddsStrip eventId={event.eventId} />
+                <span className="hidden sm:block text-slate-400 group-hover:text-red-500 transition-colors text-xl">→</span>
+              </div>
+            </Link>
+          )
+        })}
+      </div>
+    </div>
+  )
+}

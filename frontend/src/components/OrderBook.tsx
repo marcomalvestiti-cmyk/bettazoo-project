@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { fetchOrderBook, fetchChallengers } from '@/lib/api'
 import { OUTCOMES } from '@/lib/abis'
 import { displayMakerName, isKnownMaker } from '@/lib/formatAddress'
@@ -63,6 +64,7 @@ const OUTCOME_STYLE: Record<number, {
 }
 
 export default function OrderBook({ eventId, onBet }: Props) {
+  const t = useTranslations('Event.OrderBook')
   const [data, setData]               = useState<{ orders: Offer[]; summary: Summary } | null>(null)
   const [loading, setLoading]         = useState(true)
   const [error, setError]             = useState<string | null>(null)
@@ -80,7 +82,7 @@ export default function OrderBook({ eventId, onBet }: Props) {
       } catch (err) {
         if (!cancelled) {
           setData(null)
-          setError(err instanceof Error ? err.message : 'Failed to load order book')
+          setError(err instanceof Error ? err.message : t('loadError'))
           console.error('[OrderBook] fetch failed:', err)
         }
       } finally {
@@ -175,13 +177,13 @@ export default function OrderBook({ eventId, onBet }: Props) {
                   <div className="flex items-center gap-1.5 mb-1.5">
                     <span className={`w-2 h-2 rounded-full shrink-0 ${st.dot}`} />
                     <span className={`text-xs font-semibold truncate ${active ? st.label : 'text-slate-400'}`}>
-                      {OUTCOMES[s.outcome] ?? `Outcome ${s.outcome}`}
+                      {OUTCOMES[s.outcome] ?? t('outcomeFallback', { n: s.outcome })}
                     </span>
                   </div>
 
                   {s.outcome === bestOddsOutcome && (
                     <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 leading-none mb-2 select-none">
-                      🏅 Best Odds
+                      {t('bestOdds')}
                     </span>
                   )}
 
@@ -190,7 +192,7 @@ export default function OrderBook({ eventId, onBet }: Props) {
                     <span className="text-sm text-slate-500 font-normal ml-0.5">x</span>
                   </div>
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-[11px] text-slate-500">{s.count} offers</span>
+                    <span className="text-[11px] text-slate-500">{t('offersCount', { count: s.count })}</span>
                     <span className="text-[11px] text-slate-500 font-mono tabular-nums font-semibold">
                       ${s.totalLiquidityUsdt.toFixed(0)}
                     </span>
@@ -199,7 +201,7 @@ export default function OrderBook({ eventId, onBet }: Props) {
                   {onBet && (
                     <div className="pt-3 border-t border-slate-800/60">
                       <span className="block w-full text-center text-sm font-semibold text-red-500">
-                        Bet {s.bestOdds.toFixed(2)}x →
+                        {t('betCta', { odds: s.bestOdds.toFixed(2) })}
                       </span>
                     </div>
                   )}
@@ -216,12 +218,12 @@ export default function OrderBook({ eventId, onBet }: Props) {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
           </svg>
-          Loading odds…
+          {t('loading')}
         </div>
       ) : error ? (
         <div className="flex flex-col items-center justify-center py-16 gap-3">
           <span className="text-3xl select-none">⚠️</span>
-          <span className="text-sm font-medium text-red-400">View Odds unavailable</span>
+          <span className="text-sm font-medium text-red-400">{t('errorTitle')}</span>
           <span className="text-xs text-slate-600 text-center max-w-xs">{error}</span>
           <button
             onClick={() => {
@@ -229,18 +231,18 @@ export default function OrderBook({ eventId, onBet }: Props) {
               setLoading(true)
               fetchOrderBook(eventId)
                 .then((result) => setData(result))
-                .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load order book'))
+                .catch((err) => setError(err instanceof Error ? err.message : t('loadError')))
                 .finally(() => setLoading(false))
             }}
             className="mt-1 px-4 py-1.5 text-xs font-semibold rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors"
           >
-            Retry
+            {t('retry')}
           </button>
         </div>
       ) : displayOrders.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 gap-2 text-slate-600">
           <span className="text-3xl select-none">📭</span>
-          <span className="text-sm font-medium">No offers available</span>
+          <span className="text-sm font-medium">{t('empty')}</span>
         </div>
       ) : (
         <div className="rounded-lg border border-slate-800 overflow-hidden">
@@ -248,11 +250,11 @@ export default function OrderBook({ eventId, onBet }: Props) {
           <table className="w-full min-w-[520px] text-sm">
             <thead>
               <tr className="bg-slate-900/80 border-b border-slate-800">
-                <th className="px-4 py-3 text-left  text-xs font-semibold text-slate-500 uppercase tracking-wider">Outcome</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Odds</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Max Stake</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Liquidity</th>
-                <th className="px-4 py-3 text-left  text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Maker</th>
+                <th className="px-4 py-3 text-left  text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('columnOutcome')}</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('columnOdds')}</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">{t('columnMaxStake')}</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('columnLiquidity')}</th>
+                <th className="px-4 py-3 text-left  text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">{t('columnMaker')}</th>
               </tr>
             </thead>
             <tbody>
@@ -275,7 +277,7 @@ export default function OrderBook({ eventId, onBet }: Props) {
                       <div className="flex items-center gap-2">
                         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${st.dot}`} />
                         <span className={`text-xs font-semibold ${st.label}`}>
-                          {OUTCOMES[o.outcome] ?? o.outcome}
+                          {OUTCOMES[o.outcome] ?? t('outcomeFallback', { n: o.outcome })}
                         </span>
                       </div>
                     </td>
@@ -287,7 +289,7 @@ export default function OrderBook({ eventId, onBet }: Props) {
                       <div className="flex items-center justify-end gap-2">
                         {isBestPrice && (
                           <span className="inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded bg-[#B31A1A]/15 text-red-500 border border-[#B31A1A]/30 uppercase tracking-widest leading-none select-none">
-                            Best
+                            {t('bestBadge')}
                           </span>
                         )}
                         <span className="font-semibold font-mono tabular-nums text-xl leading-none text-red-500 group-hover:text-red-400 transition-colors">
@@ -325,17 +327,17 @@ export default function OrderBook({ eventId, onBet }: Props) {
                         </span>
                         {isKnownMaker(o.placer) && (
                           <span className="inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-400 border border-sky-500/30 leading-none select-none whitespace-nowrap">
-                            ✓ Official
+                            {t('official')}
                           </span>
                         )}
                         {o.placer === topPlacer && (
                           <span className="inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 leading-none select-none whitespace-nowrap">
-                            🏆 Top
+                            {t('topMaker')}
                           </span>
                         )}
                         {o.oddsDecimal === bestOddsInBook && bestOddsInBook > 0 && (
                           <span className="inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded bg-[#B31A1A]/15 text-red-500 border border-[#B31A1A]/30 leading-none select-none whitespace-nowrap">
-                            ⭐ Best
+                            {t('bestMaker')}
                           </span>
                         )}
                         <PlacerBadge count={challengersMap.get(o.placer) ?? 0} size="sm" />
@@ -350,7 +352,7 @@ export default function OrderBook({ eventId, onBet }: Props) {
 
           <div className="flex items-center justify-between px-4 py-2.5 border-t border-slate-800 bg-slate-950/60">
             <span className="text-xs font-medium text-slate-600">
-              {displayOrders.length} offer{displayOrders.length === 1 ? '' : 's'}
+              {t('offersCount', { count: displayOrders.length })}
               {selectedOutcome !== undefined && ` · ${OUTCOMES[selectedOutcome]}`}
             </span>
             {selectedOutcome !== undefined && (
@@ -358,7 +360,7 @@ export default function OrderBook({ eventId, onBet }: Props) {
                 onClick={() => setSelectedOutcome(undefined)}
                 className="text-xs font-medium text-slate-500 hover:text-slate-300 transition-colors"
               >
-                Show all ×
+                {t('showAll')}
               </button>
             )}
           </div>

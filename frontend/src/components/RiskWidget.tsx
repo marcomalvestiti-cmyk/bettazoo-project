@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { useAccount, usePublicClient, useReadContract, useWriteContract, useSwitchChain } from 'wagmi'
 import { arbitrumSepolia } from 'wagmi/chains'
 import { waitForTransactionReceipt } from 'viem/actions'
@@ -37,6 +38,7 @@ type Props = {
 }
 
 export default function RiskWidget({ address, vaultAddress }: Props) {
+  const t = useTranslations('RiskWidget')
   const [data,    setData]    = useState<RiskData | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -110,13 +112,13 @@ export default function RiskWidget({ address, vaultAddress }: Props) {
     >
       <span className="text-lg leading-none">🛑</span>
       {killStatus === 'toggling'
-        ? 'Confirming on-chain…'
-        : onChainPaused ? 'Resume Vault' : 'Emergency Kill-Switch'}
+        ? t('confirmingOnChain')
+        : onChainPaused ? t('resumeVault') : t('emergencyKillSwitch')}
     </button>
   )
   const killSwitchError = killStatus === 'error' && (
     <p className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-md px-3 py-2">
-      Kill-Switch transaction failed — try again.
+      {t('killSwitchFailed')}
     </p>
   )
 
@@ -124,14 +126,14 @@ export default function RiskWidget({ address, vaultAddress }: Props) {
     <div className="rounded-lg border border-slate-700 bg-slate-900 p-4 space-y-3">
       {killSwitchButton}
       {killSwitchError}
-      <p className="text-xs text-slate-500">Loading risk data…</p>
+      <p className="text-xs text-slate-500">{t('loadingRiskData')}</p>
     </div>
   )
   if (!data) return (
     <div className="rounded-lg border border-red-500/30 bg-slate-900 p-4 space-y-3">
       {killSwitchButton}
       {killSwitchError}
-      <p className="text-xs text-red-400">Risk Manager unavailable</p>
+      <p className="text-xs text-red-400">{t('unavailable')}</p>
     </div>
   )
 
@@ -145,7 +147,7 @@ export default function RiskWidget({ address, vaultAddress }: Props) {
       {killSwitchButton}
       {killSwitchError}
       <div className="flex items-center justify-between">
-        <span className="text-sm font-bold text-white">Risk Manager</span>
+        <span className="text-sm font-bold text-white">{t('title')}</span>
         <span className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded border ${style.badge}`}>
           <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
           {data.level}
@@ -155,7 +157,7 @@ export default function RiskWidget({ address, vaultAddress }: Props) {
       <p className="text-xs text-slate-400">{data.message}</p>
 
       <div className="flex items-center justify-between text-xs border-t border-slate-800 pt-2">
-        <span className="text-slate-500">Total exposure</span>
+        <span className="text-slate-500">{t('totalExposure')}</span>
         <span className="font-bold font-mono text-white">${total} USDT</span>
       </div>
 

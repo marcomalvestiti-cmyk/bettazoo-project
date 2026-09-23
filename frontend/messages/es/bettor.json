@@ -1,0 +1,47 @@
+{
+  "Bettor": {
+    "eyebrow": "Apostador",
+    "title": "Mis Apuestas",
+    "connectPrompt": "Conecta tu wallet para ver tu historial de apuestas.",
+    "status": {
+      "pending": "Pendiente",
+      "won": "Ganada",
+      "lost": "Perdida"
+    },
+    "empty": {
+      "noOpenBets": "Sin apuestas abiertas",
+      "noSettledBets": "Aún no hay apuestas resueltas",
+      "openHint": "Realiza una apuesta en cualquier evento para verla aquí.",
+      "settledHint": "Las apuestas resueltas aparecerán aquí una vez liquidado el evento.",
+      "browseEvents": "Explorar Eventos →"
+    },
+    "stats": {
+      "totalBets": "Apuestas Totales",
+      "totalStaked": "Total Apostado",
+      "winRate": "% de Aciertos",
+      "netPnl": "P&L Neto",
+      "wonSuffix": "{count} ganadas",
+      "settledOnly": "solo resueltas"
+    },
+    "tabs": {
+      "open": "Abiertas ({count})",
+      "settled": "Resueltas ({count})"
+    },
+    "table": {
+      "event": "Evento",
+      "pick": "Pronóstico",
+      "stake": "Apuesta",
+      "odds": "Cuota",
+      "payout": "Pago",
+      "pnl": "P&L",
+      "status": "Estado",
+      "outcomeFallback": "Resultado {n}",
+      "netOfFee": "neto de comisión 5%",
+      "afterFee": "tras comisión 5%"
+    },
+    "footer": {
+      "betCount": "{count, plural, one {# apuesta} other {# apuestas}}",
+      "staked": "· ${amount} apostados"
+    }
+  }
+}

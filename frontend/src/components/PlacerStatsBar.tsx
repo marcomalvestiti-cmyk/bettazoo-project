@@ -2,6 +2,7 @@
 
 import { useReadContract } from 'wagmi'
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { formatUnits } from 'viem'
 import { ERC20_ABI } from '@/lib/abis'
 import { useEvents } from '@/lib/useEvents'
@@ -61,6 +62,7 @@ function StatCard({
 }
 
 export default function PlacerStatsBar({ address, offers, vaultAddress, pnlSeed, uniqueChallengers = 0 }: Props) {
+  const t = useTranslations('StatsBar')
   const { events } = useEvents()
   const { data: rawBalance } = useReadContract({
     address: USDT_ADDRESS,
@@ -93,37 +95,37 @@ export default function PlacerStatsBar({ address, offers, vaultAddress, pnlSeed,
   return (
     <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
       <StatCard
-        label={vaultAddress ? 'Vault Balance' : 'Available Liquidity'}
+        label={vaultAddress ? t('vaultBalance') : t('availableLiquidity')}
         value={liquidityStr}
-        sub={vaultAddress ? 'USDT · in vault' : 'USDT · wallet balance'}
+        sub={vaultAddress ? t('vaultBalanceSub') : t('walletBalanceSub')}
       />
       <StatCard
-        label="Committed Credit"
+        label={t('committedCredit')}
         value={`$${committed.toFixed(2)}`}
-        sub="USDT locked as collateral"
+        sub={t('committedCreditSub')}
       />
       <StatCard
-        label="Active Offers"
+        label={t('activeOffers')}
         value={offers.length.toString()}
-        sub={`across ${activeEvents} event${activeEvents !== 1 ? 's' : ''}`}
+        sub={t('activeOffersSub', { count: activeEvents })}
       />
       <StatCard
-        label="Active Events"
+        label={t('activeEvents')}
         value={activeEvents.toString()}
-        sub={`of ${events.length} total`}
+        sub={t('activeEventsSub', { total: events.length })}
       />
       <StatCard
-        label={realPnl !== null ? 'Realized P&L' : '24h P&L'}
+        label={realPnl !== null ? t('realizedPnl') : t('pnl24h')}
         value={pnlStr}
-        sub={realPnl !== null ? 'USDT · settled matches' : 'simulated · create a vault for live'}
+        sub={realPnl !== null ? t('realizedPnlSub') : t('simulatedPnlSub')}
         positive={pnlPositive}
       />
       <div className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 space-y-1.5 min-w-0">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 truncate">Unique Challengers</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 truncate">{t('uniqueChallengers')}</p>
         <p className="text-xl font-bold font-mono tabular-nums truncate text-white">{uniqueChallengers}</p>
         <PlacerBadge count={uniqueChallengers} size="sm" />
         {uniqueChallengers === 0 && (
-          <p className="text-[10px] text-slate-600 font-mono">Share offers to gain challengers</p>
+          <p className="text-[10px] text-slate-600 font-mono">{t('shareToGain')}</p>
         )}
       </div>
     </div>

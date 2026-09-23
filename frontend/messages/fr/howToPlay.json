@@ -1,0 +1,44 @@
+{
+  "HowToPlay": {
+    "meta": {
+      "title": "Comment Jouer — Bettazoo",
+      "description": "Apprenez à parier en P2P sur Bettazoo en tant que Bettor ou devenez un Placer et créez le marché."
+    },
+    "header": {
+      "overline": "Guide",
+      "title": "Comment Jouer",
+      "subtitle": "Bettazoo est un exchange de paris de pair à pair sur Web3. Aucun bookmaker. Chaque pari est directement croisé entre un Bettor et un Placer, sécurisé on-chain."
+    },
+    "bettor": {
+      "overline": "Pour les Bettors",
+      "title": "Placer un Pari",
+      "subtitle": "Vous misez sur un résultat aux meilleures cotes disponibles.",
+      "cta": "Parcourir les Événements",
+      "steps": {
+        "step1": { "title": "Connectez Votre Wallet", "desc": "Reliez MetaMask (ou tout autre wallet Web3) et assurez-vous de détenir la stablecoin USDT. Aucune inscription — votre wallet est votre identité sur Bettazoo." },
+        "step2": { "title": "Trouvez les Meilleures Cotes P2P", "desc": "Parcourez les événements Sports et Esport. Comparez de vraies cotes de pair à pair fixées directement par les Placers — aucune marge de bookmaker, aucun frais caché, transparence totale." },
+        "step3": { "title": "Pariez et Soyez Payé Automatiquement", "desc": "Votre mise est verrouillée dans le Smart Contract Escrow. À la fin du match, un Oracle certifié confirme le résultat et les USDT sont envoyés directement dans votre wallet — instantané, sans confiance requise, et automatique." }
+      }
+    },
+    "placer": {
+      "overline": "Pour les Placers",
+      "title": "Soyez le Marché",
+      "subtitle": "Vous ne placez pas de paris à la main. Vous définissez vos règles — quels résultats couvrir, vos cotes, votre exposition maximale — et votre livre on-chain gère l'action automatiquement.",
+      "cta": "Ouvrir l'Espace Placer",
+      "steps": {
+        "step1": { "title": "Déployez Votre Vault", "desc": "Connectez votre wallet et créez votre propre Vault on-chain isolé depuis le Placer Dashboard. Déposez des USDT — ils restent retirables par vous seul, toujours." },
+        "step2": { "title": "Définissez une Stratégie, Pas un Pari", "desc": "Choisissez une stratégie de marge, sélectionnez quels événements et résultats couvrir, et définissez des limites de risque (exposition maximale, stop-loss, un plafond obligatoire par pari). Le keeper de Bettazoo cote et recote automatiquement dans ces règles — vous ne placez jamais un pari à la main." },
+        "step3": { "title": "Complétez la Conformité", "desc": "Signez le Liquidity Provision Agreement (une seule signature depuis le wallet) et demandez une vérification KYC avant que votre Vault puisse s'activer — une étape unique qui vous protège, vous et la Maison." },
+        "step4": { "title": "Attirez des Bettors et Gagnez la Marge", "desc": "Vos offres apparaissent en direct sur l'exchange de paris. Partagez votre profil Placer — ou diffusez en direct avec l'overlay OBS et le QR code — pour vous constituer une communauté. Vous gagnez la marge entre vos cotes affichées et la probabilité réelle." }
+      }
+    },
+    "faq": {
+      "question": "Qu'est-ce qu'un Placer ?",
+      "answer": "Un Placer gère son propre livre. Vous définissez la stratégie et les limites de risque ; votre vault prend l'autre côté des mises des bettors on-chain, dans les règles que vous avez fixées."
+    },
+    "creatorSuite": {
+      "title": "Streamer en tant que Placer",
+      "body": "Chaque Placer dispose d'une page de streaming publique sur <path1>/placer/[address]</path1> avec chat en direct et vos offres actives — partagez-la pour vous constituer une communauté. Vous streamez sur Twitch, Kick ou YouTube depuis OBS ? Ajoutez <path2>/overlay/[address]</path2> comme Browser Source pour un widget transparent et toujours à jour montrant votre liquidité en direct et un QR code que les spectateurs peuvent scanner pour parier en quelques secondes."
+    }
+  }
+}

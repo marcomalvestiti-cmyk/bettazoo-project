@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 
 type Status = 'checking' | 'online' | 'offline'
 
@@ -21,6 +22,7 @@ async function checkHealth(): Promise<boolean> {
 }
 
 export default function BackendBanner() {
+  const t = useTranslations('Banners')
   const [status, setStatus] = useState<Status>('checking')
 
   useEffect(() => {
@@ -45,10 +47,10 @@ export default function BackendBanner() {
     >
       <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
       <p className="text-sm font-medium text-amber-200">
-        Live odds temporarily unavailable — reconnecting to servers…
+        {t('backendOffline')}
       </p>
       <span className="text-xs text-amber-500 hidden sm:inline">
-        · Odds will resume automatically
+        {t('backendOfflineHint')}
       </span>
     </div>
   )

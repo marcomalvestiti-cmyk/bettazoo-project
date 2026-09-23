@@ -1,0 +1,39 @@
+{
+  "Metadata": {
+    "title": "Bettazoo — Paris Sportifs P2P",
+    "description": "Parier de pair à pair sans bookmaker. Stablecoin USDT sur Web3."
+  },
+  "Nav": {
+    "bet": "Parier",
+    "myBets": "Mes Paris",
+    "howToPlay": "Comment Jouer",
+    "rules": "Règles",
+    "placerArea": "Espace Placer",
+    "getTestTokens": "Obtenir des Tokens de Test",
+    "openMenu": "Ouvrir le menu",
+    "closeMenu": "Fermer le menu"
+  },
+  "Banners": {
+    "testnet": "⚠️ Testnet — MockUSDT, aucun argent réel. À des fins de test uniquement.",
+    "backendOffline": "Cotes en direct temporairement indisponibles — reconnexion aux serveurs…",
+    "backendOfflineHint": "· Les cotes reprendront automatiquement"
+  },
+  "ConnectWallet": {
+    "connect": "Connecter le Wallet",
+    "connecting": "Connexion…",
+    "switching": "Changement…",
+    "switchNetwork": "⚠ Passer à Arb Sepolia",
+    "switchNetworkFull": "⚠ Passer à Arbitrum Sepolia",
+    "disconnect": "Déconnecter le wallet",
+    "modalTitle": "Connecter le Wallet",
+    "modalSubtitle": "Arbitrum Sepolia (testnet)",
+    "close": "Fermer",
+    "walletConnectDisabledTitle": "WalletConnect désactivé",
+    "walletConnectDisabledBody": "— variable d'environnement non définie. Wallets mobiles indisponibles.",
+    "noWalletsDetected": "Aucun wallet détecté dans ce navigateur.",
+    "unknownNetwork": "Réseau inconnu"
+  },
+  "LocaleSwitcher": {
+    "label": "Langue"
+  }
+}

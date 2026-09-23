@@ -1,0 +1,39 @@
+{
+  "Streaming": {
+    "backToConsole": "← Volver a la Pit Boss Console",
+    "liveBetting": "{eventName} — Apuestas en Vivo",
+    "sportsBetting": "Apuestas Deportivas",
+    "viewers": "espectadores",
+    "official": "✓ Oficial",
+    "follow": "+ Seguir",
+    "activeOffers": "{count, plural, one {# oferta activa} other {# ofertas activas}}",
+    "avgOdds": "Media {odds}x",
+    "eventsCount": "{count, plural, one {# evento} other {# eventos}}",
+    "tagline": "\"Las mejores cuotas disponibles, garantizadas. Apuesta con confianza.\"",
+    "placersOffers": "Ofertas del Placer",
+    "loading": "Cargando…",
+    "loadingOffers": "Cargando ofertas…",
+    "noOffersYetTitle": "Aún no has realizado apuestas.",
+    "noOffersYetSub": "Este placer aún no ha publicado ofertas para {eventName}.",
+    "viewAllBets": "Ver Todas las Apuestas →",
+    "exclusiveOdds": "Cuotas Exclusivas",
+    "availableCount": "{count, plural, one {# disponible} other {# disponibles}}",
+    "noOffersAvailable": "No hay ofertas disponibles para este evento",
+    "maxStake": "Apuesta máxima",
+    "liquidity": "Liquidez",
+    "betCta": "Apostar →",
+    "connectToBet": "Conecta el wallet para apostar",
+    "live": "LIVE",
+    "active": "Activa"
+  },
+  "LiveChat": {
+    "title": "Chat",
+    "viewers": "espectadores",
+    "welcomeMessage": "¡Bienvenido al chat en vivo! 🎮",
+    "guest": "Invitado",
+    "messagePlaceholder": "Escribe un mensaje…",
+    "connectToChat": "Conecta el wallet para chatear",
+    "send": "Enviar",
+    "respectNote": "Trata a los demás usuarios con respeto ✌️"
+  }
+}

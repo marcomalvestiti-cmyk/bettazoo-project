@@ -1,0 +1,47 @@
+{
+  "Bettor": {
+    "eyebrow": "Bettor",
+    "title": "My Bets",
+    "connectPrompt": "Connect your wallet to see your bet history.",
+    "status": {
+      "pending": "Pending",
+      "won": "Won",
+      "lost": "Lost"
+    },
+    "empty": {
+      "noOpenBets": "No open bets",
+      "noSettledBets": "No settled bets yet",
+      "openHint": "Place a bet on any event to see it here.",
+      "settledHint": "Resolved bets will appear here once an event is settled.",
+      "browseEvents": "Browse Events →"
+    },
+    "stats": {
+      "totalBets": "Total Bets",
+      "totalStaked": "Total Staked",
+      "winRate": "Win Rate",
+      "netPnl": "Net P&L",
+      "wonSuffix": "{count} won",
+      "settledOnly": "settled only"
+    },
+    "tabs": {
+      "open": "Open Bets ({count})",
+      "settled": "Settled ({count})"
+    },
+    "table": {
+      "event": "Event",
+      "pick": "Pick",
+      "stake": "Stake",
+      "odds": "Odds",
+      "payout": "Payout",
+      "pnl": "P&L",
+      "status": "Status",
+      "outcomeFallback": "Outcome {n}",
+      "netOfFee": "net of 5% fee",
+      "afterFee": "after 5% fee"
+    },
+    "footer": {
+      "betCount": "{count, plural, one {# bet} other {# bets}}",
+      "staked": "· ${amount} staked"
+    }
+  }
+}

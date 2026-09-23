@@ -1,0 +1,26 @@
+{
+  "Bet": {
+    "featuredTitle": "Eventos Destacados",
+    "featuredSubtitle": "Los mejores eventos del momento",
+    "sports": "Deportes",
+    "esports": "E-Sports",
+    "allSportsEvents": "Todos los eventos deportivos",
+    "allEsportsEvents": "Todos los eventos de e-sports",
+    "eventsAvailable": "{count, plural, one {# evento disponible} other {# eventos disponibles}}",
+    "noEvents": "No hay eventos disponibles para esta selección.",
+    "viewOdds": "Ver Cuotas",
+    "badges": {
+      "hot": "Caliente",
+      "featured": "Destacado",
+      "new": "Nuevo",
+      "live": "En Vivo"
+    },
+    "Sidebar": {
+      "featured": "Destacados",
+      "events": "Eventos",
+      "closeMenuAria": "Cerrar menú",
+      "openNode": "Abrir {label}",
+      "closeNode": "Cerrar {label}"
+    }
+  }
+}

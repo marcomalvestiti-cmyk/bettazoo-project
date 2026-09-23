@@ -1,0 +1,15 @@
+{
+  "Home": {
+    "heroAlt": "Bettazoo — Plateforme de Paris Sportifs, Esport & Crypto",
+    "heroSubtitle": "Pariez de pair à pair — sans bookmaker, stablecoin USDT sur Web3.",
+    "eyebrow": "Événements",
+    "heading": "Paris en Vedette",
+    "viewAllBets": "Voir Tous les Paris",
+    "badges": {
+      "hot": "Populaire",
+      "featured": "En Vedette",
+      "new": "Nouveau",
+      "live": "En Direct"
+    }
+  }
+}

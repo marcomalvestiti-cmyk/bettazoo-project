@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useTranslations } from 'next-intl'
 import { useAccount, usePublicClient, useReadContract, useWriteContract, useSignMessage, useSignTypedData, useSwitchChain } from 'wagmi'
 import { arbitrumSepolia } from 'wagmi/chains'
 import { parseUnits, formatUnits } from 'viem'
 import { waitForTransactionReceipt } from 'viem/actions'
-import { VAULT_FACTORY_ABI, VAULT_ABI, ERC20_ABI, OUTCOMES } from '@/lib/abis'
+import { VAULT_FACTORY_ABI, VAULT_ABI, ERC20_ABI, OUTCOMES, type MockEvent } from '@/lib/abis'
 import { useEvents } from '@/lib/useEvents'
 import { fetchVault, patchVaultConfig, postVaultAgreement, buildVaultConfigMessage, type VaultData, type VaultScope } from '@/lib/api'
 import { AGREEMENT_VERSION, AGREEMENT_DOMAIN, AGREEMENT_TYPES, AGREEMENT_TEXT, buildAgreementValue } from '@/lib/legal'
@@ -18,13 +19,10 @@ const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 // viem's default receipt-wait window — give it more room before giving up.
 const RECEIPT_TIMEOUT_MS = 120_000
 
-const STRATEGIES = [
-  { id: 'volume',   label: 'Volume Dominator', sub: '1.5% Margin', description: 'Best odds. Maximizes the number of incoming bets.' },
-  { id: 'balanced', label: 'Balanced',         sub: '3.0% Margin', description: 'Standard house edge. Good mix of volume and profit.' },
-  { id: 'safe',     label: 'Safe Bank',        sub: '5.0% Margin', description: 'Conservative odds. Lower volume, highest profit margin per bet.' },
-  { id: 'custom',   label: 'Custom',           sub: 'Set your own', description: undefined },
-] as const
-type StrategyId = typeof STRATEGIES[number]['id']
+const STRATEGIES = ['volume', 'balanced', 'safe', 'custom'] as const
+type StrategyId = typeof STRATEGIES[number]
+
+const ALL_OUTCOMES = [0, 1, 2] as const
 
 type Props = {
   onVaultReady?: (vaultAddress: string) => void
@@ -33,7 +31,17 @@ type Props = {
 const inputCls = 'w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-sm font-semibold text-white placeholder:text-slate-600 focus:outline-none focus:border-[#FFB01F] transition-colors'
 
 export default function VaultPanel({ onVaultReady }: Props) {
+  const t = useTranslations('VaultPanel')
   const { events } = useEvents()
+  const leagueGroups = useMemo(() => {
+    const groups = new Map<string, { key: string; leagueLabel: string; events: MockEvent[] }>()
+    for (const ev of events) {
+      const key = `${ev.category}:${ev.sport}:${ev.league}`
+      if (!groups.has(key)) groups.set(key, { key, leagueLabel: ev.leagueLabel, events: [] })
+      groups.get(key)!.events.push(ev)
+    }
+    return [...groups.values()]
+  }, [events])
   const { address, chain } = useAccount()
   const publicClient = usePublicClient()
   const { writeContractAsync } = useWriteContract()
@@ -225,7 +233,7 @@ export default function VaultPanel({ onVaultReady }: Props) {
       await refetchVaultBalance()
     } catch (err: unknown) {
       setFundStatus('error')
-      setFundErr(err instanceof Error ? err.message : 'Deposit failed')
+      setFundErr(err instanceof Error ? err.message : t('errors.depositFailed'))
     }
   }
 
@@ -250,7 +258,7 @@ export default function VaultPanel({ onVaultReady }: Props) {
       await refetchVaultBalance()
     } catch (err: unknown) {
       setFundStatus('error')
-      setFundErr(err instanceof Error ? err.message : 'Withdrawal failed')
+      setFundErr(err instanceof Error ? err.message : t('errors.withdrawalFailed'))
     }
   }
 
@@ -265,6 +273,27 @@ export default function VaultPanel({ onVaultReady }: Props) {
     })
   }
 
+  function isLeagueFullyBanked(leagueEvents: MockEvent[]) {
+    return leagueEvents.every(ev => {
+      const rowScope = scope.find(s => s.eventId === ev.eventId)
+      return ALL_OUTCOMES.every(o => rowScope?.outcomes.includes(o))
+    })
+  }
+
+  // One-click "bank the whole league" — sets every outcome on every event of the
+  // league at once instead of clicking each event × outcome individually. Toggling
+  // an already-fully-banked league clears it back out (same button, opposite action).
+  function toggleLeague(leagueEvents: MockEvent[]) {
+    const fullyBanked = isLeagueFullyBanked(leagueEvents)
+    setScope(prev => {
+      const leagueEventIds = new Set(leagueEvents.map(ev => ev.eventId))
+      const withoutLeague = prev.filter(s => !leagueEventIds.has(s.eventId))
+      if (fullyBanked) return withoutLeague
+      const leagueScope = leagueEvents.map(ev => ({ eventId: ev.eventId, outcomes: [...ALL_OUTCOMES] }))
+      return [...withoutLeague, ...leagueScope]
+    })
+  }
+
   async function handleSaveConfig() {
     if (!address) return
     // The margin protects the vault over time, not on a single bet — without an
@@ -272,17 +301,17 @@ export default function VaultPanel({ onVaultReady }: Props) {
     // in one shot. Require it before the keeper is allowed to go active.
     if (active && !hasSingleCap) {
       setSaveStatus('error')
-      setSaveErr('Set a "Max Size Per Bet" cap on-chain before activating the keeper — it protects the vault from a single oversized bet.')
+      setSaveErr(t('errors.missingCapBeforeActivate'))
       return
     }
     // Same gate the backend enforces (routes/vaults.js) — checked here too so the
     // error shows up instantly instead of after a round trip.
     if (active && (!hasSignedAgreement || kycStatus !== 'approved')) {
       const missing = []
-      if (!hasSignedAgreement) missing.push('sign the Liquidity Provision Agreement')
-      if (kycStatus !== 'approved') missing.push('complete KYC review')
+      if (!hasSignedAgreement) missing.push(t('errors.missingAgreementItem'))
+      if (kycStatus !== 'approved') missing.push(t('errors.missingKycItem'))
       setSaveStatus('error')
-      setSaveErr(`Cannot activate the keeper yet — ${missing.join(' and ')} first.`)
+      setSaveErr(t('errors.missingComplianceBeforeActivate', { missing: missing.join(t('errors.andWord')) }))
       return
     }
     setSaveStatus('saving')
@@ -308,7 +337,7 @@ export default function VaultPanel({ onVaultReady }: Props) {
       setTimeout(() => setSaveStatus('idle'), 2000)
     } catch (err: unknown) {
       setSaveStatus('error')
-      setSaveErr(err instanceof Error ? err.message : 'Could not save config')
+      setSaveErr(err instanceof Error ? err.message : t('errors.saveConfigFailed'))
     }
   }
 
@@ -352,7 +381,7 @@ export default function VaultPanel({ onVaultReady }: Props) {
       setAgreementStatus('idle')
     } catch (err: unknown) {
       setAgreementStatus('error')
-      setAgreementErr(err instanceof Error ? err.message : 'Could not sign the agreement')
+      setAgreementErr(err instanceof Error ? err.message : t('errors.signAgreementFailed'))
     }
   }
 
@@ -398,11 +427,9 @@ export default function VaultPanel({ onVaultReady }: Props) {
   if (!vaultExists) {
     return (
       <div className="bg-slate-900 border border-slate-800 rounded-lg p-5 space-y-4">
-        <h3 className="font-bold text-white text-sm tracking-wide">Placer Vault</h3>
+        <h3 className="font-bold text-white text-sm tracking-wide">{t('title')}</h3>
         <p className="text-xs text-slate-400">
-          Deploy your own isolated on-chain vault. Deposit USDT, set a strategy and risk limits once,
-          and the Bettazoo keeper quotes offers automatically on your behalf — funds always stay
-          withdrawable to you alone.
+          {t('createDescription')}
         </p>
         {createErr && (
           <p className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-md px-3 py-2">{createErr}</p>
@@ -412,7 +439,7 @@ export default function VaultPanel({ onVaultReady }: Props) {
           disabled={creating}
           className="w-full py-3 text-sm font-bold rounded-md bg-[#FFB01F] hover:bg-amber-400 text-slate-950 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          {creating ? 'Deploying vault…' : 'Create Your Vault'}
+          {creating ? t('deploying') : t('createButton')}
         </button>
       </div>
     )
@@ -423,7 +450,7 @@ export default function VaultPanel({ onVaultReady }: Props) {
       {/* ── Header ── */}
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <h3 className="font-bold text-white text-sm tracking-wide">Placer Vault</h3>
+          <h3 className="font-bold text-white text-sm tracking-wide">{t('title')}</h3>
           <p className="text-[10px] font-mono text-slate-500 truncate">{vaultAddress}</p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
@@ -432,7 +459,7 @@ export default function VaultPanel({ onVaultReady }: Props) {
               ? 'bg-red-500/10 border-red-500/30 text-red-400'
               : 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400'
           }`}>
-            {onChainPaused ? 'Paused' : 'Live'}
+            {onChainPaused ? t('statusPaused') : t('statusLive')}
           </span>
           <span className="text-[9px] font-bold px-2 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-400 uppercase tracking-widest">
             {vaultData?.status ?? 'configuring'}
@@ -444,29 +471,29 @@ export default function VaultPanel({ onVaultReady }: Props) {
       <div className="space-y-2">
         <div className="grid grid-cols-2 gap-2">
           <div className="bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2">
-            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-600">Vault Balance</p>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-600">{t('vaultBalanceLabel')}</p>
             <p className="text-lg font-bold font-mono text-white">${parseFloat(vaultBalanceStr).toFixed(2)}</p>
           </div>
           <div className="bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2">
-            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-600">Wallet Balance</p>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-600">{t('walletBalanceLabel')}</p>
             <p className="text-lg font-bold font-mono text-slate-400">${parseFloat(walletBalanceStr).toFixed(2)}</p>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div className="flex gap-1.5">
             <input type="number" min="0" step="0.01" value={depositAmt} onChange={e => setDepositAmt(e.target.value)}
-              className={inputCls} placeholder="Deposit USDT" />
+              className={inputCls} placeholder={t('depositPlaceholder')} />
             <button onClick={handleDeposit} disabled={fundStatus === 'depositing'}
               className="shrink-0 px-3 py-2 text-xs font-bold rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50 transition-colors">
-              {fundStatus === 'depositing' ? '…' : 'Deposit'}
+              {fundStatus === 'depositing' ? '…' : t('depositButton')}
             </button>
           </div>
           <div className="flex gap-1.5">
             <input type="number" min="0" step="0.01" value={withdrawAmt} onChange={e => setWithdrawAmt(e.target.value)}
-              className={inputCls} placeholder="Withdraw USDT" />
+              className={inputCls} placeholder={t('withdrawPlaceholder')} />
             <button onClick={handleWithdraw} disabled={fundStatus === 'withdrawing'}
               className="shrink-0 px-3 py-2 text-xs font-bold rounded-md bg-slate-800 border border-slate-700 text-slate-300 hover:border-slate-600 disabled:opacity-50 transition-colors">
-              {fundStatus === 'withdrawing' ? '…' : 'Withdraw'}
+              {fundStatus === 'withdrawing' ? '…' : t('withdrawButton')}
             </button>
           </div>
         </div>
@@ -475,19 +502,19 @@ export default function VaultPanel({ onVaultReady }: Props) {
 
       {/* ── Strategy ── */}
       <div className="space-y-1.5">
-        <label className="text-xs text-slate-500 font-medium uppercase tracking-wide">Strategy</label>
+        <label className="text-xs text-slate-500 font-medium uppercase tracking-wide">{t('strategyLabel')}</label>
         <div className="space-y-1.5">
           {STRATEGIES.map(s => (
-            <button key={s.id} onClick={() => setStrategy(s.id)}
+            <button key={s} onClick={() => setStrategy(s)}
               className={`w-full flex flex-col items-start py-2 px-3 rounded-md border text-left transition-colors ${
-                strategy === s.id ? 'border-[#FFB01F]/60 bg-[#FFB01F]/8' : 'border-slate-800 hover:border-slate-700'
+                strategy === s ? 'border-[#FFB01F]/60 bg-[#FFB01F]/8' : 'border-slate-800 hover:border-slate-700'
               }`}>
               <span className="flex items-baseline gap-1.5">
-                <span className={`text-xs font-bold leading-none ${strategy === s.id ? 'text-[#FFB01F]' : 'text-slate-400'}`}>{s.label}</span>
-                <span className={`text-[10px] font-mono ${strategy === s.id ? 'text-[#FFB01F]/70' : 'text-slate-600'}`}>{s.sub}</span>
+                <span className={`text-xs font-bold leading-none ${strategy === s ? 'text-[#FFB01F]' : 'text-slate-400'}`}>{t(`strategies.${s}.label`)}</span>
+                <span className={`text-[10px] font-mono ${strategy === s ? 'text-[#FFB01F]/70' : 'text-slate-600'}`}>{t(`strategies.${s}.sub`)}</span>
               </span>
-              {s.description && (
-                <span className="text-xs text-slate-500 mt-0.5">{s.description}</span>
+              {s !== 'custom' && (
+                <span className="text-xs text-slate-500 mt-0.5">{t(`strategies.${s}.description`)}</span>
               )}
             </button>
           ))}
@@ -496,7 +523,7 @@ export default function VaultPanel({ onVaultReady }: Props) {
           <div className="flex items-center gap-2 pt-1">
             <input type="number" min="0" step="0.1" value={customMargin} onChange={e => setCustomMargin(e.target.value)}
               className={inputCls} placeholder="3.0" />
-            <span className="text-xs text-slate-500 font-mono shrink-0">% margin</span>
+            <span className="text-xs text-slate-500 font-mono shrink-0">{t('marginSuffix')}</span>
           </div>
         )}
       </div>
@@ -504,27 +531,45 @@ export default function VaultPanel({ onVaultReady }: Props) {
       {/* ── Market scope ── */}
       <div className="space-y-1.5">
         <label className="text-xs text-slate-500 font-medium uppercase tracking-wide">
-          Market Scope {scope.length > 0 && <span className="text-slate-600">({scope.length} events)</span>}
+          {t('marketScopeLabel')} {scope.length > 0 && <span className="text-slate-600">{t('marketScopeCount', { count: scope.length })}</span>}
         </label>
-        <div className="max-h-64 overflow-y-auto space-y-1.5 pr-1">
-          {events.map(ev => {
-            const rowScope = scope.find(s => s.eventId === ev.eventId)
+        <div className="max-h-64 overflow-y-auto space-y-3 pr-1">
+          {leagueGroups.map(group => {
+            const fullyBanked = isLeagueFullyBanked(group.events)
             return (
-              <div key={ev.eventId} className="flex items-center gap-2 bg-slate-950/50 border border-slate-800 rounded-md px-2.5 py-1.5">
-                <span className="text-sm shrink-0">{ev.icon}</span>
-                <span className="text-xs text-slate-300 truncate flex-1 min-w-0">{ev.name}</span>
-                <div className="flex gap-1 shrink-0">
-                  {([0, 1, 2] as const).map(o => (
-                    <button key={o} onClick={() => toggleOutcome(ev.eventId, o)}
-                      className={`px-1.5 py-1 text-[9px] font-bold rounded border transition-colors ${
-                        rowScope?.outcomes.includes(o)
-                          ? 'border-[#FFB01F] bg-[#FFB01F]/10 text-[#FFB01F]'
-                          : 'border-slate-700 text-slate-500 hover:border-slate-600'
-                      }`}>
-                      {OUTCOMES[o].split(' ')[0]}
-                    </button>
-                  ))}
+              <div key={group.key} className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">{group.leagueLabel}</span>
+                  <button type="button" onClick={() => toggleLeague(group.events)}
+                    className={`text-[9px] font-bold px-2 py-1 rounded border transition-colors shrink-0 ${
+                      fullyBanked
+                        ? 'border-red-500/40 bg-red-500/10 text-red-400 hover:border-red-500/60'
+                        : 'border-[#FFB01F]/50 bg-[#FFB01F]/10 text-[#FFB01F] hover:border-[#FFB01F]'
+                    }`}>
+                    {fullyBanked ? t('clearLeague') : t('bankWholeLeague')}
+                  </button>
                 </div>
+                {group.events.map(ev => {
+                  const rowScope = scope.find(s => s.eventId === ev.eventId)
+                  return (
+                    <div key={ev.eventId} className="flex items-center gap-2 bg-slate-950/50 border border-slate-800 rounded-md px-2.5 py-1.5">
+                      <span className="text-sm shrink-0">{ev.icon}</span>
+                      <span className="text-xs text-slate-300 truncate flex-1 min-w-0">{ev.name}</span>
+                      <div className="flex gap-1 shrink-0">
+                        {ALL_OUTCOMES.map(o => (
+                          <button key={o} onClick={() => toggleOutcome(ev.eventId, o)}
+                            className={`px-1.5 py-1 text-[9px] font-bold rounded border transition-colors ${
+                              rowScope?.outcomes.includes(o)
+                                ? 'border-[#FFB01F] bg-[#FFB01F]/10 text-[#FFB01F]'
+                                : 'border-slate-700 text-slate-500 hover:border-slate-600'
+                            }`}>
+                            {OUTCOMES[o].split(' ')[0]}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )
           })}
@@ -534,27 +579,27 @@ export default function VaultPanel({ onVaultReady }: Props) {
       {/* ── Risk limits ── */}
       <div className="grid grid-cols-2 gap-2.5">
         <div className="space-y-1">
-          <label className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">Max Exposure</label>
+          <label className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">{t('riskLimits.maxExposure')}</label>
           <input type="number" min="0" step="1" value={maxExposure} onChange={e => setMaxExposure(e.target.value)} className={inputCls} />
         </div>
         <div className="space-y-1">
-          <label className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">Per-Market Cap</label>
+          <label className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">{t('riskLimits.perMarketCap')}</label>
           <input type="number" min="0" step="1" value={perMarketExposure} onChange={e => setPerMarketExposure(e.target.value)} className={inputCls} />
         </div>
         <div className="space-y-1">
-          <label className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">Stop-Loss (USDT)</label>
+          <label className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">{t('riskLimits.stopLoss')}</label>
           <input type="number" min="0" step="1" value={stopLoss} onChange={e => setStopLoss(e.target.value)} className={inputCls} />
         </div>
         <div className="space-y-1">
-          <label className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">Quote Size</label>
+          <label className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">{t('riskLimits.quoteSize')}</label>
           <input type="number" min="1" step="1" value={liabilityIncrement} onChange={e => setLiabilityIncrement(e.target.value)} className={inputCls} />
         </div>
         <div className="space-y-1">
-          <label className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">Min Odds</label>
+          <label className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">{t('riskLimits.minOdds')}</label>
           <input type="number" min="1.01" step="0.01" value={minOdds} onChange={e => setMinOdds(e.target.value)} className={inputCls} />
         </div>
         <div className="space-y-1">
-          <label className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">Max Odds</label>
+          <label className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">{t('riskLimits.maxOdds')}</label>
           <input type="number" min="1.01" step="0.01" value={maxOdds} onChange={e => setMaxOdds(e.target.value)} className={inputCls} />
         </div>
       </div>
@@ -562,9 +607,9 @@ export default function VaultPanel({ onVaultReady }: Props) {
       {/* ── Platform fee — read-only. Set by the platform admin (bespoke revenue-share
           deals with individual creators), never by the vault owner. ── */}
       <div className="flex items-center justify-between gap-2 rounded-md border border-slate-800 bg-slate-950/40 p-3">
-        <span className="text-xs text-slate-400">Platform Fee</span>
+        <span className="text-xs text-slate-400">{t('platformFee')}</span>
         <span className="text-xs font-bold text-slate-300">
-          {vaultData?.hasFeeOverride ? `${vaultData.feeOverridePercent}% (custom)` : '5% (default)'}
+          {vaultData?.hasFeeOverride ? t('platformFeeCustom', { percent: vaultData.feeOverridePercent ?? 0 }) : t('platformFeeDefault')}
         </span>
       </div>
 
@@ -575,42 +620,42 @@ export default function VaultPanel({ onVaultReady }: Props) {
         hasSingleCap ? 'border-slate-800 bg-slate-950/40' : 'border-red-500/40 bg-red-500/5'
       }`}>
         <div className="flex items-center justify-between gap-2">
-          <label className="text-[10px] text-slate-300 font-bold uppercase tracking-wide">Max Size Per Bet (USDT)</label>
+          <label className="text-[10px] text-slate-300 font-bold uppercase tracking-wide">{t('maxSizePerBet')}</label>
           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-widest border ${
             hasSingleCap
               ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
               : 'bg-red-500/10 text-red-400 border-red-500/30'
           }`}>
-            {hasSingleCap ? 'Set' : 'Required'}
+            {hasSingleCap ? t('capSet') : t('capRequired')}
           </span>
         </div>
         <p className="text-xs text-slate-500">
-          Caps the liability of any single offer, enforced on-chain — without it, one large enough bet can empty the vault in one shot.
+          {t('capDescription')}
         </p>
         <div className="flex gap-1.5">
           <input type="number" min="0" step="1" value={maxSingleInput} onChange={e => setMaxSingleInput(e.target.value)}
-            className={inputCls} placeholder="e.g. 100" />
+            className={inputCls} placeholder={t('capPlaceholder')} />
           <button onClick={handleSetCap} disabled={capStatus === 'setting'}
             className="shrink-0 px-3 py-2 text-xs font-bold rounded-md bg-slate-800 border border-slate-700 text-slate-300 hover:border-slate-600 disabled:opacity-50 transition-colors">
-            {capStatus === 'setting' ? '…' : 'Set Cap'}
+            {capStatus === 'setting' ? '…' : t('setCapButton')}
           </button>
         </div>
       </div>
 
       {/* ── Compliance — both required before the keeper can go active ── */}
       <div className="space-y-2.5 rounded-md border border-slate-800 bg-slate-950/40 p-3">
-        <label className="text-[10px] text-slate-300 font-bold uppercase tracking-wide">Compliance</label>
+        <label className="text-[10px] text-slate-300 font-bold uppercase tracking-wide">{t('compliance')}</label>
 
         {/* Liquidity Provision Agreement */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-slate-400">Liquidity Provision Agreement</span>
+            <span className="text-xs text-slate-400">{t('agreementLabel')}</span>
             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-widest border ${
               hasSignedAgreement
                 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
                 : 'bg-red-500/10 text-red-400 border-red-500/30'
             }`}>
-              {hasSignedAgreement ? 'Signed' : 'Not Signed'}
+              {hasSignedAgreement ? t('agreementSigned') : t('agreementNotSigned')}
             </span>
           </div>
           {!hasSignedAgreement && (
@@ -620,7 +665,7 @@ export default function VaultPanel({ onVaultReady }: Props) {
               </div>
               <button onClick={handleSignAgreement} disabled={agreementStatus === 'signing'}
                 className="w-full py-2 text-xs font-bold rounded-md bg-slate-800 border border-slate-700 text-slate-300 hover:border-slate-600 disabled:opacity-50 transition-colors">
-                {agreementStatus === 'signing' ? 'Signing…' : 'Sign Agreement'}
+                {agreementStatus === 'signing' ? t('signingEllipsis') : t('signAgreementButton')}
               </button>
               {agreementErr && <p className="text-[10px] text-red-400">{agreementErr}</p>}
             </>
@@ -630,7 +675,7 @@ export default function VaultPanel({ onVaultReady }: Props) {
         {/* KYC review */}
         <div className="space-y-1.5 pt-1.5 border-t border-slate-800/60">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-slate-400">KYC Review</span>
+            <span className="text-xs text-slate-400">{t('kycLabel')}</span>
             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-widest border ${
               kycStatus === 'approved'
                 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
@@ -640,17 +685,17 @@ export default function VaultPanel({ onVaultReady }: Props) {
                 ? 'bg-red-500/10 text-red-400 border-red-500/30'
                 : 'bg-slate-800 text-slate-500 border-slate-700'
             }`}>
-              {kycStatus === 'approved' ? 'Approved' : kycStatus === 'pending' ? 'Pending' : kycStatus === 'rejected' ? 'Rejected' : 'Not Started'}
+              {kycStatus === 'approved' ? t('kycApproved') : kycStatus === 'pending' ? t('kycPending') : kycStatus === 'rejected' ? t('kycRejected') : t('kycNotStarted')}
             </span>
           </div>
           {kycStatus === 'approved' ? (
-            <p className="text-[10px] text-slate-600">Verified — the keeper can quote once activated below.</p>
+            <p className="text-[10px] text-slate-600">{t('kycApprovedNote')}</p>
           ) : kycStatus === 'pending' ? (
-            <p className="text-[10px] text-slate-600">Under manual review (testnet — no Sumsub integration yet). Check back soon.</p>
+            <p className="text-[10px] text-slate-600">{t('kycPendingNote')}</p>
           ) : (
             <button onClick={handleRequestKyc} disabled={kycRequestStatus === 'requesting'}
               className="w-full py-2 text-xs font-bold rounded-md bg-slate-800 border border-slate-700 text-slate-300 hover:border-slate-600 disabled:opacity-50 transition-colors">
-              {kycRequestStatus === 'requesting' ? 'Requesting…' : kycStatus === 'rejected' ? 'Request Review Again' : 'Request KYC Review'}
+              {kycRequestStatus === 'requesting' ? t('requestingEllipsis') : kycStatus === 'rejected' ? t('requestKycAgainButton') : t('requestKycButton')}
             </button>
           )}
         </div>
@@ -658,7 +703,7 @@ export default function VaultPanel({ onVaultReady }: Props) {
 
       {/* ── Activate + Save ── */}
       <div className="flex items-center justify-between bg-slate-950/50 border border-slate-800 rounded-md px-3 py-2.5">
-        <span className="text-xs font-semibold text-slate-300">Keeper active</span>
+        <span className="text-xs font-semibold text-slate-300">{t('keeperActive')}</span>
         <button onClick={() => setActive(a => !a)}
           className={`relative w-10 h-5 rounded-full transition-colors ${active ? 'bg-[#FFB01F]' : 'bg-slate-700'}`}>
           <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${active ? 'translate-x-5' : 'translate-x-0.5'}`} />
@@ -669,19 +714,19 @@ export default function VaultPanel({ onVaultReady }: Props) {
 
       <button onClick={handleSaveConfig} disabled={saveStatus === 'saving'}
         className="w-full py-3 text-sm font-bold rounded-md bg-[#FFB01F] hover:bg-amber-400 text-slate-950 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-        {saveStatus === 'saving' ? 'Signing & saving…' : saveStatus === 'done' ? '✓ Saved!' : 'Save Config'}
+        {saveStatus === 'saving' ? t('savingEllipsis') : saveStatus === 'done' ? t('savedButton') : t('saveConfigButton')}
       </button>
 
       {/* ── On-chain safety controls ── */}
       <div className="border-t border-slate-800 pt-4 space-y-2.5">
-        <label className="text-xs text-slate-500 font-medium uppercase tracking-wide">On-Chain Safety</label>
+        <label className="text-xs text-slate-500 font-medium uppercase tracking-wide">{t('onChainSafety')}</label>
         <button onClick={handleTogglePause} disabled={pauseStatus === 'toggling'}
           className={`w-full py-2.5 text-xs font-bold rounded-md border transition-colors disabled:opacity-50 ${
             onChainPaused
               ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
               : 'bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20'
           }`}>
-          {pauseStatus === 'toggling' ? '…' : onChainPaused ? 'Unpause Vault' : 'Pause Vault (kill switch)'}
+          {pauseStatus === 'toggling' ? '…' : onChainPaused ? t('unpauseButton') : t('pauseButton')}
         </button>
       </div>
     </div>

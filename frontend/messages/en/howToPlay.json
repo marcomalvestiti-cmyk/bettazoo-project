@@ -1,0 +1,44 @@
+{
+  "HowToPlay": {
+    "meta": {
+      "title": "How to Play — Bettazoo",
+      "description": "Learn how to bet P2P on Bettazoo as a Bettor or become a Placer and set the market."
+    },
+    "header": {
+      "overline": "Guide",
+      "title": "How to Play",
+      "subtitle": "Bettazoo is a peer-to-peer betting exchange on Web3. No bookmaker. Every bet is matched directly between a Bettor and a Placer, secured on-chain."
+    },
+    "bettor": {
+      "overline": "For Bettors",
+      "title": "Place a Bet",
+      "subtitle": "You back an outcome at the best available odds.",
+      "cta": "Browse Events",
+      "steps": {
+        "step1": { "title": "Connect Your Wallet", "desc": "Link MetaMask (or any Web3 wallet) and make sure you hold USDT stablecoin. No account registration — your wallet is your identity on Bettazoo." },
+        "step2": { "title": "Find the Best P2P Odds", "desc": "Browse Sports and E-Sports events. Compare real peer-to-peer odds set directly by Placers — no bookmaker margin, no hidden fees, full transparency." },
+        "step3": { "title": "Bet & Get Paid Automatically", "desc": "Your stake is locked in the Smart Contract Escrow. When the match ends, a certified Oracle confirms the result and USDT is sent directly to your wallet — instant, trustless, and automated." }
+      }
+    },
+    "placer": {
+      "overline": "For Placers",
+      "title": "Be the Market",
+      "subtitle": "You don't place bets by hand. You set your rules — which outcomes to back, your odds, your max exposure — and your on-chain book takes the action automatically.",
+      "cta": "Open Placer Area",
+      "steps": {
+        "step1": { "title": "Deploy Your Vault", "desc": "Connect your wallet and create your own isolated on-chain Vault from the Placer Dashboard. Deposit USDT — it stays withdrawable to you alone, always." },
+        "step2": { "title": "Set a Strategy, Not a Bet Slip", "desc": "Pick a margin strategy, choose which events and outcomes to cover, and set risk limits (max exposure, stop-loss, a required cap per bet). The Bettazoo keeper quotes and requotes automatically within those rules — you never place a bet by hand." },
+        "step3": { "title": "Complete Compliance", "desc": "Sign the Liquidity Provision Agreement (one wallet signature) and request a KYC review before your Vault can go active — a one-time step that protects both you and the House." },
+        "step4": { "title": "Attract Bettors & Earn the Edge", "desc": "Your offers appear live in the betting exchange. Share your Placer profile — or go live on stream with the OBS overlay and QR code — to build a following. Earn the margin between your quoted odds and the true probability." }
+      }
+    },
+    "faq": {
+      "question": "What is a Placer?",
+      "answer": "A Placer runs their own book. You set the strategy and the risk limits; your vault takes the other side of bettors' action on-chain, within the rules you set."
+    },
+    "creatorSuite": {
+      "title": "Streaming as a Placer",
+      "body": "Every Placer gets a public streaming page at <path1>/placer/[address]</path1> with live chat and your active offers — share it to build a following. Streaming on Twitch, Kick or YouTube from OBS? Add <path2>/overlay/[address]</path2> as a Browser Source for a transparent, always-current widget showing your live liquidity and a QR code viewers can scan to bet in seconds."
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "Bet": {
+    "featuredTitle": "Featured Events",
+    "featuredSubtitle": "Top events right now",
+    "sports": "Sports",
+    "esports": "E-Sports",
+    "allSportsEvents": "All sports events",
+    "allEsportsEvents": "All e-sports events",
+    "eventsAvailable": "{count, plural, one {# event available} other {# events available}}",
+    "noEvents": "No events available for this selection.",
+    "viewOdds": "View Odds",
+    "badges": {
+      "hot": "Hot",
+      "featured": "Featured",
+      "new": "New",
+      "live": "Live"
+    },
+    "Sidebar": {
+      "featured": "Featured",
+      "events": "Events",
+      "closeMenuAria": "Close menu",
+      "openNode": "Open {label}",
+      "closeNode": "Close {label}"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "Home": {
+    "heroAlt": "Bettazoo — Sport, Esport & Crypto Betting Platform",
+    "heroSubtitle": "Bet peer-to-peer — no bookmaker, USDT stablecoin on Web3.",
+    "eyebrow": "Events",
+    "heading": "Featured Bets",
+    "viewAllBets": "View All Bets",
+    "badges": {
+      "hot": "Hot",
+      "featured": "Featured",
+      "new": "New",
+      "live": "Live"
+    }
+  }
+}

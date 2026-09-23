@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useTranslations } from 'next-intl'
 import { useAccount, usePublicClient, useWriteContract, useSwitchChain } from 'wagmi'
 import { arbitrumSepolia } from 'wagmi/chains'
 import { fetchOrderBook } from '@/lib/api'
@@ -35,6 +36,7 @@ interface Props {
 }
 
 export default function MyOffers({ offers: externalOffers, onRefresh, compact = false, onViewAll, vaultAddress }: Props) {
+  const t = useTranslations('MyOffers')
   const { events } = useEvents()
   const { address, chain } = useAccount()
   const publicClient = usePublicClient()
@@ -104,7 +106,7 @@ export default function MyOffers({ offers: externalOffers, onRefresh, compact = 
       if (onRefresh) onRefresh()
       else await loadOffers()
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Cancellation error')
+      setError(err instanceof Error ? err.message : t('cancellationError'))
     } finally {
       setCancelling(null)
     }
@@ -130,7 +132,7 @@ export default function MyOffers({ offers: externalOffers, onRefresh, compact = 
 
         {/* Header */}
         <div className="flex items-center gap-2.5 px-4 py-3 border-b border-slate-800">
-          <h2 className="text-sm font-bold text-white">My Active Offers</h2>
+          <h2 className="text-sm font-bold text-white">{t('title')}</h2>
           {!loading && (
             <span className={`px-2 py-0.5 text-xs font-bold rounded-full border ${
               offers.length > 0
@@ -165,8 +167,8 @@ export default function MyOffers({ offers: externalOffers, onRefresh, compact = 
           <div className="flex items-center gap-3 px-4 py-5 text-slate-500">
             <span className="text-xl select-none">📭</span>
             <div>
-              <p className="text-xs font-semibold text-slate-400">No active offers yet</p>
-              <p className="text-[10px] text-slate-600">Create your first offer using the form.</p>
+              <p className="text-xs font-semibold text-slate-400">{t('noOffersYet')}</p>
+              <p className="text-[10px] text-slate-600">{t('createFirstOffer')}</p>
             </div>
           </div>
         ) : (
@@ -174,12 +176,12 @@ export default function MyOffers({ offers: externalOffers, onRefresh, compact = 
             <table className="w-full text-xs min-w-[480px]">
               <thead>
                 <tr className="border-b border-slate-800 bg-slate-950/40">
-                  <th className="px-3 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-slate-600">Event</th>
-                  <th className="px-3 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-slate-600">Outcome</th>
-                  <th className="px-3 py-2 text-right text-[10px] font-bold uppercase tracking-widest text-slate-600">Odds</th>
-                  <th className="px-3 py-2 text-right text-[10px] font-bold uppercase tracking-widest text-slate-600">Liability</th>
-                  <th className="px-3 py-2 text-center text-[10px] font-bold uppercase tracking-widest text-slate-600">Status</th>
-                  <th className="px-3 py-2 text-center text-[10px] font-bold uppercase tracking-widest text-slate-600">Share</th>
+                  <th className="px-3 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-slate-600">{t('columns.event')}</th>
+                  <th className="px-3 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-slate-600">{t('columns.outcome')}</th>
+                  <th className="px-3 py-2 text-right text-[10px] font-bold uppercase tracking-widest text-slate-600">{t('columns.odds')}</th>
+                  <th className="px-3 py-2 text-right text-[10px] font-bold uppercase tracking-widest text-slate-600">{t('columns.liability')}</th>
+                  <th className="px-3 py-2 text-center text-[10px] font-bold uppercase tracking-widest text-slate-600">{t('columns.status')}</th>
+                  <th className="px-3 py-2 text-center text-[10px] font-bold uppercase tracking-widest text-slate-600">{t('columns.share')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -211,7 +213,7 @@ export default function MyOffers({ offers: externalOffers, onRefresh, compact = 
                       </td>
                       <td className="px-3 py-2 text-center">
                         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 whitespace-nowrap">
-                          ACTIVE
+                          {t('active').toUpperCase()}
                         </span>
                       </td>
                       <td className="px-3 py-2 text-center">
@@ -222,7 +224,7 @@ export default function MyOffers({ offers: externalOffers, onRefresh, compact = 
                               ? 'text-emerald-400'
                               : 'text-slate-500 hover:text-[#FFB01F]'
                           }`}
-                          title="Copy challenge link"
+                          title={t('copyChallengeLinkTooltip')}
                         >
                           {copiedId === o.offerId ? '✓' : '🔗'}
                         </button>
@@ -239,14 +241,14 @@ export default function MyOffers({ offers: externalOffers, onRefresh, compact = 
         {!loading && offers.length > 0 && (
           <div className="flex items-center justify-between px-4 py-2.5 border-t border-slate-800 bg-slate-950/40">
             <span className="text-[10px] text-slate-600 font-mono">
-              {hasMore ? `Showing 5 of ${offers.length}` : `${offers.length} offer${offers.length !== 1 ? 's' : ''}`}
+              {hasMore ? t('showingOf', { shown: 5, total: offers.length }) : t('offerCount', { count: offers.length })}
             </span>
             {onViewAll && (
               <button
                 onClick={onViewAll}
                 className="text-xs font-semibold text-blue-400 hover:text-blue-300 transition-colors"
               >
-                View All Offers →
+                {t('viewAllOffers')}
               </button>
             )}
           </div>
@@ -266,7 +268,7 @@ export default function MyOffers({ offers: externalOffers, onRefresh, compact = 
 
       {/* ── Header + filters ── */}
       <div className="flex items-center gap-3 px-5 py-3.5 border-b border-slate-800 flex-wrap">
-        <h2 className="text-base font-bold text-white">My Active Offers</h2>
+        <h2 className="text-base font-bold text-white">{t('title')}</h2>
         {!loading && (
           <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full border ${
             offers.length > 0
@@ -285,7 +287,7 @@ export default function MyOffers({ offers: externalOffers, onRefresh, compact = 
               onChange={e => setFilterEvent(e.target.value)}
               className="text-xs bg-slate-800 border border-slate-700 text-slate-300 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-blue-500/50 cursor-pointer"
             >
-              <option value="">All Events</option>
+              <option value="">{t('allEvents')}</option>
               {offerEventIds.map(id => {
                 const ev = events.find(e => e.eventId === id)
                 return <option key={id} value={id}>{ev?.name ?? id}</option>
@@ -297,9 +299,9 @@ export default function MyOffers({ offers: externalOffers, onRefresh, compact = 
           <select
             disabled
             className="text-xs bg-slate-800 border border-slate-700 text-slate-500 rounded-md px-2.5 py-1.5 cursor-not-allowed opacity-50"
-            title="Matched/Resolved filtering coming soon"
+            title={t('statusFilterTooltip')}
           >
-            <option>Active</option>
+            <option>{t('active')}</option>
           </select>
 
           {onRefresh && (
@@ -307,7 +309,7 @@ export default function MyOffers({ offers: externalOffers, onRefresh, compact = 
               onClick={onRefresh}
               className="text-xs text-slate-500 hover:text-slate-300 border border-slate-700 hover:border-slate-600 px-2.5 py-1.5 rounded-md transition-colors"
             >
-              ↻ Refresh
+              {t('refresh')}
             </button>
           )}
         </div>
@@ -332,10 +334,10 @@ export default function MyOffers({ offers: externalOffers, onRefresh, compact = 
             <span className="text-2xl select-none">📭</span>
             <div>
               <p className="text-sm font-semibold text-slate-400">
-                {filterEvent ? 'No offers for this event' : 'No active offers yet'}
+                {filterEvent ? t('noOffersForEvent') : t('noOffersYet')}
               </p>
               <p className="text-xs text-slate-600">
-                {filterEvent ? 'Try clearing the event filter.' : 'Create your first offer using the form.'}
+                {filterEvent ? t('tryClearingFilter') : t('createFirstOffer')}
               </p>
             </div>
             {filterEvent && (
@@ -343,7 +345,7 @@ export default function MyOffers({ offers: externalOffers, onRefresh, compact = 
                 onClick={() => setFilterEvent('')}
                 className="ml-auto text-xs font-semibold text-blue-400 hover:text-blue-300 transition-colors"
               >
-                Clear filter ×
+                {t('clearFilter')}
               </button>
             )}
           </div>
@@ -368,7 +370,7 @@ export default function MyOffers({ offers: externalOffers, onRefresh, compact = 
                         {event?.icon && <span className="text-base">{event.icon}</span>}
                         <span className="text-xs font-bold text-slate-300 truncate">{event?.name ?? eventId}</span>
                         <span className="ml-auto shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-500">
-                          {eventOffers.length} positions
+                          {t('positions', { count: eventOffers.length })}
                         </span>
                       </div>
                     )}
@@ -389,13 +391,13 @@ export default function MyOffers({ offers: externalOffers, onRefresh, compact = 
                               )}
                             </div>
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 shrink-0 ml-2">
-                              ACTIVE
+                              {t('active').toUpperCase()}
                             </span>
                           </div>
 
                           <div className="px-4 py-2.5 flex items-center gap-3 flex-wrap">
                             <div className="space-y-0.5">
-                              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">Outcome</p>
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">{t('columns.outcome')}</p>
                               <div className="flex items-center gap-1.5">
                                 <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${OUTCOME_DOTS[o.outcome] ?? 'bg-slate-400'}`} />
                                 <p className="text-sm font-semibold text-slate-300">{OUTCOMES[o.outcome] ?? o.outcome}</p>
@@ -405,7 +407,7 @@ export default function MyOffers({ offers: externalOffers, onRefresh, compact = 
                             <div className="w-px h-8 bg-slate-800 self-stretch" />
 
                             <div className="space-y-0.5">
-                              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">Odds</p>
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">{t('columns.odds')}</p>
                               <p className="text-lg font-bold font-mono text-[#FFB01F] leading-none">
                                 {o.oddsDecimal.toFixed(2)}<span className="text-xs text-[#FFB01F]/60">x</span>
                               </p>
@@ -414,7 +416,7 @@ export default function MyOffers({ offers: externalOffers, onRefresh, compact = 
                             <div className="w-px h-8 bg-slate-800 self-stretch" />
 
                             <div className="space-y-0.5">
-                              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">Liability</p>
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">{t('columns.liability')}</p>
                               <p className="text-base font-bold font-mono text-slate-200 leading-none">
                                 ${parseFloat(o.remainingLiabilityUsdt).toFixed(2)}
                                 <span className="text-xs text-slate-500 ml-1">USDT</span>
@@ -426,9 +428,9 @@ export default function MyOffers({ offers: externalOffers, onRefresh, compact = 
                             <button
                               onClick={() => handleShare(o)}
                               className="shrink-0 px-2.5 py-1.5 text-xs font-bold rounded-lg bg-[#FFB01F]/10 border border-[#FFB01F]/30 text-[#FFB01F] hover:bg-[#FFB01F]/20 transition-all whitespace-nowrap"
-                              title="Copy challenge link"
+                              title={t('copyChallengeLinkTooltip')}
                             >
-                              {copiedId === o.offerId ? '✓ Copied!' : '🔗 Share'}
+                              {copiedId === o.offerId ? t('copied') : t('share')}
                             </button>
 
                             <button
@@ -442,9 +444,9 @@ export default function MyOffers({ offers: externalOffers, onRefresh, compact = 
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                                   </svg>
-                                  Cancelling…
+                                  {t('cancelling')}
                                 </span>
-                              ) : 'Cancel'}
+                              ) : t('cancel')}
                             </button>
                           </div>
                         </div>
@@ -462,15 +464,15 @@ export default function MyOffers({ offers: externalOffers, onRefresh, compact = 
       {!loading && filtered.length > 0 && (
         <div className="px-5 py-2.5 border-t border-slate-800 bg-slate-950/40 flex items-center justify-between">
           <span className="text-[10px] font-mono text-slate-600">
-            {filtered.length} offer{filtered.length !== 1 ? 's' : ''}
-            {filterEvent && ` · filtered`}
+            {t('offerCount', { count: filtered.length })}
+            {filterEvent && ` ${t('filtered')}`}
           </span>
           {filterEvent && (
             <button
               onClick={() => setFilterEvent('')}
               className="text-[10px] text-slate-500 hover:text-slate-300 transition-colors"
             >
-              Clear filter ×
+              {t('clearFilter')}
             </button>
           )}
         </div>

@@ -1,0 +1,55 @@
+{
+  "Rules": {
+    "meta": {
+      "title": "Règles — Bettazoo",
+      "description": "Règles de la plateforme, mécaniques du Smart Contract et structure des frais pour les paris P2P de Bettazoo."
+    },
+    "header": {
+      "overline": "Mentions Légales & Mécaniques",
+      "title": "Règles de la Plateforme",
+      "subtitle": "Tous les paris sur Bettazoo sont régis exclusivement par le Smart Contract BettazooEscrow déployé on-chain. Ces règles reflètent la logique immuable du contrat."
+    },
+    "items": {
+      "security": {
+        "title": "Non-Custodial et Sécurisé",
+        "tag": "Sécurité",
+        "body": "Les fonds sont bloqués dans un Smart Contract Escrow vérifié. Nous ne détenons jamais votre argent — pas même le temps d'un bloc. Seul le smart contract contrôle le mouvement des fonds, appliqué entièrement par un code on-chain que n'importe qui peut auditer."
+      },
+      "payouts": {
+        "title": "Règlement Automatisé",
+        "tag": "Paiements",
+        "body": "Les résultats des matchs sont fournis via des Data Oracles certifiés (par ex. Betradar). Dès que le résultat final est confirmé on-chain, les paiements en USDT sont distribués instantanément aux gagnants — aucune intervention manuelle, aucun délai."
+      },
+      "fees": {
+        "title": "Frais Transparents",
+        "tag": "Frais",
+        "body": "Une commission fixe de 5 % s'applique uniquement sur le pot net gagné. Il n'y a aucun frais de dépôt, aucun frais de retrait et aucun coût caché. La commission est déduite automatiquement par le smart contract avant la distribution des gains."
+      },
+      "cancellations": {
+        "title": "Paris Non Appariés et Annulations",
+        "tag": "Annulations",
+        "body": "Si votre ordre de pari ou l'offre d'un Placer n'est pas apparié avant le début de l'événement, vous pouvez l'annuler à tout moment. Votre mise ou votre engagement total est libéré immédiatement et directement vers votre wallet — sans aucun frais."
+      },
+      "matching": {
+        "title": "Appariement Équitable",
+        "tag": "Voir les Cotes",
+        "body": "Les ordres sont appariés dans le smart contract via un algorithme greedy qui privilégie les meilleures cotes disponibles. L'appariement partiel est pris en charge — votre pari peut être réparti entre plusieurs offres de Placers pour maximiser le remplissage."
+      },
+      "voidEvents": {
+        "title": "Événements Contestés et Annulés",
+        "tag": "Cas Particuliers",
+        "body": "En cas de match reporté, abandonné ou annulé, l'Oracle soumet un résultat nul. Tous les fonds bloqués — mises des bettors et engagements des placers — sont intégralement restitués à leurs propriétaires d'origine."
+      }
+    },
+    "contract": {
+      "title": "Adresse du Smart Contract",
+      "addressPrefix": "BettazooEscrow :",
+      "addressSuffix": "(Hardhat localhost — à mettre à jour lors du déploiement sur mainnet)",
+      "note": "Le code source du contrat est ouvert et vérifiable. En cas de divergence entre cette page et le contrat déployé, le code du contrat prévaut."
+    },
+    "cta": {
+      "howToPlay": "Comment Jouer",
+      "browseEvents": "Parcourir les Événements"
+    }
+  }
+}

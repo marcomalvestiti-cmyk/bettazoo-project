@@ -1,0 +1,62 @@
+{
+  "Event": {
+    "ExchangeView": {
+      "breadcrumbBet": "Bet",
+      "categorySports": "Sports",
+      "categoryEsports": "E-Sports",
+      "sportFallback": "sport",
+      "challengeBookie": "Challenge the Bookie",
+      "invitedBy": "— You were invited by",
+      "connectPrompt": "Connect your wallet to bet — click any odds to open the bet slip."
+    },
+    "OrderBook": {
+      "bestOdds": "🏅 Best Odds",
+      "betCta": "Bet {odds}x →",
+      "loading": "Loading odds…",
+      "errorTitle": "View Odds unavailable",
+      "retry": "Retry",
+      "loadError": "Failed to load order book",
+      "empty": "No offers available",
+      "columnOutcome": "Outcome",
+      "columnOdds": "Odds",
+      "columnMaxStake": "Max Stake",
+      "columnLiquidity": "Liquidity",
+      "columnMaker": "Maker",
+      "outcomeFallback": "Outcome {n}",
+      "bestBadge": "Best",
+      "official": "✓ Official",
+      "topMaker": "🏆 Top",
+      "bestMaker": "⭐ Best",
+      "offersCount": "{count, plural, one {# offer} other {# offers}}",
+      "showAll": "Show all ×"
+    },
+    "BetSlip": {
+      "title": "Bet Slip",
+      "offersBadge": "{count, plural, one {# offer} other {# offers}}",
+      "bestPrice": "best price",
+      "outcomeFallback": "Outcome {n}",
+      "stakeLabel": "Bet Amount",
+      "availableLiquidity": "Available liquidity",
+      "stakeRow": "Stake",
+      "oddsRow": "Odds",
+      "potentialPayout": "Potential Payout",
+      "offersMatched": "{count, plural, one {# offer matched} other {# offers matched}}",
+      "official": "✓ Official",
+      "stepApprove": "Approve USDT",
+      "stepConfirm": "Confirm Bet",
+      "confirmed": "Bet confirmed!",
+      "close": "Close",
+      "approving": "Approving USDT…",
+      "submitting": "Submitting bet on-chain…",
+      "confirmCta": "Confirm · ${amount} USDT",
+      "enterAmount": "Enter amount",
+      "txFailed": "Transaction failed",
+      "timeoutMsg": "Still waiting for confirmation on-chain — this can take a bit on Arbitrum Sepolia. Check your wallet’s Activity tab; do not cancel it. Reopen the bet slip once it confirms."
+    },
+    "PlacerBadge": {
+      "whaleMaker": "Whale Maker",
+      "proBookie": "Pro Bookie",
+      "rookiePlacer": "Rookie Placer"
+    }
+  }
+}

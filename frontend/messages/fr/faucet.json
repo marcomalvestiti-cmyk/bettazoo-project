@@ -1,0 +1,22 @@
+{
+  "Faucet": {
+    "title": "Faucet Testnet",
+    "subtitle": "Réclamez des tokens <token>BTZ-USD</token> gratuits pour tester la plateforme Bettazoo.",
+    "testnetOnly": "⚠ Testnet uniquement",
+    "noValueInfo": "BTZ-USD <strong>n'a aucune valeur monétaire réelle</strong>. Il n'existe que sur la testnet Arbitrum Sepolia pour vous permettre d'explorer la plateforme sans risque. Vos fonds mainnet ne sont jamais concernés.",
+    "notDeployed": "Contrat pas encore déployé.",
+    "notDeployedHint": "Définissez <code>NEXT_PUBLIC_MOCK_USDT_ADDRESS</code> après le déploiement sur Arbitrum Sepolia.",
+    "connectPrompt": "Connectez votre wallet pour réclamer des tokens.",
+    "balanceLabel": "Votre solde BTZ-USD",
+    "perClaim": "BTZ-USD par réclamation · cooldown de 24 h",
+    "claimSuccess": "✓ {amount} BTZ-USD ajoutés à votre wallet !",
+    "sufficientBalance": "✓ Vous en avez déjà assez pour tester Bettazoo",
+    "sufficientBalanceHint": "Votre solde ({balance} BTZ-USD) est suffisant. Allez placer un pari !",
+    "confirmInWallet": "Confirmez dans le wallet…",
+    "minting": "Frappe en cours…",
+    "availableIn": "Disponible dans {cooldown}",
+    "claimButton": "Réclamer {amount} BTZ-USD",
+    "nextClaimIn": "Prochaine réclamation disponible dans {cooldown}",
+    "networkHint": "Assurez-vous que MetaMask est connecté à <network>Arbitrum Sepolia</network> (Chain ID 421614)"
+  }
+}

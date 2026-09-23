@@ -1,0 +1,39 @@
+{
+  "Streaming": {
+    "backToConsole": "← Retour à la Pit Boss Console",
+    "liveBetting": "{eventName} — Paris en Direct",
+    "sportsBetting": "Paris Sportifs",
+    "viewers": "spectateurs",
+    "official": "✓ Officiel",
+    "follow": "+ Suivre",
+    "activeOffers": "{count, plural, one {# offre active} other {# offres actives}}",
+    "avgOdds": "Moy. {odds}x",
+    "eventsCount": "{count, plural, one {# événement} other {# événements}}",
+    "tagline": "\"Les meilleures cotes disponibles, garanties. Pariez en toute confiance.\"",
+    "placersOffers": "Offres du Placer",
+    "loading": "Chargement…",
+    "loadingOffers": "Chargement des offres…",
+    "noOffersYetTitle": "Vous n'avez encore placé aucun pari.",
+    "noOffersYetSub": "Ce placer n'a pas encore publié d'offres pour {eventName}.",
+    "viewAllBets": "Voir Tous les Paris →",
+    "exclusiveOdds": "Cotes Exclusives",
+    "availableCount": "{count, plural, one {# disponible} other {# disponibles}}",
+    "noOffersAvailable": "Aucune offre disponible pour cet événement",
+    "maxStake": "Mise maximale",
+    "liquidity": "Liquidité",
+    "betCta": "Parier →",
+    "connectToBet": "Connectez le wallet pour parier",
+    "live": "LIVE",
+    "active": "Active"
+  },
+  "LiveChat": {
+    "title": "Chat",
+    "viewers": "spectateurs",
+    "welcomeMessage": "Bienvenue dans le chat en direct ! 🎮",
+    "guest": "Invité",
+    "messagePlaceholder": "Envoyer un message…",
+    "connectToChat": "Connectez le wallet pour chatter",
+    "send": "Envoyer",
+    "respectNote": "Traitez les autres utilisateurs avec respect ✌️"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "Streaming": {
+    "backToConsole": "← Back to Pit Boss Console",
+    "liveBetting": "{eventName} — Live Betting",
+    "sportsBetting": "Sports Betting",
+    "viewers": "viewers",
+    "official": "✓ Official",
+    "follow": "+ Follow",
+    "activeOffers": "{count, plural, one {# active offer} other {# active offers}}",
+    "avgOdds": "Avg {odds}x",
+    "eventsCount": "{count, plural, one {# event} other {# events}}",
+    "tagline": "\"The best odds available, guaranteed. Bet with confidence.\"",
+    "placersOffers": "Placer's Offers",
+    "loading": "Loading…",
+    "loadingOffers": "Loading offers…",
+    "noOffersYetTitle": "You haven't placed any bets yet.",
+    "noOffersYetSub": "This placer hasn't posted any offers for {eventName} yet.",
+    "viewAllBets": "View All Bets →",
+    "exclusiveOdds": "Exclusive Odds",
+    "availableCount": "{count, plural, one {# available} other {# available}}",
+    "noOffersAvailable": "No offers available for this event",
+    "maxStake": "Max stake",
+    "liquidity": "Liquidity",
+    "betCta": "Bet →",
+    "connectToBet": "Connect wallet to bet",
+    "live": "LIVE",
+    "active": "Active"
+  },
+  "LiveChat": {
+    "title": "Chat",
+    "viewers": "viewers",
+    "welcomeMessage": "Welcome to the live chat! 🎮",
+    "guest": "Guest",
+    "messagePlaceholder": "Send a message…",
+    "connectToChat": "Connect wallet to chat",
+    "send": "Send",
+    "respectNote": "Treat other users with respect ✌️"
+  }
+}

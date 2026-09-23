@@ -1,0 +1,39 @@
+{
+  "Metadata": {
+    "title": "Bettazoo — P2P Sports Betting",
+    "description": "Bet peer-to-peer with no bookmaker. USDT stablecoin on Web3."
+  },
+  "Nav": {
+    "bet": "Bet",
+    "myBets": "My Bets",
+    "howToPlay": "How to Play",
+    "rules": "Rules",
+    "placerArea": "Placer Area",
+    "getTestTokens": "Get Test Tokens",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
+  },
+  "Banners": {
+    "testnet": "⚠️ Testnet — MockUSDT, no real money. For testing purposes only.",
+    "backendOffline": "Live odds temporarily unavailable — reconnecting to servers…",
+    "backendOfflineHint": "· Odds will resume automatically"
+  },
+  "ConnectWallet": {
+    "connect": "Connect Wallet",
+    "connecting": "Connecting…",
+    "switching": "Switching…",
+    "switchNetwork": "⚠ Switch to Arb Sepolia",
+    "switchNetworkFull": "⚠ Switch to Arbitrum Sepolia",
+    "disconnect": "Disconnect wallet",
+    "modalTitle": "Connect Wallet",
+    "modalSubtitle": "Arbitrum Sepolia (testnet)",
+    "close": "Close",
+    "walletConnectDisabledTitle": "WalletConnect disabled",
+    "walletConnectDisabledBody": "— env var not set. Mobile wallets unavailable.",
+    "noWalletsDetected": "No wallets detected in this browser.",
+    "unknownNetwork": "Unknown network"
+  },
+  "LocaleSwitcher": {
+    "label": "Language"
+  }
+}

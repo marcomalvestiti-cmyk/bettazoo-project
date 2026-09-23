@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useTranslations } from 'next-intl'
 import { useAccount, usePublicClient, useReadContract, useWriteContract, useSwitchChain } from 'wagmi'
 import { arbitrumSepolia } from 'wagmi/chains'
 import { parseUnits } from 'viem'
@@ -45,6 +46,7 @@ function computeMatch(offers: Offer[], stakeUsdt: number) {
 }
 
 export default function BetSlip({ outcome, offers, eventName, referrerAddress, onClose }: Props) {
+  const t = useTranslations('Event.BetSlip')
   const [visible, setVisible]   = useState(false)
   const [stake, setStake]       = useState('')
   const [status, setStatus]     = useState<'idle' | 'approving' | 'betting' | 'done' | 'error'>('idle')
@@ -138,13 +140,13 @@ export default function BetSlip({ outcome, offers, eventName, referrerAddress, o
       }
     } catch (err: unknown) {
       setStatus('error')
-      const msg = err instanceof Error ? err.message : 'Transaction failed'
+      const msg = err instanceof Error ? err.message : t('txFailed')
       // A wait-timeout means we stopped watching, not that the chain rejected it —
       // the tx can still land. Don't cancel it in your wallet; check its Activity
       // tab or Arbiscan, then reopen the bet slip once it confirms.
       setErrorMsg(
         msg.toLowerCase().includes('timed out')
-          ? 'Still waiting for confirmation on-chain — this can take a bit on Arbitrum Sepolia. Check your wallet’s Activity tab; do not cancel it. Reopen the bet slip once it confirms.'
+          ? t('timeoutMsg')
           : msg
       )
     }
@@ -170,9 +172,9 @@ export default function BetSlip({ outcome, offers, eventName, referrerAddress, o
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-2.5">
             <span className="w-2 h-2 rounded-full bg-[#B31A1A]" />
-            <h2 className="font-bold text-white text-lg tracking-tight">Bet Slip</h2>
+            <h2 className="font-bold text-white text-lg tracking-tight">{t('title')}</h2>
             <span className="text-xs text-slate-500 bg-slate-900 border border-slate-700 px-2 py-0.5 rounded font-mono">
-              {offers.length} offers
+              {t('offersBadge', { count: offers.length })}
             </span>
           </div>
           <button
@@ -193,7 +195,7 @@ export default function BetSlip({ outcome, offers, eventName, referrerAddress, o
               <div className="flex items-center gap-2.5">
                 <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${color.dot}`} />
                 <span className={`text-base font-semibold ${color.text}`}>
-                  {OUTCOMES[outcome] ?? `Outcome ${outcome}`}
+                  {OUTCOMES[outcome] ?? t('outcomeFallback', { n: outcome })}
                 </span>
               </div>
               <div className="text-right">
@@ -201,7 +203,7 @@ export default function BetSlip({ outcome, offers, eventName, referrerAddress, o
                   {bestOdds.toFixed(2)}
                   <span className="text-sm font-normal text-slate-500 ml-0.5">x</span>
                 </div>
-                <div className="text-[10px] text-slate-600 mt-0.5 uppercase tracking-wide">best price</div>
+                <div className="text-[10px] text-slate-600 mt-0.5 uppercase tracking-wide">{t('bestPrice')}</div>
               </div>
             </div>
           </div>
@@ -209,7 +211,7 @@ export default function BetSlip({ outcome, offers, eventName, referrerAddress, o
           {/* Stake input */}
           <div className="space-y-3">
             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Bet Amount
+              {t('stakeLabel')}
             </label>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-mono text-lg select-none pointer-events-none">
@@ -247,7 +249,7 @@ export default function BetSlip({ outcome, offers, eventName, referrerAddress, o
             {totalAvailable > 0 && (
               <div className="space-y-1.5">
                 <div className="flex justify-between text-[10px] font-mono text-slate-600">
-                  <span>Available liquidity</span>
+                  <span>{t('availableLiquidity')}</span>
                   <span className="font-semibold">${totalAvailable.toFixed(2)} USDT</span>
                 </div>
                 <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
@@ -263,19 +265,19 @@ export default function BetSlip({ outcome, offers, eventName, referrerAddress, o
           {/* Payout summary */}
           <div className="rounded-lg border border-slate-800 overflow-hidden text-sm">
             <div className="flex justify-between items-center px-4 py-3 border-b border-slate-800">
-              <span className="text-slate-500">Stake</span>
+              <span className="text-slate-500">{t('stakeRow')}</span>
               <span className={`font-semibold font-mono tabular-nums ${stakeNum > 0 ? 'text-white' : 'text-slate-700'}`}>
                 {stakeNum > 0 ? `$${stakeNum.toFixed(2)}` : '—'}
               </span>
             </div>
             <div className="flex justify-between items-center px-4 py-3 border-b border-slate-800">
-              <span className="text-slate-500">Odds</span>
+              <span className="text-slate-500">{t('oddsRow')}</span>
               <span className="font-semibold font-mono tabular-nums text-red-500">
                 {avgOdds > 0 ? `${avgOdds.toFixed(2)}x` : '—'}
               </span>
             </div>
             <div className="flex justify-between items-center px-4 py-4 bg-slate-900/50">
-              <span className="font-semibold text-white">Potential Payout</span>
+              <span className="font-semibold text-white">{t('potentialPayout')}</span>
               <span className={`font-semibold font-mono tabular-nums text-xl ${potentialWin > 0 ? 'text-red-500' : 'text-slate-700'}`}>
                 {potentialWin > 0 ? `$${potentialWin.toFixed(2)}` : '—'}
               </span>
@@ -287,7 +289,7 @@ export default function BetSlip({ outcome, offers, eventName, referrerAddress, o
             <details className="group">
               <summary className="flex items-center justify-between cursor-pointer list-none select-none text-xs text-slate-500 hover:text-slate-300 transition-colors py-1">
                 <span className="uppercase tracking-wide font-semibold">
-                  {matchedOffers.length} offer{matchedOffers.length === 1 ? '' : 's'} matched
+                  {t('offersMatched', { count: matchedOffers.length })}
                 </span>
                 <span className="group-open:rotate-180 transition-transform duration-200 text-slate-600">▾</span>
               </summary>
@@ -301,7 +303,7 @@ export default function BetSlip({ outcome, offers, eventName, referrerAddress, o
                       #{o.offerId} · {displayMakerName(o.placer)}
                       {isKnownMaker(o.placer) && (
                         <span className="inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-400 border border-sky-500/30 leading-none select-none whitespace-nowrap">
-                          ✓ Official
+                          {t('official')}
                         </span>
                       )}
                     </span>
@@ -325,7 +327,7 @@ export default function BetSlip({ outcome, offers, eventName, referrerAddress, o
           {(status === 'approving' || status === 'betting') && (
             <div className="rounded-lg border border-slate-800 overflow-hidden">
               {(['approving', 'betting'] as const).map((step, i) => {
-                const label    = i === 0 ? 'Approve USDT' : 'Confirm Bet'
+                const label    = i === 0 ? t('stepApprove') : t('stepConfirm')
                 const isDone   = step === 'approving' && status === 'betting'
                 const isActive = step === status
                 return (
@@ -366,13 +368,13 @@ export default function BetSlip({ outcome, offers, eventName, referrerAddress, o
                 <span className="w-6 h-6 rounded-full bg-[#B31A1A]/20 border border-[#B31A1A]/40 flex items-center justify-center text-xs">
                   ✓
                 </span>
-                Bet confirmed!
+                {t('confirmed')}
               </div>
               <button
                 onClick={handleClose}
                 className="w-full py-3 rounded-md bg-slate-800 hover:bg-slate-700 text-white font-semibold transition-colors"
               >
-                Close
+                {t('close')}
               </button>
             </div>
           ) : (
@@ -381,12 +383,12 @@ export default function BetSlip({ outcome, offers, eventName, referrerAddress, o
               disabled={!canBet}
               className="w-full py-3.5 text-base font-semibold rounded-md bg-[#B31A1A] hover:bg-red-600 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
-              {status === 'approving' && 'Approving USDT…'}
-              {status === 'betting'   && 'Submitting bet on-chain…'}
+              {status === 'approving' && t('approving')}
+              {status === 'betting'   && t('submitting')}
               {(status === 'idle' || status === 'error') && (
                 stakeNum > 0 && matchedOffers.length > 0
-                  ? `Confirm · $${stakeNum.toFixed(2)} USDT`
-                  : 'Enter amount'
+                  ? t('confirmCta', { amount: stakeNum.toFixed(2) })
+                  : t('enterAmount')
               )}
             </button>
           )}

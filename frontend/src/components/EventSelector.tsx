@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { ChevronRight } from 'lucide-react'
 import { SPORTS_TREE, type SportNode } from '@/lib/sportsData'
 import { useEvents } from '@/lib/useEvents'
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function EventSelector({ value, onSelect }: Props) {
+  const t = useTranslations('EventSelector')
   const { events } = useEvents()
   const [openNodes, setOpenNodes] = useState<Set<string>>(new Set())
   // A placer specializes in one sport/league at a time — once an event is picked,
@@ -122,7 +124,7 @@ export default function EventSelector({ value, onSelect }: Props) {
             onClick={() => setBrowsing(true)}
             className="shrink-0 text-[10px] font-bold text-slate-400 hover:text-[#FFB01F] border border-slate-700 hover:border-[#FFB01F]/40 px-2 py-1 rounded-md transition-colors"
           >
-            Change
+            {t('change')}
           </button>
         </div>
 
@@ -154,13 +156,13 @@ export default function EventSelector({ value, onSelect }: Props) {
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-lg p-3 space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-bold text-[#FFB01F] uppercase tracking-widest">Select Event</p>
+        <p className="text-xs font-bold text-[#FFB01F] uppercase tracking-widest">{t('selectEvent')}</p>
         {selectedEvent && (
           <button
             onClick={() => setBrowsing(false)}
             className="shrink-0 text-[10px] font-bold text-slate-500 hover:text-slate-300 transition-colors"
           >
-            Cancel
+            {t('cancel')}
           </button>
         )}
       </div>

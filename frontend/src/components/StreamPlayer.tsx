@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useTranslations } from 'next-intl'
 
 const MOCK_SCORES = [
   '0 - 0', '0 - 0', '0 - 0', '1 - 0', '1 - 0', '1 - 1', '1 - 1', '2 - 1',
 ]
 
 export default function StreamPlayer({ teamA, teamB }: { teamA: string; teamB: string }) {
+  const t = useTranslations('Streaming')
   const [minute, setMinute] = useState(1)
   const [scoreIdx, setScoreIdx] = useState(0)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -53,7 +55,7 @@ export default function StreamPlayer({ teamA, teamB }: { teamA: string; teamB: s
         {/* LIVE badge */}
         <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-[#B31A1A] rounded px-2.5 py-1">
           <span className="inline-block w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-          <span className="text-xs font-semibold text-white tracking-wide">LIVE</span>
+          <span className="text-xs font-semibold text-white tracking-wide">{t('live')}</span>
         </div>
       </div>
     </div>

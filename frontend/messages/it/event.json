@@ -1,0 +1,62 @@
+{
+  "Event": {
+    "ExchangeView": {
+      "breadcrumbBet": "Scommetti",
+      "categorySports": "Sport",
+      "categoryEsports": "E-Sport",
+      "sportFallback": "sport",
+      "challengeBookie": "Sfida il Banco",
+      "invitedBy": "— Sei stato invitato da",
+      "connectPrompt": "Connetti il wallet per scommettere — clicca su una quota per aprire la schedina."
+    },
+    "OrderBook": {
+      "bestOdds": "🏅 Quota Migliore",
+      "betCta": "Scommetti {odds}x →",
+      "loading": "Caricamento quote…",
+      "errorTitle": "Quote non disponibili",
+      "retry": "Riprova",
+      "loadError": "Impossibile caricare il book",
+      "empty": "Nessuna offerta disponibile",
+      "columnOutcome": "Esito",
+      "columnOdds": "Quota",
+      "columnMaxStake": "Puntata Max",
+      "columnLiquidity": "Liquidità",
+      "columnMaker": "Banco",
+      "outcomeFallback": "Esito {n}",
+      "bestBadge": "Top",
+      "official": "✓ Ufficiale",
+      "topMaker": "🏆 Top",
+      "bestMaker": "⭐ Top",
+      "offersCount": "{count, plural, one {# offerta} other {# offerte}}",
+      "showAll": "Mostra tutte ×"
+    },
+    "BetSlip": {
+      "title": "Schedina",
+      "offersBadge": "{count, plural, one {# offerta} other {# offerte}}",
+      "bestPrice": "quota migliore",
+      "outcomeFallback": "Esito {n}",
+      "stakeLabel": "Importo Scommessa",
+      "availableLiquidity": "Liquidità disponibile",
+      "stakeRow": "Puntata",
+      "oddsRow": "Quota",
+      "potentialPayout": "Vincita Potenziale",
+      "offersMatched": "{count, plural, one {# offerta abbinata} other {# offerte abbinate}}",
+      "official": "✓ Ufficiale",
+      "stepApprove": "Approva USDT",
+      "stepConfirm": "Conferma Scommessa",
+      "confirmed": "Scommessa confermata!",
+      "close": "Chiudi",
+      "approving": "Approvazione USDT…",
+      "submitting": "Invio scommessa on-chain…",
+      "confirmCta": "Conferma · ${amount} USDT",
+      "enterAmount": "Inserisci un importo",
+      "txFailed": "Transazione fallita",
+      "timeoutMsg": "Ancora in attesa di conferma on-chain — su Arbitrum Sepolia può richiedere un po'. Controlla la scheda Attività del tuo wallet; non annullare la transazione. Riapri la schedina una volta confermata."
+    },
+    "PlacerBadge": {
+      "whaleMaker": "Whale Maker",
+      "proBookie": "Pro Bookie",
+      "rookiePlacer": "Rookie Placer"
+    }
+  }
+}

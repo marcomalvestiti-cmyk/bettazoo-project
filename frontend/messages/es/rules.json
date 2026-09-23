@@ -1,0 +1,55 @@
+{
+  "Rules": {
+    "meta": {
+      "title": "Reglas — Bettazoo",
+      "description": "Reglas de la plataforma, mecánicas del Smart Contract y estructura de comisiones para las apuestas P2P de Bettazoo."
+    },
+    "header": {
+      "overline": "Legal y Mecánicas",
+      "title": "Reglas de la Plataforma",
+      "subtitle": "Todas las apuestas en Bettazoo se rigen exclusivamente por el Smart Contract BettazooEscrow desplegado on-chain. Estas reglas reflejan la lógica inmutable del contrato."
+    },
+    "items": {
+      "security": {
+        "title": "No Custodial y Seguro",
+        "tag": "Seguridad",
+        "body": "Los fondos quedan bloqueados en un Smart Contract Escrow verificado. Nunca guardamos tu dinero — ni por un solo bloque. Solo el smart contract controla el movimiento de fondos, aplicado enteramente por código on-chain que cualquiera puede auditar."
+      },
+      "payouts": {
+        "title": "Liquidación Automatizada",
+        "tag": "Pagos",
+        "body": "Los resultados de los partidos se entregan mediante Data Oracles certificados (p. ej., Betradar). En cuanto el resultado final se confirma on-chain, los pagos en USDT se distribuyen instantáneamente a los ganadores — sin intervención manual, sin demoras."
+      },
+      "fees": {
+        "title": "Comisiones Transparentes",
+        "tag": "Comisiones",
+        "body": "Se aplica una comisión fija del 5% solo sobre el bote neto ganado. No hay comisiones de depósito, ni de retiro, ni cargos ocultos. La comisión se descuenta automáticamente mediante el smart contract antes de distribuir las ganancias."
+      },
+      "cancellations": {
+        "title": "Apuestas Sin Emparejar y Cancelaciones",
+        "tag": "Cancelaciones",
+        "body": "Si tu orden de apuesta o la oferta de un Placer no se empareja antes de que comience el evento, puedes cancelarla en cualquier momento. Tu apuesta o responsabilidad total se libera de inmediato y directamente a tu wallet — sin coste alguno."
+      },
+      "matching": {
+        "title": "Emparejamiento Justo",
+        "tag": "Ver Cuotas",
+        "body": "Las órdenes se emparejan en el smart contract mediante un algoritmo greedy que prioriza las mejores cuotas disponibles. Se admite el emparejamiento parcial — tu apuesta puede repartirse entre varias ofertas de Placers para maximizar el llenado."
+      },
+      "voidEvents": {
+        "title": "Eventos Disputados y Anulados",
+        "tag": "Casos Especiales",
+        "body": "En caso de partido aplazado, abandonado o anulado, el Oracle envía un resultado nulo. Todos los fondos bloqueados — tanto las apuestas de los bettors como las responsabilidades de los placers — se liberan por completo a sus propietarios originales."
+      }
+    },
+    "contract": {
+      "title": "Dirección del Smart Contract",
+      "addressPrefix": "BettazooEscrow:",
+      "addressSuffix": "(Hardhat localhost — actualizar al desplegar en mainnet)",
+      "note": "El código fuente del contrato es abierto y verificable. En caso de discrepancia entre esta página y el contrato desplegado, prevalece el código del contrato."
+    },
+    "cta": {
+      "howToPlay": "Cómo Jugar",
+      "browseEvents": "Explorar Eventos"
+    }
+  }
+}

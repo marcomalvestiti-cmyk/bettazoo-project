@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAccount, useConnect, useDisconnect, useSwitchChain } from 'wagmi'
 import { arbitrumSepolia } from 'wagmi/chains'
 import { X, ChevronDown, AlertTriangle } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 const WC_PROJECT_ID = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? ''
 
@@ -20,6 +21,7 @@ function shortAddress(addr: string) {
 }
 
 function ConnectedChip() {
+  const t = useTranslations('ConnectWallet')
   const { address, chain } = useAccount()
   const { disconnect } = useDisconnect()
   const { switchChain, isPending: isSwitching } = useSwitchChain()
@@ -36,7 +38,7 @@ function ConnectedChip() {
           disabled={isSwitching}
           className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-amber-500/10 border border-amber-500/40 text-amber-400 hover:bg-amber-500/20 disabled:opacity-60 transition-colors whitespace-nowrap"
         >
-          {isSwitching ? 'Switching…' : '⚠ Switch to Arb Sepolia'}
+          {isSwitching ? t('switching') : t('switchNetwork')}
         </button>
       )}
       <div className="relative">
@@ -62,18 +64,18 @@ function ConnectedChip() {
                   disabled={isSwitching}
                   className="w-full px-4 py-3 text-left text-xs font-semibold text-amber-400 bg-amber-500/5 hover:bg-amber-500/10 border-b border-slate-800 transition-colors"
                 >
-                  {isSwitching ? '⏳ Switching…' : '⚠ Switch to Arbitrum Sepolia'}
+                  {isSwitching ? `⏳ ${t('switching')}` : t('switchNetworkFull')}
                 </button>
               )}
               <div className="px-4 py-2.5 border-b border-slate-800 space-y-0.5">
                 <p className="text-[10px] text-slate-500 font-mono break-all">{address}</p>
-                <p className="text-[10px] text-slate-600">{chain?.name ?? 'Unknown network'}</p>
+                <p className="text-[10px] text-slate-600">{chain?.name ?? t('unknownNetwork')}</p>
               </div>
               <button
                 onClick={() => { disconnect(); setOpen(false) }}
                 className="w-full px-4 py-3 text-left text-xs font-semibold text-red-400 hover:bg-[#B31A1A]/10 transition-colors"
               >
-                Disconnect wallet
+                {t('disconnect')}
               </button>
             </div>
           </>
@@ -84,6 +86,7 @@ function ConnectedChip() {
 }
 
 export default function ConnectWallet() {
+  const t = useTranslations('ConnectWallet')
   const { isConnected } = useAccount()
   const { connect, connectors, isPending, error: connectError } = useConnect()
   const [modalOpen, setModalOpen] = useState(false)
@@ -105,7 +108,7 @@ export default function ConnectWallet() {
         disabled={isPending}
         className="px-5 py-2 text-sm font-semibold rounded-md bg-[#B31A1A] hover:bg-red-600 text-white disabled:opacity-50 transition-colors"
       >
-        {isPending ? 'Connecting…' : 'Connect Wallet'}
+        {isPending ? t('connecting') : t('connect')}
       </button>
 
       {modalOpen && (
@@ -136,13 +139,13 @@ export default function ConnectWallet() {
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
                 <div>
-                  <h2 className="text-base font-bold text-white">Connect Wallet</h2>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Arbitrum Sepolia (testnet)</p>
+                  <h2 className="text-base font-bold text-white">{t('modalTitle')}</h2>
+                  <p className="text-[11px] text-slate-500 mt-0.5">{t('modalSubtitle')}</p>
                 </div>
                 <button
                   onClick={() => setModalOpen(false)}
                   className="p-2 rounded-md text-slate-500 hover:text-white hover:bg-slate-700 transition-colors"
-                  aria-label="Close"
+                  aria-label={t('close')}
                 >
                   <X size={16} />
                 </button>
@@ -153,7 +156,7 @@ export default function ConnectWallet() {
                 <div className="mx-4 mt-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30">
                   <AlertTriangle size={13} className="text-amber-400 shrink-0 mt-0.5" />
                   <p className="text-[11px] text-amber-300 leading-relaxed">
-                    <strong>WalletConnect disabled</strong> — env var not set. Mobile wallets unavailable.
+                    <strong>{t('walletConnectDisabledTitle')}</strong> {t('walletConnectDisabledBody')}
                   </p>
                 </div>
               )}
@@ -162,7 +165,7 @@ export default function ConnectWallet() {
               <div className="p-4 space-y-2">
                 {connectors.length === 0 && (
                   <p className="text-sm text-slate-500 text-center py-8">
-                    No wallets detected in this browser.
+                    {t('noWalletsDetected')}
                   </p>
                 )}
                 {connectors.map((connector) => {

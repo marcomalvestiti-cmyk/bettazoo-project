@@ -1,0 +1,62 @@
+{
+  "Event": {
+    "ExchangeView": {
+      "breadcrumbBet": "Parier",
+      "categorySports": "Sports",
+      "categoryEsports": "E-Sports",
+      "sportFallback": "sport",
+      "challengeBookie": "Défiez la Maison",
+      "invitedBy": "— Vous avez été invité par",
+      "connectPrompt": "Connectez votre wallet pour parier — cliquez sur une cote pour ouvrir le ticket."
+    },
+    "OrderBook": {
+      "bestOdds": "🏅 Meilleure Cote",
+      "betCta": "Parier {odds}x →",
+      "loading": "Chargement des cotes…",
+      "errorTitle": "Cotes indisponibles",
+      "retry": "Réessayer",
+      "loadError": "Impossible de charger le carnet d'ordres",
+      "empty": "Aucune offre disponible",
+      "columnOutcome": "Résultat",
+      "columnOdds": "Cote",
+      "columnMaxStake": "Mise Max",
+      "columnLiquidity": "Liquidité",
+      "columnMaker": "Teneur",
+      "outcomeFallback": "Résultat {n}",
+      "bestBadge": "Meilleure",
+      "official": "✓ Officiel",
+      "topMaker": "🏆 Top",
+      "bestMaker": "⭐ Meilleure",
+      "offersCount": "{count, plural, one {# offre} other {# offres}}",
+      "showAll": "Tout afficher ×"
+    },
+    "BetSlip": {
+      "title": "Ticket de Pari",
+      "offersBadge": "{count, plural, one {# offre} other {# offres}}",
+      "bestPrice": "meilleur prix",
+      "outcomeFallback": "Résultat {n}",
+      "stakeLabel": "Montant du Pari",
+      "availableLiquidity": "Liquidité disponible",
+      "stakeRow": "Mise",
+      "oddsRow": "Cote",
+      "potentialPayout": "Gain Potentiel",
+      "offersMatched": "{count, plural, one {# offre appariée} other {# offres appariées}}",
+      "official": "✓ Officiel",
+      "stepApprove": "Approuver USDT",
+      "stepConfirm": "Confirmer le Pari",
+      "confirmed": "Pari confirmé !",
+      "close": "Fermer",
+      "approving": "Approbation USDT…",
+      "submitting": "Envoi du pari on-chain…",
+      "confirmCta": "Confirmer · ${amount} USDT",
+      "enterAmount": "Entrez un montant",
+      "txFailed": "Transaction échouée",
+      "timeoutMsg": "En attente de confirmation on-chain — sur Arbitrum Sepolia cela peut prendre un moment. Vérifiez l'onglet Activité de votre wallet ; n'annulez pas la transaction. Rouvrez le ticket une fois confirmée."
+    },
+    "PlacerBadge": {
+      "whaleMaker": "Whale Maker",
+      "proBookie": "Pro Bookie",
+      "rookiePlacer": "Rookie Placer"
+    }
+  }
+}

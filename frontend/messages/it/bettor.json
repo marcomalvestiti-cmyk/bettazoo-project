@@ -1,0 +1,47 @@
+{
+  "Bettor": {
+    "eyebrow": "Scommettitore",
+    "title": "Le Mie Scommesse",
+    "connectPrompt": "Connetti il tuo wallet per vedere lo storico delle scommesse.",
+    "status": {
+      "pending": "In Corso",
+      "won": "Vinta",
+      "lost": "Persa"
+    },
+    "empty": {
+      "noOpenBets": "Nessuna scommessa aperta",
+      "noSettledBets": "Nessuna scommessa ancora conclusa",
+      "openHint": "Piazza una scommessa su un evento per vederla qui.",
+      "settledHint": "Le scommesse concluse appariranno qui una volta risolto l'evento.",
+      "browseEvents": "Sfoglia gli Eventi →"
+    },
+    "stats": {
+      "totalBets": "Scommesse Totali",
+      "totalStaked": "Totale Puntato",
+      "winRate": "% Vittorie",
+      "netPnl": "P&L Netto",
+      "wonSuffix": "{count} vinte",
+      "settledOnly": "solo concluse"
+    },
+    "tabs": {
+      "open": "Aperte ({count})",
+      "settled": "Concluse ({count})"
+    },
+    "table": {
+      "event": "Evento",
+      "pick": "Pronostico",
+      "stake": "Puntata",
+      "odds": "Quota",
+      "payout": "Vincita",
+      "pnl": "P&L",
+      "status": "Stato",
+      "outcomeFallback": "Esito {n}",
+      "netOfFee": "netto commissione 5%",
+      "afterFee": "dopo commissione 5%"
+    },
+    "footer": {
+      "betCount": "{count, plural, one {# scommessa} other {# scommesse}}",
+      "staked": "· ${amount} puntati"
+    }
+  }
+}

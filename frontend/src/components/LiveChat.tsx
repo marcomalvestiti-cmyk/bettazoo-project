@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { io, Socket } from 'socket.io-client'
 import { SOCKET_URL } from '@/lib/api'
 import { useAccount } from 'wagmi'
@@ -37,9 +38,10 @@ type Props = {
 }
 
 export default function LiveChat({ room, viewers = 1247 }: Props) {
+  const t = useTranslations('LiveChat')
   const { address } = useAccount()
   const [messages, setMessages] = useState<Message[]>([
-    { id: '0', sender: '0xSystem', text: 'Welcome to the live chat! 🎮', ts: Date.now() },
+    { id: '0', sender: '0xSystem', text: t('welcomeMessage'), ts: Date.now() },
   ])
   const [input, setInput] = useState('')
   const socketRef = useRef<Socket | null>(null)
@@ -63,7 +65,7 @@ export default function LiveChat({ room, viewers = 1247 }: Props) {
     if (!input.trim() || !socketRef.current) return
     const msg: Message = {
       id: String(Date.now()),
-      sender: address ? `${address.slice(0, 6)}…${address.slice(-4)}` : 'Guest',
+      sender: address ? `${address.slice(0, 6)}…${address.slice(-4)}` : t('guest'),
       text: input.trim(),
       ts: Date.now(),
     }
@@ -78,11 +80,11 @@ export default function LiveChat({ room, viewers = 1247 }: Props) {
       {/* Header */}
       <div className="px-4 py-3 border-b border-slate-800 flex items-center gap-2 shrink-0">
         <span className="w-2 h-2 rounded-full bg-[#B31A1A] animate-pulse" />
-        <span className="text-base font-semibold text-white">Chat</span>
+        <span className="text-base font-semibold text-white">{t('title')}</span>
         <div className="ml-auto flex items-center gap-1 text-[11px] text-slate-500">
           <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
           <span className="font-semibold text-slate-400">{viewers.toLocaleString('en-US')}</span>
-          <span>viewers</span>
+          <span>{t('viewers')}</span>
         </div>
       </div>
 
@@ -125,7 +127,7 @@ export default function LiveChat({ room, viewers = 1247 }: Props) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-            placeholder={address ? 'Send a message…' : 'Connect wallet to chat'}
+            placeholder={address ? t('messagePlaceholder') : t('connectToChat')}
             className="flex-1 bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-[#B31A1A] transition-colors"
           />
           <button
@@ -133,11 +135,11 @@ export default function LiveChat({ room, viewers = 1247 }: Props) {
             disabled={!input.trim()}
             className="px-4 py-2 text-sm font-semibold rounded-md bg-[#B31A1A] hover:bg-red-600 text-white disabled:opacity-40 transition-colors"
           >
-            Send
+            {t('send')}
           </button>
         </div>
         <p className="text-[10px] text-slate-700 text-center">
-          Treat other users with respect ✌️
+          {t('respectNote')}
         </p>
       </div>
     </div>

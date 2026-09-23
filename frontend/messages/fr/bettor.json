@@ -1,0 +1,47 @@
+{
+  "Bettor": {
+    "eyebrow": "Parieur",
+    "title": "Mes Paris",
+    "connectPrompt": "Connectez votre wallet pour voir l'historique de vos paris.",
+    "status": {
+      "pending": "En cours",
+      "won": "Gagné",
+      "lost": "Perdu"
+    },
+    "empty": {
+      "noOpenBets": "Aucun pari en cours",
+      "noSettledBets": "Aucun pari réglé pour l'instant",
+      "openHint": "Placez un pari sur un événement pour le voir ici.",
+      "settledHint": "Les paris réglés apparaîtront ici une fois l'événement résolu.",
+      "browseEvents": "Parcourir les Événements →"
+    },
+    "stats": {
+      "totalBets": "Paris Totaux",
+      "totalStaked": "Total Misé",
+      "winRate": "Taux de Réussite",
+      "netPnl": "P&L Net",
+      "wonSuffix": "{count} gagnés",
+      "settledOnly": "réglés uniquement"
+    },
+    "tabs": {
+      "open": "En cours ({count})",
+      "settled": "Réglés ({count})"
+    },
+    "table": {
+      "event": "Événement",
+      "pick": "Pronostic",
+      "stake": "Mise",
+      "odds": "Cote",
+      "payout": "Gain",
+      "pnl": "P&L",
+      "status": "Statut",
+      "outcomeFallback": "Résultat {n}",
+      "netOfFee": "net de frais 5%",
+      "afterFee": "après frais 5%"
+    },
+    "footer": {
+      "betCount": "{count, plural, one {# pari} other {# paris}}",
+      "staked": "· ${amount} misés"
+    }
+  }
+}

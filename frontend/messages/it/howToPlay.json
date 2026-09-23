@@ -1,0 +1,44 @@
+{
+  "HowToPlay": {
+    "meta": {
+      "title": "Come Giocare — Bettazoo",
+      "description": "Scopri come scommettere P2P su Bettazoo come Bettor o diventa un Placer e crea il mercato."
+    },
+    "header": {
+      "overline": "Guida",
+      "title": "Come Giocare",
+      "subtitle": "Bettazoo è un exchange di scommesse peer-to-peer su Web3. Nessun bookmaker. Ogni scommessa viene abbinata direttamente tra un Bettor e un Placer, garantita on-chain."
+    },
+    "bettor": {
+      "overline": "Per i Bettor",
+      "title": "Piazza una Scommessa",
+      "subtitle": "Scommetti su un esito alle migliori quote disponibili.",
+      "cta": "Sfoglia gli Eventi",
+      "steps": {
+        "step1": { "title": "Connetti il Tuo Wallet", "desc": "Collega MetaMask (o un qualsiasi wallet Web3) e assicurati di possedere stablecoin USDT. Nessuna registrazione — il tuo wallet è la tua identità su Bettazoo." },
+        "step2": { "title": "Trova le Migliori Quote P2P", "desc": "Sfoglia eventi Sport ed E-Sport. Confronta quote peer-to-peer reali, fissate direttamente dai Placer — nessun margine da bookmaker, nessun costo nascosto, piena trasparenza." },
+        "step3": { "title": "Scommetti e Vieni Pagato Automaticamente", "desc": "La tua puntata viene bloccata nello Smart Contract Escrow. A fine partita, un Oracle certificato conferma il risultato e gli USDT vengono inviati direttamente al tuo wallet — istantaneo, trustless e automatico." }
+      }
+    },
+    "placer": {
+      "overline": "Per i Placer",
+      "title": "Sii il Mercato",
+      "subtitle": "Non piazzi scommesse a mano. Imposti le tue regole — quali esiti coprire, le tue quote, la tua esposizione massima — e il tuo banco on-chain gestisce l'azione in automatico.",
+      "cta": "Apri l'Area Placer",
+      "steps": {
+        "step1": { "title": "Crea il Tuo Vault", "desc": "Connetti il wallet e crea il tuo Vault on-chain isolato dalla Placer Dashboard. Deposita USDT — resta prelevabile solo da te, sempre." },
+        "step2": { "title": "Imposta una Strategia, Non una Schedina", "desc": "Scegli una strategia di margine, seleziona quali eventi ed esiti coprire, e imposta i limiti di rischio (esposizione massima, stop-loss, un tetto obbligatorio per scommessa). Il keeper di Bettazoo quota e riquota automaticamente entro quelle regole — non piazzi mai una scommessa a mano." },
+        "step3": { "title": "Completa la Compliance", "desc": "Firma il Liquidity Provision Agreement (una sola firma dal wallet) e richiedi una verifica KYC prima che il tuo Vault possa diventare attivo — un passaggio una tantum che protegge sia te che la Casa." },
+        "step4": { "title": "Attira Bettor e Guadagna il Margine", "desc": "Le tue offerte appaiono live nell'exchange di scommesse. Condividi il tuo profilo Placer — o vai in diretta con l'overlay OBS e il codice QR — per farti un seguito. Guadagni sul margine tra le tue quote e la probabilità reale." }
+      }
+    },
+    "faq": {
+      "question": "Cos'è un Placer?",
+      "answer": "Un Placer gestisce il proprio banco. Imposti tu la strategia e i limiti di rischio; il tuo vault prende l'altro lato delle puntate dei bettor on-chain, entro le regole che hai stabilito."
+    },
+    "creatorSuite": {
+      "title": "Andare in Streaming come Placer",
+      "body": "Ogni Placer ha una pagina di streaming pubblica su <path1>/placer/[address]</path1> con chat live e le tue offerte attive — condividila per farti un seguito. Streammi su Twitch, Kick o YouTube da OBS? Aggiungi <path2>/overlay/[address]</path2> come Browser Source per un widget trasparente e sempre aggiornato che mostra la tua liquidità live e un codice QR che gli spettatori possono scansionare per scommettere in pochi secondi."
+    }
+  }
+}
