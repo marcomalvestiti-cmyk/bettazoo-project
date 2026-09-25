@@ -222,18 +222,18 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                 </svg>
-                Loading…
+                {t('loading')}
               </div>
             ) : eventOffers.length === 0 ? (
               <div className="rounded-lg bg-slate-900/50 border border-slate-800 px-6 py-10 text-center space-y-3">
                 <div className="text-3xl select-none">📋</div>
-                <p className="text-sm font-semibold text-slate-400">You haven&apos;t placed any bets yet.</p>
-                <p className="text-xs text-slate-600">This placer hasn&apos;t posted any offers for {selectedEvent.name} yet.</p>
+                <p className="text-sm font-semibold text-slate-400">{t('noOffersYetTitle')}</p>
+                <p className="text-xs text-slate-600">{t('noOffersYetSub', { eventName: selectedEvent.name })}</p>
                 <Link
                   href="/bet"
                   className="inline-block mt-1 px-4 py-2 text-xs font-semibold rounded-md bg-[#B31A1A]/10 border border-[#B31A1A]/30 text-red-400 hover:bg-[#B31A1A]/20 transition-colors"
                 >
-                  View All Bets →
+                  {t('viewAllBets')}
                 </Link>
               </div>
             ) : (
@@ -257,7 +257,7 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
                       <div className="flex items-center gap-3 shrink-0">
                         <span className="text-sm font-bold font-mono text-white">{o.oddsDecimal.toFixed(2)}x</span>
                         <span className="text-[10px] font-semibold px-2 py-0.5 rounded border bg-amber-500/10 text-amber-400 border-amber-500/25">
-                          Active
+                          {t('active')}
                         </span>
                       </div>
                     </div>
@@ -270,9 +270,9 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
           {/* Exclusive Odds */}
           <div className="px-4 sm:px-6 py-6 space-y-5 border-t border-slate-800">
             <div className="flex items-center gap-3">
-              <h2 className="text-base font-semibold text-white">Exclusive Odds</h2>
+              <h2 className="text-base font-semibold text-white">{t('exclusiveOdds')}</h2>
               <span className="text-[10px] font-semibold uppercase tracking-widest px-2 py-0.5 rounded bg-[#B31A1A]/15 text-red-500 border border-[#B31A1A]/30">
-                {eventOffers.length} available
+                {t('availableCount', { count: eventOffers.length })}
               </span>
             </div>
 
@@ -282,12 +282,12 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                 </svg>
-                Loading offers…
+                {t('loadingOffers')}
               </div>
             ) : eventOffers.length === 0 ? (
               <div className="text-center py-14 space-y-2">
                 <div className="text-5xl select-none">📭</div>
-                <p className="font-semibold text-slate-500">No offers available for this event</p>
+                <p className="font-semibold text-slate-500">{t('noOffersAvailable')}</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
@@ -326,11 +326,11 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
                       {/* Stats */}
                       <div className="space-y-1.5">
                         <div className="flex justify-between text-xs">
-                          <span className="text-slate-500">Max stake</span>
+                          <span className="text-slate-500">{t('maxStake')}</span>
                           <span className="font-semibold font-mono text-slate-300">${maxStake.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between text-xs">
-                          <span className="text-slate-500">Liquidity</span>
+                          <span className="text-slate-500">{t('liquidity')}</span>
                           <span className="font-semibold font-mono text-slate-300">${liquidity.toFixed(2)}</span>
                         </div>
                         <div className="h-1 bg-slate-800 rounded-full overflow-hidden mt-1">
@@ -350,11 +350,11 @@ export default function PlacerStreamPage({ params }: { params: Promise<{ address
                           }}
                           className="w-full py-2.5 text-sm font-semibold rounded-md text-white bg-[#B31A1A] hover:bg-red-600 transition-colors"
                         >
-                          Bet →
+                          {t('betCta')}
                         </button>
                       ) : (
                         <div className="w-full py-2.5 text-xs font-medium rounded-md text-center text-slate-500 bg-slate-800/40 border border-slate-800">
-                          Connect wallet to bet
+                          {t('connectToBet')}
                         </div>
                       )}
                     </div>
