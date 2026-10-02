@@ -16,7 +16,7 @@ export function getAdminSecret(): string | null {
 
 export function setAdminSecret(secret: string) {
   try {
-    window.localStorage.setItem(STORAGE_KEY, secret)
+    window.localStorage.setItem(STORAGE_KEY, secret.trim())
   } catch { /* private browsing / storage blocked — the prompt will just reappear */ }
 }
 

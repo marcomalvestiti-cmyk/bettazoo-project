@@ -42,6 +42,18 @@ describe('/api/admin/* — shared-secret gate', () => {
     const res = await request(app).get('/api/admin/status').set('x-admin-secret', 'topsecret');
     expect(res.status).toBe(200);
   });
+
+  it('tolerates stray whitespace/quotes from copy-paste on either side', async () => {
+    process.env.ADMIN_SECRET = ' "topsecret"\n';
+    const res = await request(app).get('/api/admin/status').set('x-admin-secret', 'topsecret ');
+    expect(res.status).toBe(200);
+  });
+
+  it('still rejects a secret that only partially matches after trimming', async () => {
+    process.env.ADMIN_SECRET = 'topsecret';
+    const res = await request(app).get('/api/admin/status').set('x-admin-secret', 'topsecre');
+    expect(res.status).toBe(401);
+  });
 });
 
 describe('POST /api/oracle/resolve — same gate', () => {
