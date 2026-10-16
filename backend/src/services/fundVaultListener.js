@@ -203,28 +203,41 @@ async function startFundVaultListener(provider, factoryAddress, io, skipHistoric
     await syncHistoricalFundVaultEvents(provider, factoryAddress)
   }
 
-  const factory = new ethers.Contract(factoryAddress, FACTORY_ABI, provider)
-
-  factory.on('FundVaultCreated', async (owner, vault, ev) => {
-    try {
-      await handleFundVaultCreated(owner, vault, ev.log.transactionHash, ev.log.blockNumber)
-      io?.emit('fundVault:created', { owner, vault })
-    } catch (err) {
-      console.error(`[${ts()}] [FundVaultCreated] error: ${err.message}`)
-    }
-  })
-
-  provider.on({ topics: [FUND_VAULT_TOPICS] }, async (log) => {
-    try {
-      await handleFundVaultLog(log)
-      const addr = log.address.toLowerCase()
-      if (knownFundVaults.has(addr)) io?.emit('fundVault:updated', { vault: addr })
-    } catch (err) {
-      console.error(`[${ts()}] [FundVaultListener] log error: ${err.message}`)
-    }
-  })
-
-  console.log(`[${ts()}] [FundVaultListener] Real-time subscriptions active (factory=${factoryAddress})`)
+  // Real-time: log sources for logPoller.js — factory first (same ordering reason as
+  // vaultListener.js).
+  const factoryInterface = new ethers.Interface(FACTORY_ABI)
+  return [
+    {
+      label:  'FundVaultFactory',
+      filter: { address: factoryAddress, topics: [FUND_VAULT_CREATED_TOPIC] },
+      onLogs: async (logs) => {
+        for (const log of logs) {
+          try {
+            const { owner, vault } = factoryInterface.parseLog(log).args
+            await handleFundVaultCreated(owner, vault, log.transactionHash, log.blockNumber)
+            io?.emit('fundVault:created', { owner, vault })
+          } catch (err) {
+            console.error(`[${ts()}] [FundVaultCreated] error: ${err.message}`)
+          }
+        }
+      },
+    },
+    {
+      label:  'FundVaults',
+      filter: { topics: [FUND_VAULT_TOPICS] },
+      onLogs: async (logs) => {
+        for (const log of logs) {
+          try {
+            await handleFundVaultLog(log)
+            const addr = log.address.toLowerCase()
+            if (knownFundVaults.has(addr)) io?.emit('fundVault:updated', { vault: addr })
+          } catch (err) {
+            console.error(`[${ts()}] [FundVaultListener] log error: ${err.message}`)
+          }
+        }
+      },
+    },
+  ]
 }
 
 module.exports = { startFundVaultListener, syncHistoricalFundVaultEvents, handleFundVaultCreated }

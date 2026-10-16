@@ -294,13 +294,127 @@ async function syncHistoricalEvents(contract) {
   )
 }
 
+// ── Real-time handlers ───────────────────────────────────────────────────────
+// Driven by logPoller.js (one eth_getLogs per tick for the whole Escrow), not by
+// contract.on() — see logPoller.js for why.
+
+async function onOfferCreated({ offerId, placer, eventId, outcome, odds, liability }, log, io) {
+  await Order.findOneAndUpdate(
+    { offerId: Number(offerId) },
+    {
+      offerId:            Number(offerId),
+      placer:             placer.toLowerCase(),
+      eventId,
+      outcome:            Number(outcome),
+      odds:               Number(odds),
+      oddsDecimal:        Number(odds) / 10000,
+      liability:          liability.toString(),
+      remainingLiability: liability.toString(),
+      active:             true,
+      txHash:             log.transactionHash,
+      blockNumber:        log.blockNumber,
+    },
+    { upsert: true, new: true }
+  )
+  await Event.findOneAndUpdate({ eventId }, { eventId }, { upsert: true, setDefaultsOnInsert: true })
+  io?.emit('offer:created', { offerId: Number(offerId), placer, eventId, outcome: Number(outcome) })
+  console.log(`[${ts()}] [OfferCreated] offerId=${offerId} eventId=${eventId} | heap ${heapMB()}MB`)
+}
+
+async function onOfferMatched({ matchId, offerId, bettor, bettorStake, placerLiability }, log, io, contract) {
+  const id = Number(offerId)
+  let onChainActive = true, onChainRemaining = '0'
+  try {
+    const onChain = await contract.offers(id)
+    onChainActive    = onChain.active
+    onChainRemaining = onChain.remainingLiability.toString()
+  } catch {
+    const order = await Order.findOne({ offerId: id })
+    if (order) {
+      const newRemaining = BigInt(order.remainingLiability) - BigInt(placerLiability)
+      onChainRemaining   = newRemaining.toString()
+      onChainActive      = newRemaining > BigInt(0)
+    }
+  }
+  await Order.findOneAndUpdate(
+    { offerId: id },
+    { remainingLiability: onChainRemaining, active: onChainActive }
+  )
+
+  // Persist the match itself for realized P&L (used by vault stop-loss). eventId/
+  // outcome/odds come from the offer, not this event — read from Mongo first, and
+  // fall back to an on-chain read in the rare case OfferCreated hasn't landed yet
+  // (e.g. this handler racing a same-block createOffer+acceptOffers).
+  let offerInfo = await Order.findOne({ offerId: id }).lean()
+  if (!offerInfo) {
+    try {
+      const onChain = await contract.offers(id)
+      offerInfo = { placer: onChain.placer.toLowerCase(), eventId: onChain.eventId, outcome: Number(onChain.outcome), odds: Number(onChain.odds) }
+    } catch (err) {
+      console.warn(`[${ts()}] [OfferMatched] could not resolve offer #${id} for BetMatch: ${err.message}`)
+    }
+  }
+  if (offerInfo) {
+    await BetMatch.findOneAndUpdate(
+      { matchId: Number(matchId) },
+      {
+        matchId:         Number(matchId),
+        offerId:         id,
+        placer:          offerInfo.placer,
+        bettor:          bettor.toLowerCase(),
+        eventId:         offerInfo.eventId,
+        outcome:         offerInfo.outcome,
+        odds:            offerInfo.odds,
+        bettorStake:     bettorStake.toString(),
+        placerLiability: placerLiability.toString(),
+      },
+      { upsert: true, setDefaultsOnInsert: true }
+    )
+  }
+
+  io?.emit('offer:matched', { matchId: Number(matchId), offerId: id, bettor })
+  console.log(`[${ts()}] [OfferMatched] matchId=${matchId} offerId=${offerId} | heap ${heapMB()}MB`)
+}
+
+async function onEventResolved({ eventId, winningOutcome }, log, io) {
+  await Event.findOneAndUpdate(
+    { eventId },
+    { resolved: true, winningOutcome: Number(winningOutcome), resolvedAt: new Date() }
+  )
+  await Order.updateMany({ eventId }, { active: false })
+  await BetMatch.updateMany({ eventId }, { settled: true, settledOutcome: Number(winningOutcome) })
+  io?.emit('event:resolved', { eventId, winningOutcome: Number(winningOutcome) })
+  console.log(`[${ts()}] [EventResolved] eventId=${eventId} winningOutcome=${winningOutcome}`)
+}
+
+// Rare, admin-triggered — real-time only, no historical backfill needed (a missed
+// event just means the vault's badge is stale until the admin re-sets it, no funds
+// or resolveEvent math depend on this indexed copy, the contract remains authoritative).
+async function onPlacerFeeOverrideUpdated({ placer, feePercent, active }) {
+  await Vault.findOneAndUpdate(
+    { vaultAddress: placer.toLowerCase() },
+    { feeOverridePercent: Number(feePercent), hasFeeOverride: active }
+  )
+  console.log(`[${ts()}] [PlacerFeeOverrideUpdated] placer=${placer} feePercent=${feePercent} active=${active}`)
+}
+
+const REALTIME_HANDLERS = {
+  OfferCreated:             onOfferCreated,
+  OfferMatched:             onOfferMatched,
+  EventResolved:            onEventResolved,
+  PlacerFeeOverrideUpdated: onPlacerFeeOverrideUpdated,
+}
+
 // ── startListener ─────────────────────────────────────────────────────────────
 
 /**
+ * Runs the historical sync and returns the Escrow's log source for logPoller.js.
+ *
  * @param {ethers.Provider} provider
  * @param {string}          contractAddress
  * @param {object}          io               - Socket.IO server (may be null)
  * @param {boolean}         skipHistoricalSync - true on reconnect (DB already fresh)
+ * @returns {Promise<{ label: string, filter: object, onLogs: Function }>}
  */
 async function startListener(provider, contractAddress, io, skipHistoricalSync = false) {
   const contract = new ethers.Contract(contractAddress, ESCROW_ABI, provider)
@@ -312,129 +426,29 @@ async function startListener(provider, contractAddress, io, skipHistoricalSync =
     await syncHistoricalEvents(contract)
   }
 
-  // ── Real-time subscriptions ────────────────────────────────────────────────
-
-  contract.on('OfferCreated', async (offerId, placer, eventId, outcome, odds, liability, ev) => {
-    try {
-      await Order.findOneAndUpdate(
-        { offerId: Number(offerId) },
-        {
-          offerId:            Number(offerId),
-          placer:             placer.toLowerCase(),
-          eventId,
-          outcome:            Number(outcome),
-          odds:               Number(odds),
-          oddsDecimal:        Number(odds) / 10000,
-          liability:          liability.toString(),
-          remainingLiability: liability.toString(),
-          active:             true,
-          txHash:             ev.log.transactionHash,
-          blockNumber:        ev.log.blockNumber,
-        },
-        { upsert: true, new: true }
-      )
-      await Event.findOneAndUpdate({ eventId }, { eventId }, { upsert: true, setDefaultsOnInsert: true })
-      io?.emit('offer:created', { offerId: Number(offerId), placer, eventId, outcome: Number(outcome) })
-      console.log(`[${ts()}] [OfferCreated] offerId=${offerId} eventId=${eventId} | heap ${heapMB()}MB`)
-    } catch (err) {
-      console.error(`[${ts()}] [OfferCreated] error: ${err.message}`)
-    }
-  })
-
-  contract.on('OfferMatched', async (matchId, offerId, bettor, bettorStake, placerLiability, ev) => {
-    try {
-      const id = Number(offerId)
-      let onChainActive = true, onChainRemaining = '0'
-      try {
-        const onChain = await contract.offers(id)
-        onChainActive    = onChain.active
-        onChainRemaining = onChain.remainingLiability.toString()
-      } catch {
-        const order = await Order.findOne({ offerId: id })
-        if (order) {
-          const newRemaining = BigInt(order.remainingLiability) - BigInt(placerLiability)
-          onChainRemaining   = newRemaining.toString()
-          onChainActive      = newRemaining > BigInt(0)
-        }
-      }
-      await Order.findOneAndUpdate(
-        { offerId: id },
-        { remainingLiability: onChainRemaining, active: onChainActive }
-      )
-
-      // Persist the match itself for realized P&L (used by vault stop-loss). eventId/
-      // outcome/odds come from the offer, not this event — read from Mongo first, and
-      // fall back to an on-chain read in the rare case OfferCreated hasn't landed yet
-      // (e.g. this handler racing a same-block createOffer+acceptOffers).
-      let offerInfo = await Order.findOne({ offerId: id }).lean()
-      if (!offerInfo) {
-        try {
-          const onChain = await contract.offers(id)
-          offerInfo = { placer: onChain.placer.toLowerCase(), eventId: onChain.eventId, outcome: Number(onChain.outcome), odds: Number(onChain.odds) }
-        } catch (err) {
-          console.warn(`[${ts()}] [OfferMatched] could not resolve offer #${id} for BetMatch: ${err.message}`)
-        }
-      }
-      if (offerInfo) {
-        await BetMatch.findOneAndUpdate(
-          { matchId: Number(matchId) },
-          {
-            matchId:         Number(matchId),
-            offerId:         id,
-            placer:          offerInfo.placer,
-            bettor:          bettor.toLowerCase(),
-            eventId:         offerInfo.eventId,
-            outcome:         offerInfo.outcome,
-            odds:            offerInfo.odds,
-            bettorStake:     bettorStake.toString(),
-            placerLiability: placerLiability.toString(),
-          },
-          { upsert: true, setDefaultsOnInsert: true }
-        )
-      }
-
-      io?.emit('offer:matched', { matchId: Number(matchId), offerId: id, bettor })
-      console.log(`[${ts()}] [OfferMatched] matchId=${matchId} offerId=${offerId} | heap ${heapMB()}MB`)
-    } catch (err) {
-      console.error(`[${ts()}] [OfferMatched] error: ${err.message}`)
-    }
-  })
-
-  contract.on('EventResolved', async (eventId, winningOutcome) => {
-    try {
-      await Event.findOneAndUpdate(
-        { eventId },
-        { resolved: true, winningOutcome: Number(winningOutcome), resolvedAt: new Date() }
-      )
-      await Order.updateMany({ eventId }, { active: false })
-      await BetMatch.updateMany({ eventId }, { settled: true, settledOutcome: Number(winningOutcome) })
-      io?.emit('event:resolved', { eventId, winningOutcome: Number(winningOutcome) })
-      console.log(`[${ts()}] [EventResolved] eventId=${eventId} winningOutcome=${winningOutcome}`)
-    } catch (err) {
-      console.error(`[${ts()}] [EventResolved] error: ${err.message}`)
-    }
-  })
-
-  // Rare, admin-triggered — real-time only, no historical backfill needed (a missed
-  // event just means the vault's badge is stale until the admin re-sets it, no funds
-  // or resolveEvent math depend on this indexed copy, the contract remains authoritative).
-  contract.on('PlacerFeeOverrideUpdated', async (placer, feePercent, active) => {
-    try {
-      await Vault.findOneAndUpdate(
-        { vaultAddress: placer.toLowerCase() },
-        { feeOverridePercent: Number(feePercent), hasFeeOverride: active }
-      )
-      console.log(`[${ts()}] [PlacerFeeOverrideUpdated] placer=${placer} feePercent=${feePercent} active=${active}`)
-    } catch (err) {
-      console.error(`[${ts()}] [PlacerFeeOverrideUpdated] error: ${err.message}`)
-    }
-  })
-
-  provider.on?.('error', (err) => {
-    console.error(`[${ts()}] [Web3] Provider error: ${err?.message || err}`)
-  })
-
-  console.log(`[${ts()}] [Web3] Real-time subscriptions active.`)
+  return {
+    label:  'Escrow',
+    filter: { address: contractAddress },
+    onLogs: (logs) => handleEscrowLogs(logs, contract, io),
+  }
 }
 
-module.exports = { startListener, syncHistoricalEvents }
+async function handleEscrowLogs(logs, contract, io) {
+  for (const log of logs) {
+    let parsed
+    try {
+      parsed = contract.interface.parseLog(log)
+    } catch {
+      continue
+    }
+    const handler = parsed && REALTIME_HANDLERS[parsed.name]
+    if (!handler) continue // e.g. WinningsPaid — in the ABI, nothing to index
+    try {
+      await handler(parsed.args, log, io, contract)
+    } catch (err) {
+      console.error(`[${ts()}] [${parsed.name}] error: ${err.message}`)
+    }
+  }
+}
+
+module.exports = { startListener, syncHistoricalEvents, handleEscrowLogs, ESCROW_ABI }

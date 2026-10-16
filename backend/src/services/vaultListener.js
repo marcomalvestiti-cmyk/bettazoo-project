@@ -216,28 +216,41 @@ async function startVaultListener(provider, factoryAddress, io, skipHistoricalSy
     await syncHistoricalVaultEvents(provider, factoryAddress)
   }
 
-  const factory = new ethers.Contract(factoryAddress, FACTORY_ABI, provider)
-
-  factory.on('VaultCreated', async (owner, vault, ev) => {
-    try {
-      await handleVaultCreated(owner, vault, ev.log.transactionHash, ev.log.blockNumber)
-      io?.emit('vault:created', { owner, vault })
-    } catch (err) {
-      console.error(`[${ts()}] [VaultCreated] error: ${err.message}`)
-    }
-  })
-
-  provider.on({ topics: [VAULT_TOPICS] }, async (log) => {
-    try {
-      await handleVaultLog(log)
-      const addr = log.address.toLowerCase()
-      if (knownVaults.has(addr)) io?.emit('vault:updated', { vault: addr })
-    } catch (err) {
-      console.error(`[${ts()}] [VaultListener] log error: ${err.message}`)
-    }
-  })
-
-  console.log(`[${ts()}] [VaultListener] Real-time subscriptions active (factory=${factoryAddress})`)
+  // Real-time: log sources for logPoller.js — factory first, so a vault created in a
+  // chunk is in knownVaults before that same chunk's vault-topic logs are checked.
+  const factoryInterface = new ethers.Interface(FACTORY_ABI)
+  return [
+    {
+      label:  'VaultFactory',
+      filter: { address: factoryAddress, topics: [VAULT_CREATED_TOPIC] },
+      onLogs: async (logs) => {
+        for (const log of logs) {
+          try {
+            const { owner, vault } = factoryInterface.parseLog(log).args
+            await handleVaultCreated(owner, vault, log.transactionHash, log.blockNumber)
+            io?.emit('vault:created', { owner, vault })
+          } catch (err) {
+            console.error(`[${ts()}] [VaultCreated] error: ${err.message}`)
+          }
+        }
+      },
+    },
+    {
+      label:  'Vaults',
+      filter: { topics: [VAULT_TOPICS] },
+      onLogs: async (logs) => {
+        for (const log of logs) {
+          try {
+            await handleVaultLog(log)
+            const addr = log.address.toLowerCase()
+            if (knownVaults.has(addr)) io?.emit('vault:updated', { vault: addr })
+          } catch (err) {
+            console.error(`[${ts()}] [VaultListener] log error: ${err.message}`)
+          }
+        }
+      },
+    },
+  ]
 }
 
 module.exports = { startVaultListener, syncHistoricalVaultEvents, handleVaultCreated }

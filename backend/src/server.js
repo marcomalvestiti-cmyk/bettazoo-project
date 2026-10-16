@@ -26,6 +26,7 @@ const { startListener } = require('./services/web3Listener')
 const { startVaultListener } = require('./services/vaultListener')
 const { startFundVaultListener } = require('./services/fundVaultListener')
 const { startKeeper } = require('./services/keeperService')
+const { createLogPoller } = require('./services/logPoller')
 const { startEventsSync } = require('./services/eventsFeedService')
 const { initErrorTracking } = require('./services/errorTracking')
 
@@ -41,6 +42,8 @@ let activeProvider = null
 // The keeper's ethers.Wallet is bound to a specific provider — it must be restarted
 // (not left running against a destroyed provider) whenever startWeb3 reconnects.
 let activeKeeperInterval = null
+// Single real-time log poller (see services/logPoller.js) — stopped and rebuilt on reconnect.
+let activePoller = null
 
 // ── Memory monitor — logs heap usage every 60 s so Railway logs show trends ──
 setInterval(() => {
@@ -162,36 +165,62 @@ function startWeb3(url, contractAddress, io, skipHistoricalSync) {
   const vaultFactoryAddress = process.env.VAULT_FACTORY_ADDRESS
   const fundVaultFactoryAddress = process.env.FUND_VAULT_FACTORY_ADDRESS
 
+  if (activePoller) {
+    activePoller.stop()
+    activePoller = null
+  }
+
   // Chained (not parallel): running historical syncs concurrently multiplies the RPC
   // request rate right when it's most likely to trip rate limits (lesson from the
-  // 2026-09-01 web3Listener/vaultListener race — see memory).
-  startListener(provider, contractAddress, io, skipHistoricalSync)
-    .catch((err) => {
+  // 2026-09-01 web3Listener/vaultListener race — see memory). Each listener returns
+  // its real-time log source(s); one logPoller then serves them all.
+  ;(async () => {
+    const sources = []
+    const syncStateIds = []
+    try {
+      sources.push(await startListener(provider, contractAddress, io, skipHistoricalSync))
+      syncStateIds.push('web3')
+    } catch (err) {
       console.error(`[${ts()}] [Web3] Listener startup failed: ${err.message}`)
       scheduleReconnect(url, contractAddress, io)
-    })
-    .then(() => {
+      return
+    }
+
+    try {
       if (!vaultFactoryAddress) {
         console.warn(`[${ts()}] [VaultListener] VAULT_FACTORY_ADDRESS not set — vault listener and keeper disabled`)
-        return
-      }
-      return startVaultListener(provider, vaultFactoryAddress, io, skipHistoricalSync).then(() => {
+      } else {
+        sources.push(...await startVaultListener(provider, vaultFactoryAddress, io, skipHistoricalSync))
+        syncStateIds.push('vaults')
         if (!fundVaultFactoryAddress) {
           console.warn(`[${ts()}] [FundVaultListener] FUND_VAULT_FACTORY_ADDRESS not set — fund vault listener disabled`)
-          return
+        } else {
+          sources.push(...await startFundVaultListener(provider, fundVaultFactoryAddress, io, skipHistoricalSync))
+          syncStateIds.push('fundVaults')
         }
-        return startFundVaultListener(provider, fundVaultFactoryAddress, io, skipHistoricalSync)
-      }).then(() => {
-        if (activeKeeperInterval) {
-          clearInterval(activeKeeperInterval)
-          activeKeeperInterval = null
-        }
-        activeKeeperInterval = startKeeper(provider) ?? null
-      })
-    })
-    .catch((err) => {
+      }
+    } catch (err) {
       console.error(`[${ts()}] [VaultListener] Startup failed: ${err.message}`)
+    }
+
+    activePoller = createLogPoller({
+      provider,
+      sources,
+      syncStateIds,
+      intervalMs:   parseInt(process.env.LOG_POLL_INTERVAL_MS ?? '15000'),
+      chunkSize:    parseInt(process.env.ESCROW_CHUNK_SIZE ?? '2000'),
+      chunkDelayMs: parseInt(process.env.VAULT_CHUNK_DELAY_MS ?? '300'),
     })
+    activePoller.start()
+
+    if (vaultFactoryAddress) {
+      if (activeKeeperInterval) {
+        clearInterval(activeKeeperInterval)
+        activeKeeperInterval = null
+      }
+      activeKeeperInterval = startKeeper(provider) ?? null
+    }
+  })()
 }
 
 function scheduleReconnect(url, contractAddress, io) {
