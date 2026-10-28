@@ -32,7 +32,7 @@
     "welcomeMessage": "Bienvenue dans le chat en direct ! 🎮",
     "guest": "Invité",
     "messagePlaceholder": "Envoyer un message…",
-    "connectToChat": "Connectez le wallet pour chatter",
+    "connectToChat": "Wallet requis pour chatter",
     "send": "Envoyer",
     "respectNote": "Traitez les autres utilisateurs avec respect ✌️"
   }
