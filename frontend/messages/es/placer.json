@@ -121,6 +121,7 @@
       "missingKycItem": "completar la verificación KYC",
       "andWord": " y ",
       "saveConfigFailed": "No se pudo guardar la configuración",
+      "leagueSaveFailed": "Selección de liga no guardada — usa Guardar Configuración abajo",
       "depositFailed": "Depósito fallido",
       "withdrawalFailed": "Retiro fallido",
       "signAgreementFailed": "No se pudo firmar el acuerdo"

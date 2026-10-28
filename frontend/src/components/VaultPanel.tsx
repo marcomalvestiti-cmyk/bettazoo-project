@@ -28,6 +28,17 @@ type Props = {
   onVaultReady?: (vaultAddress: string) => void
 }
 
+// Signs a fresh vault-config message and PATCHes only the given fields.
+async function signAndPatchConfig(
+  owner: string,
+  signMessageAsync: (args: { message: string }) => Promise<string>,
+  config: Parameters<typeof patchVaultConfig>[3],
+) {
+  const timestamp = Date.now()
+  const signature = await signMessageAsync({ message: buildVaultConfigMessage(owner, timestamp) })
+  return patchVaultConfig(owner, signature, timestamp, config)
+}
+
 const inputCls = 'w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-sm font-semibold text-white placeholder:text-slate-600 focus:outline-none focus:border-[#FFB01F] transition-colors'
 
 export default function VaultPanel({ onVaultReady }: Props) {
@@ -143,6 +154,8 @@ export default function VaultPanel({ onVaultReady }: Props) {
   const [maxSingleInput, setMaxSingleInput] = useState('')
   const [capStatus, setCapStatus] = useState<'idle' | 'setting' | 'error'>('idle')
   const [pauseStatus, setPauseStatus] = useState<'idle' | 'toggling' | 'error'>('idle')
+  const [leagueSave, setLeagueSave] = useState<{ key: string; status: 'idle' | 'saving' | 'done' | 'error' }>({ key: '', status: 'idle' })
+  const [leagueSaveErr, setLeagueSaveErr] = useState('')
 
   // ── Compliance: EIP-712 Liquidity Provision Agreement + KYC gate ──────────────
   // Both required before the keeper can go active — see handleSaveConfig and the
@@ -283,15 +296,28 @@ export default function VaultPanel({ onVaultReady }: Props) {
   // One-click "bank the whole league" — sets every outcome on every event of the
   // league at once instead of clicking each event × outcome individually. Toggling
   // an already-fully-banked league clears it back out (same button, opposite action).
-  function toggleLeague(leagueEvents: MockEvent[]) {
+  // Saves the scope straight away (scope only — other unsaved form edits are left
+  // alone, and vaultData isn't replaced so the form isn't re-seeded over them).
+  async function toggleLeague(leagueKey: string, leagueEvents: MockEvent[]) {
+    if (!address || leagueSave.status === 'saving') return
     const fullyBanked = isLeagueFullyBanked(leagueEvents)
-    setScope(prev => {
-      const leagueEventIds = new Set(leagueEvents.map(ev => ev.eventId))
-      const withoutLeague = prev.filter(s => !leagueEventIds.has(s.eventId))
-      if (fullyBanked) return withoutLeague
-      const leagueScope = leagueEvents.map(ev => ({ eventId: ev.eventId, outcomes: [...ALL_OUTCOMES] }))
-      return [...withoutLeague, ...leagueScope]
-    })
+    const leagueEventIds = new Set(leagueEvents.map(ev => ev.eventId))
+    const withoutLeague = scope.filter(s => !leagueEventIds.has(s.eventId))
+    const nextScope = fullyBanked
+      ? withoutLeague
+      : [...withoutLeague, ...leagueEvents.map(ev => ({ eventId: ev.eventId, outcomes: [...ALL_OUTCOMES] }))]
+    setScope(nextScope)
+    setLeagueSave({ key: leagueKey, status: 'saving' })
+    setLeagueSaveErr('')
+    try {
+      await signAndPatchConfig(address, signMessageAsync, { scope: nextScope })
+      setLeagueSave({ key: leagueKey, status: 'done' })
+      setTimeout(() => setLeagueSave(s => s.key === leagueKey && s.status === 'done' ? { key: '', status: 'idle' } : s), 2000)
+    } catch {
+      // Local selection is kept — the main Save button still persists it.
+      setLeagueSave({ key: leagueKey, status: 'error' })
+      setLeagueSaveErr(t('errors.leagueSaveFailed'))
+    }
   }
 
   async function handleSaveConfig() {
@@ -536,19 +562,26 @@ export default function VaultPanel({ onVaultReady }: Props) {
         <div className="max-h-64 overflow-y-auto space-y-3 pr-1">
           {leagueGroups.map(group => {
             const fullyBanked = isLeagueFullyBanked(group.events)
+            const thisLeagueSave = leagueSave.key === group.key ? leagueSave.status : 'idle'
             return (
               <div key={group.key} className="space-y-1.5">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">{group.leagueLabel}</span>
-                  <button type="button" onClick={() => toggleLeague(group.events)}
-                    className={`text-[9px] font-bold px-2 py-1 rounded border transition-colors shrink-0 ${
+                  <button type="button" onClick={() => toggleLeague(group.key, group.events)}
+                    disabled={leagueSave.status === 'saving'}
+                    className={`text-[9px] font-bold px-2 py-1 rounded border transition-colors shrink-0 disabled:opacity-50 ${
                       fullyBanked
                         ? 'border-red-500/40 bg-red-500/10 text-red-400 hover:border-red-500/60'
                         : 'border-[#FFB01F]/50 bg-[#FFB01F]/10 text-[#FFB01F] hover:border-[#FFB01F]'
                     }`}>
-                    {fullyBanked ? t('clearLeague') : t('bankWholeLeague')}
+                    {thisLeagueSave === 'saving' ? '…'
+                      : thisLeagueSave === 'done' ? t('savedButton')
+                      : fullyBanked ? t('clearLeague') : t('bankWholeLeague')}
                   </button>
                 </div>
+                {thisLeagueSave === 'error' && leagueSaveErr && (
+                  <p className="text-[10px] text-red-400">{leagueSaveErr}</p>
+                )}
                 {group.events.map(ev => {
                   const rowScope = scope.find(s => s.eventId === ev.eventId)
                   return (

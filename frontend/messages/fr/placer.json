@@ -121,6 +121,7 @@
       "missingKycItem": "compléter la vérification KYC",
       "andWord": " et ",
       "saveConfigFailed": "Impossible d'enregistrer la configuration",
+      "leagueSaveFailed": "Sélection de ligue non enregistrée — utilisez Enregistrer la Configuration ci-dessous",
       "depositFailed": "Échec du dépôt",
       "withdrawalFailed": "Échec du retrait",
       "signAgreementFailed": "Impossible de signer l'accord"

@@ -121,6 +121,7 @@
       "missingKycItem": "complete KYC review",
       "andWord": " and ",
       "saveConfigFailed": "Could not save config",
+      "leagueSaveFailed": "League selection not saved — use Save Config below",
       "depositFailed": "Deposit failed",
       "withdrawalFailed": "Withdrawal failed",
       "signAgreementFailed": "Could not sign the agreement"
