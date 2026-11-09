@@ -13,7 +13,7 @@ interface Props {
 
 export default function EventSelector({ value, onSelect }: Props) {
   const t = useTranslations('EventSelector')
-  const { events } = useEvents()
+  const { events } = useEvents({ open: true })
   const [openNodes, setOpenNodes] = useState<Set<string>>(new Set())
   // A placer specializes in one sport/league at a time — once an event is picked,
   // its league stays pinned (fast switching between that league's own events)

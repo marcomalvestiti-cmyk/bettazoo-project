@@ -5,6 +5,7 @@ const Order = require('../models/Order')
 const BetMatch = require('../models/BetMatch')
 const Event = require('../models/Event')
 const { suggestOdds } = require('./aiService')
+const { isEventQuotable } = require('./eventStatus')
 
 const VAULT_ABI = [
   'function placeOffer(string eventId, uint8 outcome, uint256 odds, uint256 liability) returns (uint256 offerId)',
@@ -72,6 +73,45 @@ async function computeRealizedPnl(vaultAddress) {
   return pnl
 }
 
+// Kickoff cutoff (see services/eventStatus.js): every active offer this vault still
+// has on an event that is within the cutoff window, already started, or resolved is
+// cancelled, so nobody can take a price once the result is (partly) known. Sweeps all
+// of the vault's active orders, not just its current scope — an event can drop out of
+// scope (auto-scope, or the owner editing it) while its offers are still on the book.
+// Only touches offers on events the catalog knows about: an eventId with no Event doc
+// is left alone rather than guessed at.
+async function pullClosedQuotes(vaultContract, placerAddress, log) {
+  const active = await Order.find({ placer: placerAddress, active: true }).lean()
+  if (active.length === 0) return
+  const eventIds = [...new Set(active.map((o) => o.eventId))]
+  const docs = await Event.find({ eventId: { $in: eventIds } }).lean()
+  const byId = new Map(docs.map((d) => [d.eventId, d]))
+
+  for (const order of active) {
+    const doc = byId.get(order.eventId)
+    if (!doc || isEventQuotable(doc)) continue
+    try {
+      const tx = await vaultContract.cancelOffer(order.offerId)
+      await tx.wait()
+      log(`closed ${order.eventId}:${order.outcome} — event started/resolved, cancelled offerId=${order.offerId}`)
+    } catch (err) {
+      log(`closed ${order.eventId}:${order.outcome} — cancel of offerId=${order.offerId} failed: ${err.message}`)
+    }
+  }
+}
+
+// Optional auto-scope for the protocol's own vault: instead of a hand-picked scope,
+// quote every upcoming real (live-feed) fixture on all three outcomes. Lets the beta
+// always have liquidity on whatever the odds feed brought in, without someone
+// re-saving the vault scope every time new fixtures appear. Opt-in via
+// PROTOCOL_VAULT_AUTO_SCOPE=true; third-party vaults always use their own scope.
+async function autoScopeLiveEvents() {
+  const docs = await Event.find({ source: 'live', resolved: { $ne: true } }).lean()
+  return docs
+    .filter((d) => isEventQuotable(d))
+    .map((d) => ({ eventId: d.eventId, outcomes: [0, 1, 2] }))
+}
+
 /**
  * Evaluates and (if needed) acts on a single vault: requote drifted/missing offers
  * within scope, respecting exposure caps, stop-loss, and the on-chain pause flag.
@@ -125,10 +165,16 @@ async function tickVault(vault, keeperWallet) {
     return
   }
 
+  await pullClosedQuotes(vaultContract, vault.vaultAddress, log)
+
   const exposure = await computeExposure(vault.vaultAddress)
   const margin = marginForVault(vault)
 
-  for (const { eventId, outcomes } of vault.scope || []) {
+  const autoScope = isProtocolVault && process.env.PROTOCOL_VAULT_AUTO_SCOPE === 'true'
+  const scope = autoScope ? await autoScopeLiveEvents() : (vault.scope || [])
+  if (autoScope) log(`auto-scope — ${scope.length} upcoming live event(s)`)
+
+  for (const { eventId, outcomes } of scope) {
     // Fetched once per event, not per outcome — referenceOdds (Tier 0's live feed,
     // see services/eventsFeedService.js) is what turns this from a fixed-margin mock
     // into a real pricing engine: suggestOdds shrinks *actual* market consensus by
@@ -136,6 +182,10 @@ async function tickVault(vault, keeperWallet) {
     // default. Curated (non-football) events simply have no referenceOdds — same
     // fallback behavior as before, no regression there.
     const eventDoc = await Event.findOne({ eventId }).lean()
+    if (!isEventQuotable(eventDoc)) {
+      log(`skip ${eventId} — not open for betting (started, resolved or unknown)`)
+      continue
+    }
 
     for (const outcome of outcomes) {
       const marketKey = `${eventId}:${outcome}`
@@ -292,11 +342,17 @@ async function tickFundVault(fundVault, keeperWallet) {
     return
   }
 
+  await pullClosedQuotes(vaultContract, fundVault.fundVaultAddress, log)
+
   const exposure = await computeExposure(fundVault.fundVaultAddress)
   const margin = marginForVault(fundVault)
 
   for (const { eventId, outcomes } of fundVault.scope || []) {
     const eventDoc = await Event.findOne({ eventId }).lean()
+    if (!isEventQuotable(eventDoc)) {
+      log(`skip ${eventId} — not open for betting (started, resolved or unknown)`)
+      continue
+    }
 
     for (const outcome of outcomes) {
       const marketKey = `${eventId}:${outcome}`

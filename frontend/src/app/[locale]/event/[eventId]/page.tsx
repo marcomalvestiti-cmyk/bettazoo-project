@@ -8,6 +8,7 @@ import { useTranslations } from 'next-intl'
 import OrderBook, { type Offer } from '@/components/OrderBook'
 import BetSlip from '@/components/BetSlip'
 import { useEvents } from '@/lib/useEvents'
+import { isEventOpen } from '@/lib/abis'
 import { Link } from '@/i18n/navigation'
 
 type BetSlipState = { outcome: number; offers: Offer[] }
@@ -22,6 +23,9 @@ export default function EventPage({ params }: { params: Promise<{ eventId: strin
   const { events } = useEvents()
 
   const event = events.find((e) => e.eventId === eventId)
+  // Known event past kickoff or settled → read-only order book. Unknown eventIds keep
+  // the old behavior (the contract accepts any string; the keeper already won't quote).
+  const bettingClosed = event ? !isEventOpen(event) : false
 
   function handleBet(outcome: number, offers: Offer[]) {
     setBetSlip({ outcome, offers })
@@ -114,9 +118,16 @@ export default function EventPage({ params }: { params: Promise<{ eventId: strin
         </div>
       )}
 
+      {bettingClosed && (
+        <div className="flex items-center gap-2 rounded-lg bg-slate-900 border border-slate-700 px-4 py-3 text-sm text-slate-300">
+          <span className="text-red-500">⛔</span>
+          {t('bettingClosed')}
+        </div>
+      )}
+
       <OrderBook
         eventId={eventId}
-        onBet={isConnected ? handleBet : undefined}
+        onBet={isConnected && !bettingClosed ? handleBet : undefined}
       />
 
       {betSlip && (

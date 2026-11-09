@@ -41,8 +41,12 @@ async function apiFetch(label: string, input: RequestInfo, init?: RequestInit): 
 // see backend/src/services/eventsFeedService.js). Callers should fall back to
 // MOCK_EVENTS on error/empty — see lib/useEvents.ts for the client-side hook that
 // does this automatically; server components call this directly (e.g. app/page.tsx).
-export async function fetchEvents(): Promise<MockEvent[]> {
-  const res = await apiFetch('events', `${BASE}/api/events`, { cache: 'no-store' })
+// `open: true` returns only events still open for betting (not started, not settled),
+// sorted by kickoff — use it for listings and pickers; leave it off where past events
+// still matter (bet history, resolver, stats).
+export async function fetchEvents(opts: { open?: boolean } = {}): Promise<MockEvent[]> {
+  const url = opts.open ? `${BASE}/api/events?open=1` : `${BASE}/api/events`
+  const res = await apiFetch('events', url, { cache: 'no-store' })
   const data = await res.json()
   return data.events ?? []
 }

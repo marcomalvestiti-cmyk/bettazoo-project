@@ -123,4 +123,4 @@ function startEventsSync() {
   return handle
 }
 
-module.exports = { startEventsSync, seedCuratedEvents, syncLiveSoccer }
+module.exports = { startEventsSync, seedCuratedEvents, syncLiveSoccer, LIVE_SOCCER_LEAGUES }

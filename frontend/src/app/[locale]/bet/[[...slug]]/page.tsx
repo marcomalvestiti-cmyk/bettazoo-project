@@ -11,7 +11,7 @@ export default async function BetPage({
 }) {
   const { slug = [] } = await params
   const t = await getTranslations('Bet')
-  const events = await fetchEvents().catch(() => [])
+  const events = await fetchEvents({ open: true }).catch(() => [])
   const filtered = filterEventsBySlug(events, slug)
 
   const EVENT_BADGES: Record<string, { key: 'hot' | 'featured' | 'new' | 'live'; emoji: string; className: string }> = {

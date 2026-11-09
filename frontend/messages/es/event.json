@@ -7,7 +7,8 @@
       "sportFallback": "deporte",
       "challengeBookie": "Desafía a la Casa",
       "invitedBy": "— Fuiste invitado por",
-      "connectPrompt": "Conecta tu wallet para apostar — haz clic en cualquier cuota para abrir el boleto."
+      "connectPrompt": "Conecta tu wallet para apostar — haz clic en cualquier cuota para abrir el boleto.",
+      "bettingClosed": "Las apuestas están cerradas para este evento: ya ha comenzado o se ha liquidado."
     },
     "OrderBook": {
       "bestOdds": "🏅 Mejor Cuota",

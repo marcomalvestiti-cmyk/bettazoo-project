@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Event = require('../models/Event');
 const { CURATED_EVENTS } = require('../data/curatedEvents');
+const { isEventOpen } = require('../services/eventStatus');
 
 function isDbOffline(err) {
   const msg = err?.message ?? '';
@@ -26,6 +27,8 @@ function toPublicShape(doc) {
     icon:        doc.icon,
     teams:       doc.teams,
     startTime:   doc.startTime instanceof Date ? doc.startTime.toISOString() : doc.startTime,
+    source:      doc.source ?? 'curated',
+    resolved:    Boolean(doc.resolved),
   };
 }
 
@@ -41,9 +44,21 @@ router.get('/', async (req, res, next) => {
     if (docs.length === 0) return res.json({ events: CURATED_EVENTS });
 
     const hasLiveFootball = docs.some((d) => d.source === 'live');
-    const visible = hasLiveFootball
+    let visible = hasLiveFootball
       ? docs.filter((d) => !(d.source === 'curated' && d.sport === 'football'))
       : docs;
+
+    // ?open=1 — only events you can still bet on (listings, placer pickers). Once
+    // any real fixture is open, the curated catalog is dropped entirely: its results
+    // would have to be invented by hand, and its start times are relative to the last
+    // backend boot (data/curatedEvents.js), so they go stale.
+    if (req.query.open === '1' || req.query.open === 'true') {
+      visible = visible.filter((d) => isEventOpen(d));
+      if (visible.some((d) => d.source === 'live')) {
+        visible = visible.filter((d) => d.source === 'live');
+      }
+      visible.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+    }
 
     res.json({ events: visible.map(toPublicShape) });
   } catch (err) {

@@ -7,7 +7,8 @@
       "sportFallback": "sport",
       "challengeBookie": "Challenge the Bookie",
       "invitedBy": "— You were invited by",
-      "connectPrompt": "Connect your wallet to bet — click any odds to open the bet slip."
+      "connectPrompt": "Connect your wallet to bet — click any odds to open the bet slip.",
+      "bettingClosed": "Betting is closed for this event — it has already started or been settled."
     },
     "OrderBook": {
       "bestOdds": "🏅 Best Odds",

@@ -86,3 +86,42 @@ describe('GET /api/events — live football fixtures present', () => {
     expect(ids).toContain('evt-010'); // curated esports — untouched
   });
 });
+
+// ─── GET /api/events?open=1 — only bettable events ───────────────────────────
+describe('GET /api/events?open=1', () => {
+  const HOUR = 3_600_000;
+  const live = (id, startOffsetH, extra = {}) => ({
+    eventId: id, name: id, category: 'sports', sport: 'football', league: 'serie-a',
+    teams: ['A', 'B'], startTime: new Date(Date.now() + startOffsetH * HOUR), source: 'live', ...extra,
+  });
+
+  it('drops started and resolved events, and curated ones once live fixtures are open', async () => {
+    await seedCuratedEvents();
+    await Event.create([
+      live('live-future-2', 5),
+      live('live-future-1', 1),
+      live('live-started', -1),
+      live('live-resolved', 3, { resolved: true, winningOutcome: 0 }),
+    ]);
+
+    const res = await request(app).get('/api/events?open=1');
+    const ids = res.body.events.map((e) => e.eventId);
+    expect(ids).toEqual(['live-future-1', 'live-future-2']); // sorted by kickoff
+    expect(res.body.events[0]).toMatchObject({ source: 'live', resolved: false });
+  });
+
+  it('keeps open curated events when no live fixture is open', async () => {
+    await seedCuratedEvents();
+    await Event.create(live('live-started', -1));
+    const res = await request(app).get('/api/events?open=1');
+    const ids = res.body.events.map((e) => e.eventId);
+    expect(ids).toContain('evt-007');
+    expect(ids).not.toContain('live-started');
+  });
+
+  it('without the flag still returns past events (dashboards need their names)', async () => {
+    await Event.create(live('live-started', -1));
+    const res = await request(app).get('/api/events');
+    expect(res.body.events.map((e) => e.eventId)).toContain('live-started');
+  });
+});

@@ -43,7 +43,7 @@ const inputCls = 'w-full bg-slate-950 border border-slate-700 rounded-md px-3 py
 
 export default function VaultPanel({ onVaultReady }: Props) {
   const t = useTranslations('VaultPanel')
-  const { events } = useEvents()
+  const { events } = useEvents({ open: true })
   const leagueGroups = useMemo(() => {
     const groups = new Map<string, { key: string; leagueLabel: string; events: MockEvent[] }>()
     for (const ev of events) {

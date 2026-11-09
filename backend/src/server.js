@@ -28,6 +28,7 @@ const { startFundVaultListener } = require('./services/fundVaultListener')
 const { startKeeper } = require('./services/keeperService')
 const { createLogPoller } = require('./services/logPoller')
 const { startEventsSync } = require('./services/eventsFeedService')
+const { startResultsSync } = require('./services/resultsService')
 const { initErrorTracking } = require('./services/errorTracking')
 
 initErrorTracking()
@@ -70,6 +71,8 @@ async function main() {
   // (and, if ODDS_API_KEY is set, starts the live odds sync loop) regardless of
   // whether the on-chain listener is configured.
   startEventsSync()
+  // Automatic settlement of real fixtures — needs the DB to know what is pending.
+  if (dbConnected) startResultsSync()
 
   const server = http.createServer(app)
   const io = new Server(server, { cors: { origin: '*' } })

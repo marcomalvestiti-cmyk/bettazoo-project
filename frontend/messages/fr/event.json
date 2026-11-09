@@ -7,7 +7,8 @@
       "sportFallback": "sport",
       "challengeBookie": "Défiez la Maison",
       "invitedBy": "— Vous avez été invité par",
-      "connectPrompt": "Connectez votre wallet pour parier — cliquez sur une cote pour ouvrir le ticket."
+      "connectPrompt": "Connectez votre wallet pour parier — cliquez sur une cote pour ouvrir le ticket.",
+      "bettingClosed": "Les paris sont fermés pour cet événement : il a déjà commencé ou a été réglé."
     },
     "OrderBook": {
       "bestOdds": "🏅 Meilleure Cote",

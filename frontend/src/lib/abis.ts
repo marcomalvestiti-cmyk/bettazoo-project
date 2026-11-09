@@ -426,6 +426,17 @@ export type MockEvent = {
   teams: string[]
   startTime: string
   markets?: Market[]  // if absent, getEventMarkets() defaults to MATCH_WINNER_MARKET (1X2)
+  source?: 'curated' | 'live'
+  resolved?: boolean
+}
+
+// Open for betting = not settled and not yet kicked off. Mirrors isEventOpen in
+// backend/src/services/eventStatus.js — the Escrow contract has no start time, so
+// this off-chain cutoff (plus the keeper pulling its quotes) is what closes a market.
+export function isEventOpen(ev: Pick<MockEvent, 'startTime' | 'resolved'>, now = Date.now()): boolean {
+  if (ev.resolved) return false
+  const start = new Date(ev.startTime).getTime()
+  return Number.isFinite(start) && start > now
 }
 
 const t = (h: number) => new Date(Date.now() + h * 3_600_000).toISOString()

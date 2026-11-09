@@ -28,7 +28,7 @@ const inputCls = 'w-full bg-slate-950 border border-slate-700 rounded-md px-3 py
 
 export default function FundVaultPanel() {
   const t = useTranslations('FundPanel')
-  const { events } = useEvents()
+  const { events } = useEvents({ open: true })
   const { address, chain } = useAccount()
   const publicClient = usePublicClient()
   const { writeContractAsync } = useWriteContract()

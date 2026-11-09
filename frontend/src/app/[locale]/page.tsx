@@ -26,7 +26,7 @@ const EVENT_BADGES: Record<string, { key: 'hot' | 'featured' | 'new' | 'live'; e
 
 export default async function Home() {
   const t = await getTranslations('Home')
-  const events = await fetchEvents().catch(() => [])
+  const events = await fetchEvents({ open: true }).catch(() => [])
 
   // Prefer the curated FEATURED_IDS picks; once a live odds sync supersedes a
   // curated football fixture (see backend eventsFeedService.js), that ID drops out

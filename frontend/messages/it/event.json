@@ -7,7 +7,8 @@
       "sportFallback": "sport",
       "challengeBookie": "Sfida il Banco",
       "invitedBy": "— Sei stato invitato da",
-      "connectPrompt": "Connetti il wallet per scommettere — clicca su una quota per aprire la schedina."
+      "connectPrompt": "Connetti il wallet per scommettere — clicca su una quota per aprire la schedina.",
+      "bettingClosed": "Scommesse chiuse per questo evento: è già iniziato o è stato risolto."
     },
     "OrderBook": {
       "bestOdds": "🏅 Quota Migliore",
