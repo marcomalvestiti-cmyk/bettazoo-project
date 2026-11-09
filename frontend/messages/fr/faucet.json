@@ -17,6 +17,24 @@
     "availableIn": "Disponible dans {cooldown}",
     "claimButton": "Réclamer {amount} BTZ-USD",
     "nextClaimIn": "Prochaine réclamation disponible dans {cooldown}",
-    "networkHint": "Assurez-vous que MetaMask est connecté à <network>Arbitrum Sepolia</network> (Chain ID 421614)"
+    "networkHint": "Assurez-vous que MetaMask est connecté à <network>Arbitrum Sepolia</network> (Chain ID 421614)",
+    "gasStep": "Étape 1 — Gas (ETH de test)",
+    "gasExplain": "Chaque opération sur Arbitrum Sepolia coûte un peu d’ETH de test pour le gas. Si votre wallet est nouveau, nous vous l’envoyons : une seule fois, gratuitement.",
+    "gasBalanceLabel": "Votre solde ETH",
+    "gasClaimButton": "Recevoir {amount} ETH de test",
+    "gasClaiming": "Envoi en cours…",
+    "gasSuccess": "✓ {amount} ETH de test envoyés ! Demandez maintenant vos BTZ-USD ci-dessous.",
+    "gasViewTx": "Voir la transaction",
+    "tokenStep": "Étape 2 — Jetons BTZ-USD",
+    "gasReasons": {
+      "has_balance": "✓ Vous avez déjà assez d’ETH pour le gas.",
+      "already_claimed": "✓ Ce wallet a déjà reçu du gas du faucet.",
+      "daily_limit": "La limite quotidienne du faucet est atteinte : réessayez demain.",
+      "ip_limit": "Trop de demandes depuis votre réseau aujourd’hui : réessayez demain.",
+      "faucet_empty": "Le faucet de gas est temporairement vide : prévenez l’équipe Bettazoo.",
+      "send_failed": "L’envoi a échoué : réessayez dans quelques minutes.",
+      "disabled": "Le faucet de gas n’est pas disponible pour le moment.",
+      "invalid_address": "Adresse de wallet invalide."
+    }
   }
 }

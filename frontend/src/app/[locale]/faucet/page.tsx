@@ -6,6 +6,7 @@ import { formatUnits } from 'viem'
 import { useTranslations } from 'next-intl'
 import { MOCK_USDT_ABI } from '@/lib/abis'
 import { withGasBuffer } from '@/lib/gasUtils'
+import GasFaucetCard from '@/components/GasFaucetCard'
 
 const CONTRACT = (process.env.NEXT_PUBLIC_MOCK_USDT_ADDRESS ?? '') as `0x${string}`
 const FAUCET_AMOUNT = 1_000
@@ -103,8 +104,14 @@ export default function FaucetPage() {
         </p>
       </div>
 
-      {/* Main card */}
+      {/* Step 1 — gas */}
+      {isConnected && address && <GasFaucetCard address={address} />}
+
+      {/* Main card — step 2, BTZ-USD */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+        {isConnected && !notDeployed && (
+          <p className="text-xs font-bold text-[#FFB01F] uppercase tracking-widest">{t('tokenStep')}</p>
+        )}
 
         {notDeployed ? (
           <div className="text-center py-6 space-y-2">

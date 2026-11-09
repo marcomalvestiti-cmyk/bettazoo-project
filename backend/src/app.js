@@ -34,6 +34,7 @@ app.use('/api/social',    require('./routes/social'));
 app.use('/api/vaults',    require('./routes/vaults'));
 app.use('/api/fund-vaults', require('./routes/fundVaults'));
 app.use('/api/bettor',    require('./routes/bettor'));
+app.use('/api/faucet',    require('./routes/faucet'));
 
 // 404 — always JSON (never HTML)
 app.use((_req, res) => {

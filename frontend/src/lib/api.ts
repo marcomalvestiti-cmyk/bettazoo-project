@@ -51,6 +51,31 @@ export async function fetchEvents(opts: { open?: boolean } = {}): Promise<MockEv
   return data.events ?? []
 }
 
+// ── Gas faucet (backend/src/routes/faucet.js) ───────────────────────────────────
+// Plain fetch instead of apiFetch: a refusal (429/503) carries a `reason` the UI
+// shows, so non-2xx answers are data here, not errors.
+export type GasFaucetStatus = {
+  eligible: boolean
+  reason?: 'invalid_address' | 'already_claimed' | 'has_balance' | 'daily_limit' | 'ip_limit' | 'faucet_empty' | 'send_failed' | 'disabled'
+  amountEth?: string
+  claimed?: boolean
+  txHash?: string
+}
+
+export async function fetchGasFaucetStatus(address: string): Promise<GasFaucetStatus> {
+  const res = await fetch(`${BASE}/api/faucet/gas/${address}`, { cache: 'no-store' })
+  return res.json()
+}
+
+export async function claimGasFaucet(address: string): Promise<GasFaucetStatus> {
+  const res = await fetch(`${BASE}/api/faucet/gas`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ address }),
+  })
+  return res.json().catch(() => ({ eligible: false, reason: 'send_failed' as const }))
+}
+
 export async function fetchOrderBook(eventId: string, outcome?: number) {
   const params = new URLSearchParams()
   if (outcome !== undefined) params.set('outcome', String(outcome))
